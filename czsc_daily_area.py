@@ -75,7 +75,7 @@ def main():
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
     df = get_stcok_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
-    # assert df['date'].iloc[-1] == last_trade_date,"BaoStock最后一个交易日数据还未更新"
+    assert df['date'].iloc[-1] == last_trade_date,"BaoStock最后一个交易日数据还未更新"
 
     # 清除缓存图标
     clear_cache(mline_chart_dir())
