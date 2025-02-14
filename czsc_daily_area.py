@@ -48,6 +48,22 @@ def save_symbols(data, filename):
     data_dir = get_data_dir()
     write_json(data, os.path.join(data_dir, filename))
 
+def test_case():
+    lg = bs.login()
+    # 登录baostock
+    print('login respond error_code:' + lg.error_code)
+    print('login respond  error_msg:' + lg.error_msg)
+    
+    symbol = "sz.300124"
+    df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+    res = is_buy_point(symbol,df)
+    print(res)
+
+    # 登出系统
+    bs.logout()
+
+    sys.exit(0)
+
 def main():
     lg = bs.login()
     # 登录baostock
@@ -68,18 +84,12 @@ def main():
     clear_cache(buypoint_chart_dir(1))
     clear_cache(buypoint_chart_dir(3))
     
-    
     # 选择月线反转股票
     mline_symbols = []
     minion_symbols = []
     golden_symbols = []
     one_buypoint_symbols = []
     third_buypoint_symbols = []
-    # symbol = "sz.300124"
-    # df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
-    # res = is_buy_point(symbol,df)
-    # print(res)
-    # open('iasa')
     for symbol in all_symbols:
         # 股票数据
         df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
@@ -143,3 +153,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # test_case()
