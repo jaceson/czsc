@@ -57,7 +57,7 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
-def is_golden_point(symbol,df,threshold=1.5,klines=5):
+def is_golden_point(symbol,df,threshold=1.6,klines=10):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
@@ -82,7 +82,7 @@ def is_golden_point(symbol,df,threshold=1.5,klines=5):
             if max_val*1.05<min_price:
                 print("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
-            # 上一波涨幅必须超过5个交易
+            # 上一波涨幅必须超过10个交易
             kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
             if kline_num<klines:
                 print("【"+symbol+"】"+" kline number is "+str(kline_num))
@@ -101,6 +101,64 @@ def is_golden_point(symbol,df,threshold=1.5,klines=5):
                 return True
             else:
                 print("【"+symbol+"】"+" 当前收盘价："+str(stock_close), "最小收盘价："+str(min_close))
+    return False
+
+"""
+    根据KD线确认抄底点
+"""
+def is_kd_buy_point(symbol,df):
+    ndf = get_kd_data(df)
+    buy_con = (
+        (df['K0'] < 30) &
+        ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= -0.03) & 
+        (REF(df['K0'],1)<REF(df['K0'],2)) & 
+        (REF(df['K0'],2)<REF(df['K0'],3)) & 
+        (REF(df['K0'],3)<REF(df['K0'],4)) & 
+        (REF(df['K0'],4)<REF(df['K0'],5)) & 
+        (REF(df['K0'],5)<REF(df['K0'],6)) & 
+        (REF(df['K0'],6)<REF(df['K0'],7)) & 
+        (REF(df['K0'],7)<REF(df['K0'],8)) &
+        (df['low'] <= REF(df['low'], 1)) &
+        (df['high'] <= REF(df['high'], 1)) &
+        (REF(df['low'], 1) <= REF(df['low'], 2)) &
+        (REF(df['high'], 1) <= REF(df['high'], 2)) 
+    )
+
+    if not df[buy_con].empty:
+        selected_indexs = ndf[buy_con].index
+        selected_dates = []
+        for idx in selected_indexs:
+            selected_dates.append(ndf['date'][idx])
+        stock_k0 = df['K0'].iloc[-1]
+
+        last_trading_day = df['date'].iloc[-1]
+        if last_trading_day in selected_dates:
+            stock_k1 = df['K0'].iloc[-2]
+            print("【"+symbol+"】"+" 当前K0："+str(stock_k0), "当前D0："+str(stock_k1))
+            print("策略结算结果：当前KD0="+str(stock_k0-stock_k1), "当前KR0="+str((stock_k0-stock_k1)/stock_k1))
+            return True
+        else:
+            last_selected_date = selected_dates[-1]
+            days_delta = days_trade_delta(df, last_selected_date, last_trading_day)
+            if days_delta<5:
+                print(symbol,last_selected_date)
+            is_valid = True
+            for delta in range(1,days_delta):
+                if stock_k0>df['K0'].iloc[-(delta+1)]:
+                    is_valid = False
+                    break
+                stock_k0 = df['K0'].iloc[-(delta+1)]
+            if not is_valid:
+                is_valid = True
+                stock_low = df['low'].iloc[-1]
+                stock_high = df['high'].iloc[-1]
+                for delta in range(1,days_delta):
+                    if stock_low>df['low'].iloc[-(delta+1)] and stock_high>df['high'].iloc[-(delta+1)]:
+                        is_valid = False
+                        break
+                    stock_low = df['low'].iloc[-(delta+1)]
+                    stock_high = df['high'].iloc[-(delta+1)]
+            return is_valid
     return False
 
 """
@@ -179,6 +237,18 @@ def get_rps_data(df):
     if not 'EXTRS250' in df.columns:
         df['EXTRS250'] = (df['close']-REF(df['close'], 250))/REF(df['close'], 250)
         df['RPS250'] = df['EXTRS250'].rank(pct=True) * 100
+    return df
+
+"""
+    生成KD线数据
+"""
+def get_kd_data(df):
+    if not 'VAR' in df.columns:
+        df['VAR'] = (df['close'] - LLV(df['low'], 10)) / (HHV(df['high'], 10) - LLV(df['low'], 10)) * 100
+        df['K0'] = SMA(df['VAR'], 10, 1)
+        # df['D0'] = REF(df['K0'], 1)
+        # df['KD0'] = df['K0']-df['D0']
+        # df['KDR'] = (df['K0']-df['D0'])/df['K0']
     return df
 
 """
@@ -264,6 +334,7 @@ def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=Non
     return [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
                     close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=row['amount'])
                 for i, row in df.iterrows()]
+
 """
     获取最后一天交易日日期
 """
