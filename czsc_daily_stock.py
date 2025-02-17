@@ -185,6 +185,10 @@ def main():
     # 登出系统
     bs.logout()
 
+"""
+    source /Users/wj/workspace/czsc/czsc_env/bin/activate
+    nohup python czsc_daily_stock.py >/Users/wj/czsc/data/log. 2>&1 &
+"""
 if __name__ == '__main__':
     main()
     # test_case()
