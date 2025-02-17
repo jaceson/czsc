@@ -57,7 +57,7 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
-def is_golden_point(symbol,df,threshold=1.6,klines=10):
+def is_golden_point(symbol,df,threshold=1.6,klines=10,max_ratio=1.1):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
@@ -79,7 +79,7 @@ def is_golden_point(symbol,df,threshold=1.6,klines=10):
             gold_val = gold_val_low(last_bi.fx_a.fx, last_bi.fx_b.fx)
             max_val = max(sqr_val,gold_val)
             # 距离黄金分割点还差5%以下
-            if max_val*1.05<min_price:
+            if max_val*max_ratio<min_price:
                 print("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
             # 上一波涨幅必须超过10个交易
@@ -276,9 +276,10 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
             frequency=frequency,
             adjustflag="2",
         )
-    if rs.error_code > 0:
+    if int(rs.error_code) > 0:
         print('query_history_k_data_plus respond error_code:' + rs.error_code)
         print('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
+        return []
     data_list = []
     while (rs.error_code == '0') & rs.next():
         row_data = rs.get_row_data()

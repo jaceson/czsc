@@ -116,6 +116,8 @@ def main():
     for symbol in all_symbols:
         # 股票数据
         df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+        if len(df) <= 0:
+            continue
         # 当前股票最后一个交易日
         symbol_last_trade_date = df['date'].iloc[-1]
         # 获取满足月线反转日期
