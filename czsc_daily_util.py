@@ -276,6 +276,9 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
             frequency=frequency,
             adjustflag="2",
         )
+    if rs.error_code > 0:
+        print('query_history_k_data_plus respond error_code:' + rs.error_code)
+        print('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
     data_list = []
     while (rs.error_code == '0') & rs.next():
         row_data = rs.get_row_data()
