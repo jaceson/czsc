@@ -116,8 +116,13 @@ def main():
     for symbol in all_symbols:
         # 股票数据
         df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
-        if len(df) <= 0:
-            continue
+        while len(df) <= 0:
+            lg = bs.login()
+            # 登录baostock
+            print('login respond error_code:' + lg.error_code)
+            print('login respond  error_msg:' + lg.error_msg)
+            # 重新获取
+            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
         # 当前股票最后一个交易日
         symbol_last_trade_date = df['date'].iloc[-1]
         # 获取满足月线反转日期
