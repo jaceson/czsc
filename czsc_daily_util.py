@@ -306,6 +306,7 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
     df['close'] = df['close'].astype(float)
     df['volume'] = df['volume'].astype(float)
     df['amount'] = df['amount'].astype(float)
+    df['datetime'] = pd.to_datetime(df['date'])
     # df.set_index('date', inplace=True)
     return df
 
