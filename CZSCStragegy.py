@@ -7,6 +7,7 @@ import baostock as bs
 import datetime
 import backtrader as bt
 import pandas as pd
+from czsc_daily_util import *
 
 # 创建策略类
 class CZSCStragegy(bt.Strategy):
@@ -50,22 +51,13 @@ class CZSCStragegy(bt.Strategy):
 
 def backtrader_symbol(symbol,start_date,end_date,strategy,showplot=False):
     lg = bs.login()
-    rs = bs.query_history_k_data_plus(
-            symbol,
-            "date,open,high,low,close,volume",
-            start_date=start_date,
-            end_date=end_date,
-            frequency="d",
-            adjustflag="3"  # 后复权
-    )
-    data_list = []
-    while rs.error_code == "0" and rs.next():
-        data_list.append(rs.get_row_data())
-    bs.logout()
-    data = pd.DataFrame(data_list, columns=rs.fields)
-    data['date'] = pd.to_datetime(data['date'])
-    data.set_index('date', inplace=True)
-    data = data.astype(float)
+    df = get_stcok_pd(symbol,start_date,end_date,"d")
+    df = get_kd_data(df)
+    df = get_rps_data(df)
+    
+    # data['date'] = pd.to_datetime(data['date'])
+    df.set_index('datetime', inplace=True)
+    # data = data.astype(float)
 
     # Create a cerebro entity
     cerebro = bt.Cerebro()
@@ -74,7 +66,7 @@ def backtrader_symbol(symbol,start_date,end_date,strategy,showplot=False):
     cerebro.addstrategy(strategy)
 
     # Add the Data Feed to Cerebro
-    bt_data = bt.feeds.PandasData(dataname=data)
+    bt_data = bt.feeds.PandasData(dataname=df)
     cerebro.adddata(bt_data)
 
     # Set our desired cash start

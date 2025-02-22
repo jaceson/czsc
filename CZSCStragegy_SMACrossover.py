@@ -39,6 +39,6 @@ class SMACrossover(CZSCStragegy):
 if __name__ == '__main__':
     code = "sh.600000"  # 示例股票代码
     start_date = "2020-01-01"
-    end_date = "2022-10-20"
+    end_date = "2024-10-20"
 
     backtrader_symbol(code, start_date, end_date, SMACrossover)
