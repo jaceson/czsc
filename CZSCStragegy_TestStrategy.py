@@ -42,7 +42,7 @@ class TestStrategy(CZSCStragegy):
 
 if __name__ == '__main__':
     code = "sh.600000"  # 示例股票代码
-    start_date = "2010-01-01"
+    start_date = "2020-12-01"
     end_date = "2020-12-31"
     backtrader_symbol(code, start_date, end_date, TestStrategy)
 
