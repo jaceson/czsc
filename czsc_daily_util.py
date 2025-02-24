@@ -162,6 +162,35 @@ def is_kd_buy_point(symbol,df):
     return False
 
 """
+    N日前是否有涨停；
+    N表示第几日前；0表示最后一个交易是否涨停
+"""
+def is_symbol_up_limit(df,N=0):
+    today_close = df['close'].iloc[-1-N]
+    lastday_close = df['close'].iloc[-1-N-1]
+    return today_close>lastday_close*1.09
+
+"""
+    N日内是否有涨停
+    N表示前几日，1表示今日，2表示昨天到今天
+"""
+def has_symbol_up_limit(df,N=5):
+    for idx in range(0,N):
+        if is_symbol_up_limit(df,idx):
+            return True
+    return False
+
+"""
+    今日股价是否上穿N日线
+    N表示几日线，5表示5日线，10表示10日线
+"""
+def has_cross_ma(df,N=5):
+    ma = MA(df['close'],N)
+    if df['low'].iloc[-1]<=ma[-1] and df['high'].iloc[-1]>=ma[-1]:
+        return True
+    return False
+
+"""
     是否是买点，即中枢离开段回撤到中枢附近
     返回买点类型：
         0，表示不是买点

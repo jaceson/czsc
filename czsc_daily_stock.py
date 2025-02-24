@@ -32,6 +32,9 @@ def golden_chart_dir():
 def chaodi_chart_dir():
     return get_data_dir()+"/html/KD线抄底"
 
+def strong_chart_dir():
+    return get_data_dir()+"/html/强势上涨"
+
 def buypoint_chart_dir(buypoint_type):
     if buypoint_type == 1:
         return get_data_dir()+"/html/中枢一买点"
@@ -100,6 +103,7 @@ def main():
     minion_symbols = []
     golden_symbols = []
     chaodi_symbols = []
+    strong_symbols = []
     one_buypoint_symbols = []
     third_buypoint_symbols = []
     # 最后一天交易日
@@ -111,6 +115,7 @@ def main():
         minion_symbols = read_symbols("小黄人三线红.json")
         golden_symbols = read_symbols("黄金分割线抄底.json")
         chaodi_symbols = read_symbols("KD线抄底.json")
+        strong_symbols = read_symbols("强势上涨.json")
         one_buypoint_symbols = read_symbols("中枢一买点.json")
         third_buypoint_symbols = read_symbols("中枢三买点.json")
     else:
@@ -158,6 +163,11 @@ def main():
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
+            # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
+            if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1) and has_cross_ma(df):
+                strong_symbols.append(symbol)
+                output_chart(symbol, df, strong_chart_dir())
+
             # 是否是买卖点
             buypoint_type = get_buy_point_type(symbol,df)
             if buypoint_type>0:
@@ -166,11 +176,13 @@ def main():
                     one_buypoint_symbols.append(symbol)
                 elif buypoint_type == 3:
                     third_buypoint_symbols.append(symbol)
+                    
         # 保存缓存缓存数据
         save_symbols(mline_symbols,"月线反转.json")
         save_symbols(minion_symbols,"小黄人三线红.json")
         save_symbols(golden_symbols,"黄金分割线抄底.json")
         save_symbols(chaodi_symbols,"KD线抄底.json")
+        save_symbols(strong_symbols,"强势上涨.json")
         save_symbols(one_buypoint_symbols,"中枢一买点.json")
         save_symbols(third_buypoint_symbols,"中枢三买点.json")
     
@@ -186,6 +198,9 @@ def main():
 
     print("KD线抄底列表：")
     print('     '+', '.join(chaodi_symbols))
+
+    print("强势上涨列表：")
+    print('     '+', '.join(strong_symbols))
 
     print("中枢一买点位置：")
     print('     '+', '.join(one_buypoint_symbols))
@@ -213,8 +228,17 @@ def main():
         print("满足小黄人三线红、中枢三买的股票列表：")
         print('     '+', '.join(intersection_list([minion_symbols,third_buypoint_symbols])))
 
+        print("满足小黄人三线红、强势上涨的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols])))
+
+        print("满足中枢三买、强势上涨的股票列表：")
+        print('     '+', '.join(intersection_list([third_buypoint_symbols,strong_symbols])))
+
     # 中枢三买
     if True:
+        print("满足小黄人三线红、强势上涨、中枢三买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols,third_buypoint_symbols])))
+
         print("满足小黄人三线红、黄金分割线、中枢三买的股票列表：")
         print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,third_buypoint_symbols])))
 
