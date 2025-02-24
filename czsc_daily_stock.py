@@ -127,6 +127,7 @@ def main():
         clear_cache(minion_chart_dir())
         clear_cache(golden_chart_dir())
         clear_cache(chaodi_chart_dir())
+        clear_cache(strong_chart_dir())
         clear_cache(buypoint_chart_dir(1))
         clear_cache(buypoint_chart_dir(3))
         # 选择月线反转股票
