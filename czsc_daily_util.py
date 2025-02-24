@@ -191,6 +191,16 @@ def has_cross_ma(df,N=5):
     return False
 
 """
+    今日收盘价是否接近N日线
+    N表示几日线，5表示5日线
+"""
+def has_close_ma(df,N=5,diff=0.02):
+    ma = MA(df['close'],N)
+    if df['close'].iloc[-1]<ma[-1]*(1+diff):
+        return True
+    return False
+
+"""
     是否是买点，即中枢离开段回撤到中枢附近
     返回买点类型：
         0，表示不是买点

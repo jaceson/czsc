@@ -164,9 +164,10 @@ def main():
                 output_chart(symbol, df, golden_chart_dir())
 
             # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
-            if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1) and has_cross_ma(df):
-                strong_symbols.append(symbol)
-                output_chart(symbol, df, strong_chart_dir())
+            if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
+                if has_cross_ma(df) or has_close_ma(df):
+                    strong_symbols.append(symbol)
+                    output_chart(symbol, df, strong_chart_dir())
 
             # 是否是买卖点
             buypoint_type = get_buy_point_type(symbol,df)
