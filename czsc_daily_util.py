@@ -125,7 +125,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
                     czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
                 return True
             else:
-                czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close), "最小收盘价："+str(min_close))
+                czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
 
 """
@@ -159,8 +159,8 @@ def is_kd_buy_point(symbol,df):
         last_trading_day = df['date'].iloc[-1]
         if last_trading_day in selected_dates:
             stock_k1 = df['K0'].iloc[-2]
-            czsc_logger().info("【"+symbol+"】"+" 当前K0："+str(stock_k0), "当前D0："+str(stock_k1))
-            czsc_logger().info("策略结算结果：当前KD0="+str(stock_k0-stock_k1), "当前KR0="+str((stock_k0-stock_k1)/stock_k1))
+            czsc_logger().info("【"+symbol+"】"+" 当前K0："+str(stock_k0)+", 当前D0："+str(stock_k1))
+            czsc_logger().info("策略结算结果：当前KD0="+str(stock_k0-stock_k1)+", 当前KR0="+str((stock_k0-stock_k1)/stock_k1))
             return True
         else:
             last_selected_date = selected_dates[-1]
