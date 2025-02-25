@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import math
+import requests
 import baostock as bs
 from lib.MyTT import *
 from datetime import datetime, timedelta
@@ -414,6 +415,33 @@ def get_latest_trade_date():
 def get_daily_symbols():
     symbol_file = os.path.join(get_data_dir(), 'sh_sz_stock.json')
     return read_json(symbol_file)
+
+"""
+    股票是否是融资融券
+"""
+def is_rz_rq_symobl(symbol):
+    symbols = get_rz_rq_symbols()
+    return symbol in symbols
+
+"""
+    获取所有可融资融券
+"""
+RZ_RQ_STOCKS = []
+def get_rz_rq_symbols():
+    if len(RZ_RQ_STOCKS)>0:
+        return RZ_RQ_STOCKS
+    result = []
+    try:
+        response = requests.get("http://api.mairui.club/hsrq/list/LICENCE-66D8-9F96-0C7F0FBCD073")
+        if response.status_code == 200:
+            result = json.loads(response.content)
+    except Exception as e:
+        print(e)
+    if len(result) <= 0:
+        result = read_json(os.path.join(get_data_dir(), 'rz_rq_stock.json'))
+    for item in result:
+        RZ_RQ_STOCKS.append("%.%"%(item["jys"],item["dm"]))
+    return RZ_RQ_STOCKS
 
 """
     月线反转板块数据

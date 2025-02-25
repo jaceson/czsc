@@ -10,6 +10,11 @@ from czsc.analyze import *
 START_TRADE_DATE = "2020-01-01"
 
 def output_chart(symbol, df, cachedir):
+    if is_rz_rq_symobl(symbol):
+        cachedir = cachedir+"/rzrq"
+        if not os.path.isdir(cachedir):
+            os.makedirs(cachedir)
+
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
     kline = [x.__dict__ for x in c.bars_raw]
@@ -60,6 +65,81 @@ def read_symbols(filename):
     if data:
         return data
     return []
+
+def rz_rq_symbols(symbols):
+    arr = []
+    for symbol in symbols:
+        if is_rz_rq_symobl(symbol):
+            arr.append(symbol)
+    return arr
+
+def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols):
+    # 打印股票池数据
+    print("月线反转股票列表：")
+    print('     '+', '.join(mline_symbols))
+
+    print("小黄人三线红股票列表：")
+    print('     '+', '.join(minion_symbols))
+
+    print("黄金分割线抄底列表：")
+    print('     '+', '.join(golden_symbols))
+
+    print("KD线抄底列表：")
+    print('     '+', '.join(chaodi_symbols))
+
+    print("强势上涨列表：")
+    print('     '+', '.join(strong_symbols))
+
+    print("中枢一买点位置：")
+    print('     '+', '.join(one_buypoint_symbols))
+
+    print("中枢三买点位置：")
+    print('     '+', '.join(third_buypoint_symbols))
+
+    # 满足两个条件
+    if True:
+        print("满足月线反转、小黄人三线红的股票列表：")
+        print('     '+', '.join(intersection_list([mline_symbols,minion_symbols])))
+
+        print("满足月线反转、中枢一买的股票列表：")
+        print('     '+', '.join(intersection_list([mline_symbols,one_buypoint_symbols])))
+
+        print("满足月线反转、中枢三买的股票列表：")
+        print('     '+', '.join(intersection_list([mline_symbols,third_buypoint_symbols])))
+
+        print("满足小黄人三线红、黄金分割线的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols])))
+
+        print("满足小黄人三线红、KD线抄底的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols])))
+
+        print("满足小黄人三线红、中枢三买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,third_buypoint_symbols])))
+
+        print("满足小黄人三线红、强势上涨的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols])))
+
+        print("满足中枢三买、强势上涨的股票列表：")
+        print('     '+', '.join(intersection_list([third_buypoint_symbols,strong_symbols])))
+
+    # 中枢三买
+    if True:
+        print("满足小黄人三线红、强势上涨、中枢三买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols,third_buypoint_symbols])))
+
+        print("满足小黄人三线红、黄金分割线、中枢三买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,third_buypoint_symbols])))
+
+        print("满足小黄人三线红、KD线抄底、中枢三买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,third_buypoint_symbols])))
+
+    # 中枢一买
+    if True:
+        print("满足小黄人三线红、黄金分割线、中枢一买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,one_buypoint_symbols])))
+
+        print("满足小黄人三线红、KD线抄底、中枢一买的股票列表：")
+        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,one_buypoint_symbols])))
 
 def test_case():
     option = 1
@@ -191,72 +271,12 @@ def main():
         save_symbols(one_buypoint_symbols,"中枢一买点.json")
         save_symbols(third_buypoint_symbols,"中枢三买点.json")
     
-    # 打印股票池数据
-    print("月线反转股票列表：")
-    print('     '+', '.join(mline_symbols))
+    #打印筛选结果
+    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols)
 
-    print("小黄人三线红股票列表：")
-    print('     '+', '.join(minion_symbols))
-
-    print("黄金分割线抄底列表：")
-    print('     '+', '.join(golden_symbols))
-
-    print("KD线抄底列表：")
-    print('     '+', '.join(chaodi_symbols))
-
-    print("强势上涨列表：")
-    print('     '+', '.join(strong_symbols))
-
-    print("中枢一买点位置：")
-    print('     '+', '.join(one_buypoint_symbols))
-
-    print("中枢三买点位置：")
-    print('     '+', '.join(third_buypoint_symbols))
-
-    # 满足两个条件
-    if True:
-        print("满足月线反转、小黄人三线红的股票列表：")
-        print('     '+', '.join(intersection_list([mline_symbols,minion_symbols])))
-
-        print("满足月线反转、中枢一买的股票列表：")
-        print('     '+', '.join(intersection_list([mline_symbols,one_buypoint_symbols])))
-
-        print("满足月线反转、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([mline_symbols,third_buypoint_symbols])))
-
-        print("满足小黄人三线红、黄金分割线的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols])))
-
-        print("满足小黄人三线红、KD线抄底的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols])))
-
-        print("满足小黄人三线红、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,third_buypoint_symbols])))
-
-        print("满足小黄人三线红、强势上涨的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols])))
-
-        print("满足中枢三买、强势上涨的股票列表：")
-        print('     '+', '.join(intersection_list([third_buypoint_symbols,strong_symbols])))
-
-    # 中枢三买
-    if True:
-        print("满足小黄人三线红、强势上涨、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols,third_buypoint_symbols])))
-
-        print("满足小黄人三线红、黄金分割线、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,third_buypoint_symbols])))
-
-        print("满足小黄人三线红、KD线抄底、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,third_buypoint_symbols])))
-
-    # 中枢一买
-    if True:
-        print("满足小黄人三线红、黄金分割线、中枢一买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,one_buypoint_symbols])))
-
-        print("满足小黄人三线红、KD线抄底、中枢一买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,one_buypoint_symbols])))
+    #打印可融资融券筛选结果
+    print("以下是可融资融券的结果：")
+    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
 
     # 登出系统
     bs.logout()
