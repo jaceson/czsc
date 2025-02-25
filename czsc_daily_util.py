@@ -440,7 +440,7 @@ def get_rz_rq_symbols():
     if len(result) <= 0:
         result = read_json(os.path.join(get_data_dir(), 'rz_rq_stock.json'))
     for item in result:
-        RZ_RQ_STOCKS.append("%.%"%(item["jys"],item["dm"]))
+        RZ_RQ_STOCKS.append("{}.{}".format(item["jys"],item["dm"]))
     return RZ_RQ_STOCKS
 
 """
