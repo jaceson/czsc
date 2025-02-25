@@ -263,7 +263,8 @@ def main():
 
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
-    nohup python czsc_daily_stock.py >/Users/wj/czsc/data/log. 2>&1 &
+    cd /Users/wj/czsc
+    python czsc_daily_stock.py | tee -a ./data/log.json
 """
 if __name__ == '__main__':
     main()

@@ -11,6 +11,7 @@ from collections import *
 class ThirdBuyStrategy(CZSCStragegy):
     def __init__(self):
         super().__init__()
+        
         self.has_Profit = False
         self.has_over_three = False
         self.has_over_five = False
