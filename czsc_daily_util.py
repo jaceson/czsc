@@ -3,6 +3,8 @@ import os
 import sys
 import json
 import math
+import logging
+import time
 import requests
 import baostock as bs
 from lib.MyTT import *
@@ -11,6 +13,28 @@ from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
 from czsc.enum import *
 from collections import *
+
+# 配置日志
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # 设置日志级别为 DEBUG
+
+# 创建文件处理器，将日志写入文件
+file_handler = logging.FileHandler("./data/log.json", mode="a")  # 追加模式
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter("%(asctime)s - %(message)s")
+file_handler.setFormatter(file_formatter)
+
+# 创建控制台处理器，将日志输出到控制台
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_formatter = logging.Formatter("%(asctime)s - %(message)s")
+console_handler.setFormatter(console_formatter)
+
+# 将处理器添加到日志器
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+def czsc_logger():
+    return logger
 
 """
     月线反转
@@ -81,27 +105,27 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
             max_val = max(sqr_val,gold_val)
             # 距离黄金分割点还差5%以下
             if max_val*max_ratio<min_price:
-                print("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
+                czsc_logger().info("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
             # 上一波涨幅必须超过10个交易
             kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
             if kline_num<klines:
-                print("【"+symbol+"】"+" kline number is "+str(kline_num))
+                czsc_logger().info("【"+symbol+"】"+" kline number is "+str(kline_num))
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
             min_close = get_min_close(df, last_bi.edt.strftime("%Y-%m-%d"))
-            print("【"+symbol+"】"+" current close is "+str(stock_close), last_bi.edt.strftime("%Y-%m-%d")+" min close is "+str(min_close))
+            czsc_logger().info("【"+symbol+"】"+" current close is "+str(stock_close), last_bi.edt.strftime("%Y-%m-%d")+" min close is "+str(min_close))
             if stock_close <= min_close:
-                print("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(last_bi.fx_a.fx)+"，最高价："+str(last_bi.fx_b.fx))
-                print("     1）平   方  根："+str(sqr_val))
-                print("     2）黄金分割低点："+str(gold_val))
+                czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(last_bi.fx_a.fx)+"，最高价："+str(last_bi.fx_b.fx))
+                czsc_logger().info("     1）平   方  根："+str(sqr_val))
+                czsc_logger().info("     2）黄金分割低点："+str(gold_val))
                 if stock_close<max_val:
-                    print("     3）可以考虑直接买入！！！")
+                    czsc_logger().info("     3）可以考虑直接买入！！！")
                 else:
-                    print("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
+                    czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
                 return True
             else:
-                print("【"+symbol+"】"+" 当前收盘价："+str(stock_close), "最小收盘价："+str(min_close))
+                czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close), "最小收盘价："+str(min_close))
     return False
 
 """
@@ -135,14 +159,14 @@ def is_kd_buy_point(symbol,df):
         last_trading_day = df['date'].iloc[-1]
         if last_trading_day in selected_dates:
             stock_k1 = df['K0'].iloc[-2]
-            print("【"+symbol+"】"+" 当前K0："+str(stock_k0), "当前D0："+str(stock_k1))
-            print("策略结算结果：当前KD0="+str(stock_k0-stock_k1), "当前KR0="+str((stock_k0-stock_k1)/stock_k1))
+            czsc_logger().info("【"+symbol+"】"+" 当前K0："+str(stock_k0), "当前D0："+str(stock_k1))
+            czsc_logger().info("策略结算结果：当前KD0="+str(stock_k0-stock_k1), "当前KR0="+str((stock_k0-stock_k1)/stock_k1))
             return True
         else:
             last_selected_date = selected_dates[-1]
             days_delta = days_trade_delta(df, last_selected_date, last_trading_day)
             if days_delta<5:
-                print(symbol,last_selected_date)
+                czsc_logger().info(symbol,last_selected_date)
             is_valid = True
             for delta in range(1,days_delta):
                 if stock_k0>df['K0'].iloc[-(delta+1)]:
@@ -229,21 +253,21 @@ def get_buy_point_type(symbol,df):
                 prev_zs = zs
                 break
     if last_zs is None or prev_zs is None:
-        print("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-        print("策略结算结果：只有一个中枢！！！")
+        czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
+        czsc_logger().info("策略结算结果：只有一个中枢！！！")
         return 0
 
     # 收盘价在中枢内
     stock_close = df['close'].iloc[-1]
     if stock_close>last_zs.zd and stock_close < last_zs.zg:
-        print("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-        print("策略结算结果：当前收盘价在中枢内"+str(stock_close))
+        czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
+        czsc_logger().info("策略结算结果：当前收盘价在中枢内"+str(stock_close))
         return 0
 
     # 最后一笔向上
     # if last_bi in last_zs.bis:
-    #     print("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-    #     print("策略结算结果：最后一笔还在中枢内"+str(stock_close))
+    #     czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
+    #     czsc_logger().info("策略结算结果：最后一笔还在中枢内"+str(stock_close))
     #     return False
 
     # 判断两个中枢方法
@@ -317,8 +341,8 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
             adjustflag="3",
         )
     if int(rs.error_code) > 0:
-        print('query_history_k_data_plus respond error_code:' + rs.error_code)
-        print('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
+        czsc_logger().info('query_history_k_data_plus respond error_code:' + rs.error_code)
+        czsc_logger().info('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
         return []
     data_list = []
     while (rs.error_code == '0') & rs.next():
@@ -336,7 +360,7 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
             data_list.append(row_data)
             # data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
         except Exception as e:
-            # print(e)
+            # czsc_logger().info(e)
             continue
         
     df = pd.DataFrame(data_list, columns=rs.fields)
@@ -405,7 +429,7 @@ def get_latest_trade_date():
     trading_days = result[result["is_trading_day"] == '1']['calendar_date']
     # 获取最后一个交易日
     last_trading_day = trading_days.iloc[-1]
-    print(f"距今最后一个交易日是：{last_trading_day}")
+    czsc_logger().info(f"距今最后一个交易日是：{last_trading_day}")
     TRADING_DATE = last_trading_day
     return last_trading_day
 
@@ -436,7 +460,7 @@ def get_rz_rq_symbols():
         if response.status_code == 200:
             result = json.loads(response.content)
     except Exception as e:
-        print(e)
+        czsc_logger().info(e)
     if len(result) <= 0:
         result = read_json(os.path.join(get_data_dir(), 'rz_rq_stock.json'))
     for item in result:

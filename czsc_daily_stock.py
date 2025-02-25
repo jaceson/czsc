@@ -75,80 +75,80 @@ def rz_rq_symbols(symbols):
 
 def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols):
     # 打印股票池数据
-    print("月线反转股票列表：")
-    print('     '+', '.join(mline_symbols))
+    czsc_logger().info("月线反转股票列表：")
+    czsc_logger().info('     '+', '.join(mline_symbols))
 
-    print("小黄人三线红股票列表：")
-    print('     '+', '.join(minion_symbols))
+    czsc_logger().info("小黄人三线红股票列表：")
+    czsc_logger().info('     '+', '.join(minion_symbols))
 
-    print("黄金分割线抄底列表：")
-    print('     '+', '.join(golden_symbols))
+    czsc_logger().info("黄金分割线抄底列表：")
+    czsc_logger().info('     '+', '.join(golden_symbols))
 
-    print("KD线抄底列表：")
-    print('     '+', '.join(chaodi_symbols))
+    czsc_logger().info("KD线抄底列表：")
+    czsc_logger().info('     '+', '.join(chaodi_symbols))
 
-    print("强势上涨列表：")
-    print('     '+', '.join(strong_symbols))
+    czsc_logger().info("强势上涨列表：")
+    czsc_logger().info('     '+', '.join(strong_symbols))
 
-    print("中枢一买点位置：")
-    print('     '+', '.join(one_buypoint_symbols))
+    czsc_logger().info("中枢一买点位置：")
+    czsc_logger().info('     '+', '.join(one_buypoint_symbols))
 
-    print("中枢三买点位置：")
-    print('     '+', '.join(third_buypoint_symbols))
+    czsc_logger().info("中枢三买点位置：")
+    czsc_logger().info('     '+', '.join(third_buypoint_symbols))
 
     # 满足两个条件
     if True:
-        print("满足月线反转、小黄人三线红的股票列表：")
-        print('     '+', '.join(intersection_list([mline_symbols,minion_symbols])))
+        czsc_logger().info("满足月线反转、小黄人三线红的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([mline_symbols,minion_symbols])))
 
-        print("满足月线反转、中枢一买的股票列表：")
-        print('     '+', '.join(intersection_list([mline_symbols,one_buypoint_symbols])))
+        czsc_logger().info("满足月线反转、中枢一买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([mline_symbols,one_buypoint_symbols])))
 
-        print("满足月线反转、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([mline_symbols,third_buypoint_symbols])))
+        czsc_logger().info("满足月线反转、中枢三买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([mline_symbols,third_buypoint_symbols])))
 
-        print("满足小黄人三线红、黄金分割线的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols])))
+        czsc_logger().info("满足小黄人三线红、黄金分割线的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,golden_symbols])))
 
-        print("满足小黄人三线红、KD线抄底的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols])))
+        czsc_logger().info("满足小黄人三线红、KD线抄底的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols])))
 
-        print("满足小黄人三线红、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,third_buypoint_symbols])))
+        czsc_logger().info("满足小黄人三线红、中枢三买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,third_buypoint_symbols])))
 
-        print("满足小黄人三线红、强势上涨的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols])))
+        czsc_logger().info("满足小黄人三线红、强势上涨的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,strong_symbols])))
 
-        print("满足中枢三买、强势上涨的股票列表：")
-        print('     '+', '.join(intersection_list([third_buypoint_symbols,strong_symbols])))
+        czsc_logger().info("满足中枢三买、强势上涨的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([third_buypoint_symbols,strong_symbols])))
 
     # 中枢三买
     if True:
-        print("满足小黄人三线红、强势上涨、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,strong_symbols,third_buypoint_symbols])))
+        czsc_logger().info("满足小黄人三线红、强势上涨、中枢三买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,strong_symbols,third_buypoint_symbols])))
 
-        print("满足小黄人三线红、黄金分割线、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,third_buypoint_symbols])))
+        czsc_logger().info("满足小黄人三线红、黄金分割线、中枢三买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,golden_symbols,third_buypoint_symbols])))
 
-        print("满足小黄人三线红、KD线抄底、中枢三买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,third_buypoint_symbols])))
+        czsc_logger().info("满足小黄人三线红、KD线抄底、中枢三买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,third_buypoint_symbols])))
 
     # 中枢一买
     if True:
-        print("满足小黄人三线红、黄金分割线、中枢一买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,golden_symbols,one_buypoint_symbols])))
+        czsc_logger().info("满足小黄人三线红、黄金分割线、中枢一买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,golden_symbols,one_buypoint_symbols])))
 
-        print("满足小黄人三线红、KD线抄底、中枢一买的股票列表：")
-        print('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,one_buypoint_symbols])))
+        czsc_logger().info("满足小黄人三线红、KD线抄底、中枢一买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,one_buypoint_symbols])))
 
 def test_case():
     option = 1
     if option == 1:
         # arr = ["600060","600081","600126","600398","600422","600588","600595","600633","600699","600812","600845","600988","601100","601231","603108","603171","603197","603300","603305","603758","603786","603915","605020","000032","000042","000818","000837","001282","002044","002153","002212","002250","002284","002664","002841","002913","002929","002965","300133","300226","300244","300251","300253","300258","300451","300454","300496","300676"]
         arr = ["600120","600126","600255","600363","600580","600602","600633","600797","600986","601689","603005","603039","603119","603236","603296","603319","603583","603636","603662","603667","603728","603803","603881","603893","000034","000681","000785","000977","002031","002036","002112","002117","002123","002131","002195","002261","002354","002369","002379","002530","002630","002681","002765","002851","002881","003021","300007","300017"]
-        print(len(arr))
+        czsc_logger().info(len(arr))
         arr2 = read_json(os.path.join(get_data_dir(),"小黄人三线红.json"))
-        print(len(arr2))
+        czsc_logger().info(len(arr2))
         arr3 = []
         for symbol in arr2:
             arr3.append(symbol.split(".")[1])
@@ -157,13 +157,13 @@ def test_case():
         for symbol in arr3:
             if symbol not in arr:
                 arr4.append(symbol)
-        print(arr4)
-        print(intersection_list([arr3,arr]))
+        czsc_logger().info(arr4)
+        czsc_logger().info(intersection_list([arr3,arr]))
     elif option == 2:
         lg = bs.login()
         # 登录baostock
-        print('login respond error_code:' + lg.error_code)
-        print('login respond  error_msg:' + lg.error_msg)
+        czsc_logger().info('login respond error_code:' + lg.error_code)
+        czsc_logger().info('login respond  error_msg:' + lg.error_msg)
     
         symbol = "sh.000001"
         df = get_stcok_pd(symbol, "2006-01-01", "2006-12-31", 'd')
@@ -176,8 +176,8 @@ def test_case():
 def main():
     lg = bs.login()
     # 登录baostock
-    print('login respond error_code:' + lg.error_code)
-    print('login respond  error_msg:' + lg.error_msg)
+    czsc_logger().info('login respond error_code:' + lg.error_code)
+    czsc_logger().info('login respond  error_msg:' + lg.error_msg)
     
     # 所有股票
     all_symbols  = get_daily_symbols()
@@ -193,7 +193,7 @@ def main():
     last_trade_date = get_latest_trade_date()
     df = get_stcok_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
     if df['date'].iloc[-1] != last_trade_date:
-        print("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
+        czsc_logger().info("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
         mline_symbols = read_symbols("月线反转.json")
         minion_symbols = read_symbols("小黄人三线红.json")
         golden_symbols = read_symbols("黄金分割线抄底.json")
@@ -217,8 +217,8 @@ def main():
             while len(df) <= 0:
                 lg = bs.login()
                 # 登录baostock
-                print('login respond error_code:' + lg.error_code)
-                print('login respond  error_msg:' + lg.error_msg)
+                czsc_logger().info('login respond error_code:' + lg.error_code)
+                czsc_logger().info('login respond  error_msg:' + lg.error_msg)
                 # 重新获取
                 df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             # 当前股票最后一个交易日
@@ -226,14 +226,14 @@ def main():
             # 获取满足月线反转日期
             mline_dates = get_mline_turn(df)
             if symbol_last_trade_date in mline_dates:
-                print(symbol+"出现月线反转")
+                czsc_logger().info(symbol+"出现月线反转")
                 mline_symbols.append(symbol)
                 output_chart(symbol, df, mline_chart_dir())
 
             # 小黄人三线红
             minion_dates = get_minion_trend(df)
             if symbol_last_trade_date in minion_dates:
-                print(symbol+"出现小黄人三线红")
+                czsc_logger().info(symbol+"出现小黄人三线红")
                 minion_symbols.append(symbol)
                 output_chart(symbol, df, minion_chart_dir())
 
@@ -275,9 +275,9 @@ def main():
     print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols)
 
     #打印可融资融券筛选结果
-    print("\n\n")
-    print("========================以下是可融资融券的结果========================")
-    print("\n\n")
+    czsc_logger().info("\n\n")
+    czsc_logger().info("========================以下是可融资融券的结果========================")
+    czsc_logger().info("\n\n")
     print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
 
     # 登出系统
