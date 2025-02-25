@@ -275,7 +275,9 @@ def main():
     print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols)
 
     #打印可融资融券筛选结果
-    print("以下是可融资融券的结果：")
+    print("\n\n")
+    print("========================以下是可融资融券的结果========================")
+    print("\n\n")
     print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
 
     # 登出系统
