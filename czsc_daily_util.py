@@ -166,7 +166,7 @@ def is_kd_buy_point(symbol,df):
             last_selected_date = selected_dates[-1]
             days_delta = days_trade_delta(df, last_selected_date, last_trading_day)
             if days_delta<5:
-                czsc_logger().info(symbol,last_selected_date)
+                czsc_logger().info(symbol+","+last_selected_date)
             is_valid = True
             for delta in range(1,days_delta):
                 if stock_k0>df['K0'].iloc[-(delta+1)]:
