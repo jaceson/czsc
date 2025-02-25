@@ -114,7 +114,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
             min_close = get_min_close(df, last_bi.edt.strftime("%Y-%m-%d"))
-            czsc_logger().info("【"+symbol+"】"+" current close is "+str(stock_close), last_bi.edt.strftime("%Y-%m-%d")+" min close is "+str(min_close))
+            czsc_logger().info("【"+symbol+"】"+" current close is "+str(stock_close)+","+last_bi.edt.strftime("%Y-%m-%d")+" min close is "+str(min_close))
             if stock_close <= min_close:
                 czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(last_bi.fx_a.fx)+"，最高价："+str(last_bi.fx_b.fx))
                 czsc_logger().info("     1）平   方  根："+str(sqr_val))
