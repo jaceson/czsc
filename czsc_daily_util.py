@@ -123,6 +123,10 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
                     czsc_logger().info("     3）可以考虑直接买入！！！")
                 else:
                     czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
+                czsc_logger().info("     4）笔的斜率："+str(last_bi.slope()))
+                czsc_logger().info("     5）笔的角度："+str(last_bi.angle()))
+                czsc_logger().info("     6）笔的加速度："+str(last_bi.acceleration()))
+                czsc_logger().info("     7）笔的K线数量："+str(last_bi.rsq()))
                 return True
             else:
                 czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
