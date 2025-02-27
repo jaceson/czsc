@@ -106,8 +106,8 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
             min_price = np.min(np.array([stock_open, stock_close, stock_high, stock_low]))
             # 是否在抄底区间内
             sqr_val = sqrt_val(last_bi.fx_a.fx, last_bi.fx_b.fx)
-            gold_val = gold_val_low(last_bi.fx_a.fx, last_bi.fx_b.fx)
-            max_val = max(sqr_val,gold_val)
+            gold_low_val = gold_val_low(last_bi.fx_a.fx, last_bi.fx_b.fx)
+            max_val = max(sqr_val,gold_low_val)
             # 距离黄金分割点还差5%以下
             if max_val*max_ratio<min_price:
                 czsc_logger().info("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
@@ -122,20 +122,44 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
             czsc_logger().info("【"+symbol+"】"+" current close is "+str(stock_close)+","+last_bi.edt.strftime("%Y-%m-%d")+" min close is "+str(min_close))
             if stock_close <= min_close:
                 czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(last_bi.fx_a.fx)+"，最高价："+str(last_bi.fx_b.fx))
-                czsc_logger().info("     1）平   方  根："+str(sqr_val))
-                czsc_logger().info("     2）黄金分割低点："+str(gold_val))
+                czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
+                czsc_logger().info("     2）黄金分割低点："+str(round(gold_low_val,2)))
                 if stock_close<max_val:
                     czsc_logger().info("     3）可以考虑直接买入！！！")
                 else:
                     czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
-                czsc_logger().info("     4）笔的斜率："+str(last_bi.slope()))
-                czsc_logger().info("     5）笔的角度："+str(last_bi.angle()))
-                czsc_logger().info("     6）笔的加速度："+str(last_bi.acceleration()))
-                czsc_logger().info("     7）笔的K线数量："+str(last_bi.rsq()))
+                czsc_logger().info("     4）笔的角度："+str(round(bi_angle(last_bi),2)))
+                czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(last_bi)*100,2))+"%")
+                czsc_logger().info("     6）笔的K线数量："+str(last_bi.length))
+                czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(last_bi),2))+"%")
+                last_bi.fx_a.fx*threshold < last_bi.fx_b.fx
                 return True
             else:
                 czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
+
+"""
+    自定义比的角度
+    每天涨10%默认角度为45
+"""
+def bi_angle(bi):
+    max_ratio = 10*(bi.fx_b.fx-bi.fx_a.fx)/bi.fx_a.fx
+    days_num = bi.length
+    return 45*max_ratio/days_num
+
+"""
+    笔的涨幅
+"""
+def bi_ratio(bi):
+    return (bi.fx_b.fx-bi.fx_a.fx)/bi.fx_a.fx
+
+"""
+    笔平均每天的涨幅
+"""
+def bi_day_ratio(bi):
+    max_ratio = (bi.fx_b.fx-bi.fx_a.fx)/bi.fx_a.fx
+    days_num = bi.length
+    return max_ratio/days_num
 
 """
     根据KD线确认抄底点
