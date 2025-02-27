@@ -18,17 +18,22 @@ from collections import *
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # 设置日志级别为 DEBUG
 
+# 日志格式
+log_format = "%(asctime)s - %(message)s"
+date_format = "%Y-%m-%d %H:%M:%S"  # 自定义日期格式，去掉微秒部分
+
+# 创建 Formatter 并设置日期格式
+formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
+
 # 创建文件处理器，将日志写入文件
 file_handler = logging.FileHandler("./data/log.json", mode="a")  # 追加模式
 file_handler.setLevel(logging.DEBUG)
-file_formatter = logging.Formatter("%(asctime)s - %(message)s")
-file_handler.setFormatter(file_formatter)
+file_handler.setFormatter(formatter)
 
 # 创建控制台处理器，将日志输出到控制台
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
-console_formatter = logging.Formatter("%(asctime)s - %(message)s")
-console_handler.setFormatter(console_formatter)
+console_handler.setFormatter(formatter)
 
 # 将处理器添加到日志器
 logger.addHandler(file_handler)
