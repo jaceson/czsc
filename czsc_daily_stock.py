@@ -192,7 +192,8 @@ def main():
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
     df = get_stcok_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
-    if df['date'].iloc[-1] != last_trade_date:
+    is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
+    if !is_stock_updated:
         czsc_logger().info("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
         mline_symbols = read_symbols("月线反转.json")
         minion_symbols = read_symbols("小黄人三线红.json")
@@ -284,7 +285,8 @@ def main():
     bs.logout()
 
     # 结束日志
-    czsc_logger().info('Stock updated！！！')
+    if is_stock_updated:
+        czsc_logger().info('Stock Finished!')
 
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
