@@ -283,6 +283,9 @@ def main():
     # 登出系统
     bs.logout()
 
+    # 结束日志
+    czsc_logger().info('Stock updated！！！')
+
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
     cd /Users/wj/czsc
