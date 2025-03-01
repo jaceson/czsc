@@ -87,17 +87,18 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
-def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
+def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return False
+    last_fx = c.fx_list[-1]
     if len(bi_list) > 1:
         last_bi = bi_list[-1]
         # 当前一笔从最低点到最高点，涨幅已经超过50%
-        if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
+        if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx and fx_equal(last_fx, last_bi.fx_b):
             # 当前收盘价格
             stock_open = df['open'].iloc[-1]
             stock_close = df['close'].iloc[-1]
@@ -115,11 +116,14 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
             # 上一波涨幅必须超过10个交易
             kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
             if kline_num<klines:
-                czsc_logger().info("【"+symbol+"】"+" kline number is "+str(kline_num))
+                czsc_logger().info("【"+symbol+"】"+" K线数量 "+str(kline_num))
+                return False
+            # 笔的角度
+            if bi_angle(last_bi)<min_angle:
+                czsc_logger().info("【"+symbol+"】"+" 最后一笔角度是 "+str(round(bi_angle(last_bi),2)))
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
             min_close = get_min_close(df, last_bi.edt.strftime("%Y-%m-%d"))
-            czsc_logger().info("【"+symbol+"】"+" current close is "+str(stock_close)+","+last_bi.edt.strftime("%Y-%m-%d")+" min close is "+str(min_close))
             if stock_close <= min_close:
                 czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(last_bi.fx_a.fx)+"，最高价："+str(last_bi.fx_b.fx))
                 czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
@@ -131,11 +135,25 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1):
                 czsc_logger().info("     4）笔的角度："+str(round(bi_angle(last_bi),2)))
                 czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(last_bi)*100,2))+"%")
                 czsc_logger().info("     6）笔的K线数量："+str(last_bi.length))
-                czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(last_bi),2))+"%")
+                czsc_logger().info("     7）笔的分型数量："+str(len(last_bi.fxs)))
+                czsc_logger().info("     8）平均每天涨幅："+str(round(100*bi_day_ratio(last_bi),2))+"%")
                 return True
             else:
                 czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
+
+"""
+    是否同一个fx
+"""
+def fx_equal(fx1,fx2):
+    return (
+        (fx1.symbol == fx2.symbol) &
+        (fx1.dt == fx2.dt) &
+        (fx1.fx == fx2.fx) &
+        (fx1.mark == fx2.mark) &
+        (fx1.high == fx2.high) &
+        (fx1.low == fx2.low) 
+    )
 
 """
     自定义比的角度
