@@ -143,6 +143,13 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25
     return False
 
 """
+    是否底背驰
+    1）low地点是一段时间内的最低端
+"""
+def is_macd_bottom_divergence(symbol,df):
+    pass
+
+"""
     是否同一个fx
 """
 def fx_equal(fx1,fx2):
