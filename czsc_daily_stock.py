@@ -177,6 +177,9 @@ def test_case():
     sys.exit(0)
 
 def main():
+    czsc_logger().info('⚠️警告⚠️：每笔交易金额 3W ！！！，备注：想一想万辰集团' )
+    czsc_logger().info('⚠️警告⚠️：每股总金额最多不超过 5W ！！！，备注：想一想万辰集团' )
+    
     lg = bs.login()
     # 登录baostock
     czsc_logger().info('login respond error_code:' + lg.error_code)
