@@ -87,7 +87,7 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
-def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25):
+def is_golden_point(symbol,df,threshold=2,klines=10,max_ratio=1.1,min_angle=30):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
