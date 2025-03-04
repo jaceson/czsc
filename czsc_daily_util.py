@@ -197,7 +197,7 @@ def is_kd_buy_point(symbol,df):
     ndf = get_kd_data(df)
     buy_con = (
         (df['K0'] < 30) &
-        ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= -0.03) & 
+        (((df['K0']-REF(df['K0'],1))<-0.5) | ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= -0.03)) & 
         (REF(df['K0'],1)<REF(df['K0'],2)) & 
         (REF(df['K0'],2)<REF(df['K0'],3)) & 
         (REF(df['K0'],3)<REF(df['K0'],4)) & 
