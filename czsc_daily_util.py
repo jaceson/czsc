@@ -114,9 +114,14 @@ def is_golden_point(symbol,df,threshold=2,klines=10,max_ratio=1.1,min_angle=30):
                 czsc_logger().info("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
             # 上一波涨幅必须超过10个交易
-            kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
-            if kline_num<klines:
-                czsc_logger().info("【"+symbol+"】"+" K线数量 "+str(kline_num))
+            up_kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
+            if up_kline_num<klines:
+                czsc_logger().info("【"+symbol+"】"+" 上涨K线数量 "+str(up_kline_num))
+                return False
+            # 调整时间必须小于上涨时间
+            down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[-1])
+            if down_kline_num>=up_kline_num:
+                czsc_logger().info("【"+symbol+"】"+" 下跌K线数量 "+str(down_kline_num)+"大于上涨K线数量 "+str(up_kline_num))
                 return False
             # 笔的角度
             if bi_angle(last_bi)<min_angle:
