@@ -221,8 +221,11 @@ def is_kd_buy_point(symbol,df):
         last_trading_day = df['date'].iloc[-1]
         if last_trading_day in selected_dates:
             stock_k1 = df['K0'].iloc[-2]
-            czsc_logger().info("【"+symbol+"】"+" 当前K0："+str(stock_k0)+", 当前D0："+str(stock_k1))
-            czsc_logger().info("策略结算结果：当前KD0="+str(stock_k0-stock_k1)+", 当前KR0="+str((stock_k0-stock_k1)/stock_k1))
+            czsc_logger().info("【"+symbol+"】")
+            czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
+            czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
+            czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
+            czsc_logger().info("     4）KR0："+str(round((df['K0'].iloc[-1]-df['K0'].iloc[-2])/df['K0'].iloc[-2],2)))
             return True
         else:
             last_selected_date = selected_dates[-1]
@@ -245,10 +248,13 @@ def is_kd_buy_point(symbol,df):
                         break
                     stock_low = df['low'].iloc[-(delta+1)]
                     stock_high = df['high'].iloc[-(delta+1)]
+
+            if is_valid:
                 czsc_logger().info("【"+symbol+"】")
                 czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
                 czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
                 czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
+                czsc_logger().info("     4）KR0："+str(round((df['K0'].iloc[-1]-df['K0'].iloc[-2])/df['K0'].iloc[-2],2)))
             return is_valid
     return False
 
