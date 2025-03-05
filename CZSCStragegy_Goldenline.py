@@ -8,9 +8,12 @@ import baostock as bs
 
 plus_list = []
 minus_list = []
-ratio_map = {1:[],2:[],3:[]}
+hold_days = 5
+ratio_map = {}
+for x in range(1,hold_days+1):
+    ratio_map[x] = []
 
-def get_buy_point(df,last_bi,threshold=2,klines=10,max_ratio=1.1,min_angle=25):
+def get_buy_point(df,last_bi,threshold=1.7,klines=10,min_angle=25):
     if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
         # 上一波涨幅必须超过10个交易
         up_kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
@@ -41,7 +44,7 @@ def get_buy_point(df,last_bi,threshold=2,klines=10,max_ratio=1.1,min_angle=25):
                 print("{} {}到{}笔：{}到黄金分割点".format(symbol,sdt,edt,df['date'].iloc[idx]))
                 max_val = -1000
                 # min_val = 1000
-                for x in range(1,4):
+                for x in range(1,hold_days+1):
                     stock_high = df['high'].iloc[idx+x]
                     ratio = round(100*(stock_high-min_val)/min_val,2)
                     ratio_map[x].append(ratio)
@@ -80,7 +83,7 @@ if __name__ == '__main__':
             get_buy_point(df,last_bi)
 
     print("正收益次数："+str(len(plus_list)))
-    print("负收益次数："+str(len(minus_list)))
+    print("正收益占比："+str(round(100*len(plus_list)/(len(minus_list)+len(plus_list)),2))+"%")
     total = 0
     for x in range(0,len(plus_list)):
         total += plus_list[x]
@@ -92,8 +95,8 @@ if __name__ == '__main__':
     print("总的负收益："+str(total))
     
     # 每天
-    for x in range(1,4):
-        print("第 {} 天：")
+    for x in range(1,hold_days+1):
+        print("第 {} 天：".format(x))
         res_list = ratio_map[x]
         plus_num = 0
         minus_num = 0
