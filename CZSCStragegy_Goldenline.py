@@ -65,7 +65,7 @@ if __name__ == '__main__':
     lg = bs.login()
 
     start_date = "2020-01-01"
-    end_date = "2025-03-03"
+    end_date = get_latest_trade_date()
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
