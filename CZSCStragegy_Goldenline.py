@@ -8,12 +8,12 @@ import baostock as bs
 
 plus_list = []
 minus_list = []
-hold_days = 5
+hold_days = 3
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
 
-def get_buy_point(df,last_bi,threshold=1.7,klines=10,min_angle=25):
+def get_buy_point(df,last_bi,threshold=2,klines=10,min_angle=30):
     if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
         # 上一波涨幅必须超过10个交易
         up_kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
@@ -36,9 +36,9 @@ def get_buy_point(df,last_bi,threshold=1.7,klines=10,min_angle=25):
             # 三天内上涨
             if stock_low <= min_val and (idx+3)<len(df['date']):
                 # 调整到黄金点位时间太长
-                down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[idx])
-                if down_kline_num>=up_kline_num:
-                    break
+                # down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[idx])
+                # if down_kline_num>=up_kline_num:
+                #     break
                 sdt = last_bi.sdt.strftime("%Y-%m-%d")
                 edt = last_bi.edt.strftime("%Y-%m-%d")
                 print("{} {}到{}笔：{}到黄金分割点".format(symbol,sdt,edt,df['date'].iloc[idx]))
@@ -99,15 +99,21 @@ if __name__ == '__main__':
         print("第 {} 天：".format(x))
         res_list = ratio_map[x]
         plus_num = 0
+        plus_val = 0
         minus_num = 0
+        minus_val = 0
         for idx in range(0,len(res_list)):
             ratio = res_list[idx]
             if ratio>0:
                 plus_num += 1
+                plus_val += ratio
             else:
                 minus_num += 1
+                minus_val += ratio
         print("     正收益次数："+str(plus_num))
         print("     正收益占比："+str(round(100*plus_num/(plus_num+minus_num),2))+"%")
-
+        print("     总的正收益："+str(plus_val))
+        print("     总的负收益："+str(minus_val))
+        
     bs.logout()
 

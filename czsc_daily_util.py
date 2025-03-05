@@ -87,7 +87,7 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
-def is_golden_point(symbol,df,threshold=2,klines=10,max_ratio=1.1,min_angle=30):
+def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
@@ -119,10 +119,10 @@ def is_golden_point(symbol,df,threshold=2,klines=10,max_ratio=1.1,min_angle=30):
                 czsc_logger().info("【"+symbol+"】"+" 上涨K线数量 "+str(up_kline_num))
                 return False
             # 调整时间必须小于上涨时间
-            down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[-1])
-            if down_kline_num>=up_kline_num:
-                czsc_logger().info("【"+symbol+"】"+" 下跌K线数量 "+str(down_kline_num)+"大于上涨K线数量 "+str(up_kline_num))
-                return False
+            # down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[-1])
+            # if down_kline_num>=up_kline_num:
+            #     czsc_logger().info("【"+symbol+"】"+" 下跌K线数量 "+str(down_kline_num)+"大于上涨K线数量 "+str(up_kline_num))
+            #     return False
             # 笔的角度
             if bi_angle(last_bi)<min_angle:
                 czsc_logger().info("【"+symbol+"】"+" 最后一笔角度是 "+str(round(bi_angle(last_bi),2)))
