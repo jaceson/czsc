@@ -52,10 +52,10 @@ def get_buy_point(df,last_bi,threshold=2,klines=10,max_ratio=1.1,min_angle=25):
                     else:
                         print("第 {} 天{}：负收益，{}".format(x, df['date'].iloc[idx+x],ratio))
 
-                if max_ratio>0:
-                    plus_list.append(max_ratio)
+                if max_val>0:
+                    plus_list.append(max_val)
                 else:
-                    minus_list.append(max_ratio)
+                    minus_list.append(max_val)
                 break
 
 if __name__ == '__main__':
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     # 每天
     for x in range(1,4):
         print("第 {} 天：")
-        res_list = ratio_map[idx]
+        res_list = ratio_map[x]
         plus_num = 0
         minus_num = 0
         for idx in range(0,len(res_list)):
