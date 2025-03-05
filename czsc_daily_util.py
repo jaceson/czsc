@@ -245,6 +245,10 @@ def is_kd_buy_point(symbol,df):
                         break
                     stock_low = df['low'].iloc[-(delta+1)]
                     stock_high = df['high'].iloc[-(delta+1)]
+                czsc_logger().info("【"+symbol+"】")
+                czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
+                czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
+                czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
             return is_valid
     return False
 
