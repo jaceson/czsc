@@ -98,7 +98,8 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25
     if len(bi_list) > 1:
         last_bi = bi_list[-1]
         # 当前一笔从最低点到最高点，涨幅已经超过50%
-        if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx and fx_equal(last_fx, last_bi.fx_b):
+        # if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx and fx_equal(last_fx, last_bi.fx_b):
+        if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
             # 当前收盘价格
             stock_open = df['open'].iloc[-1]
             stock_close = df['close'].iloc[-1]
