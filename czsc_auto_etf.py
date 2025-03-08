@@ -83,7 +83,7 @@ def fetch_day(today):
     url = 'https://www.sse.com.cn/market/funddata/volumn/etfvolumn/'
     print(url)
     driver.get(url)
-    time.sleep(20)
+    time.sleep(10)
     
     try:
         # 定位到指定的那天
