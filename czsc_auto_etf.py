@@ -11,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 
-LAST_DAYS = '2025-03-07'
+LAST_DAYS = '2025-03-06'
 def is_element_exist(webdriver, xpath):
     try:
         elem = webdriver.find_elements_by_xpath(xpath)
