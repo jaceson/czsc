@@ -11,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 
-LAST_DAYS = '2025-03-06'
+LAST_DAYS = '2025-03-07'
 def is_element_exist(webdriver, xpath):
     try:
         elem = webdriver.find_elements_by_xpath(xpath)
@@ -113,8 +113,9 @@ def fetch_day(today):
     return False
 
 def automatic_click():
-    today = "2025-03-06"
+    today = LAST_DAYS
     while True:
+        print(today)
         fetch_day(today)
 
         today = prev_date(today)
