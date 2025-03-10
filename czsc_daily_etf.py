@@ -19,12 +19,15 @@ def output_png(code,etf_share_dict):
     y = etf_share_dict['share']['share']
 
     # 绘制原始数据
-    plt.figure(figsize=(10, 5))
-    plt.plot(x, y, '*-', label='Original Data')
+    plt.figure(figsize=(15, 5))
+    plt.plot(x, y, '*-', label='场内份额【单位：万份】')
 
-    plt.title("{}share number 【万元】".format(code))
-    plt.xlabel("X-axis")
-    plt.ylabel("Y-axis")
+    # plt.xticks(np.arange(min(x), max(x) + 1, 1))  # 每 1 个单位取一个刻度
+    plt.xticks(rotation=45)  # 旋转 x 轴标签，避免重叠
+
+    plt.title("{}".format(code))
+    plt.xlabel("日期")
+    plt.ylabel("场内份额")
 
     # 添加图例
     plt.legend()
@@ -41,7 +44,7 @@ def clear_cache(cachedir):
         shutil.rmtree(cachedir)
     os.makedirs(cachedir)
 
-def is_asc_share(code,etf_share_dict,days=30):
+def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.1):
     dt_list = etf_share_dict['share']['dt']
     share_list = etf_share_dict['share']['share']
     if len(share_list)<30:
@@ -49,16 +52,22 @@ def is_asc_share(code,etf_share_dict,days=30):
     share_ratio_30 = share_list[-1]/share_list[-30]
     share_ratio_20 = share_list[-1]/share_list[-20]
     share_ratio_10 = share_list[-1]/share_list[-10]
-    if share_ratio_30>1 and share_ratio_20>1 and share_ratio_10>1:
-        print("【{}】{}10日份额增加：{}，20日份额增加：{}，30日份额增加：{}".format(code,etf_share_dict['name'],round(share_ratio_10,2),round(share_ratio_20,2),round(share_ratio_30,2)))
-        
-        close_list = ak.fund_etf_fund_info_em('588300','20250101','20250307')
-        return True
-    
+    if share_ratio_30>1 and share_ratio_20>1 and share_ratio_10>1 and share_ratio_30>min_ratio:
+        print("【{}】{}  10日份额增加：{}，20日份额增加：{}，30日份额增加：{}".format(code,etf_share_dict['name'],round(share_ratio_10,2),round(share_ratio_20,2),round(share_ratio_30,2)))
+        data_list = ak.fund_etf_fund_info_em(code,dt_list[-30].replace('-',''),dt_list[-1].replace('-',''))
+        if len(data_list)<30:
+            return True
+        close_list = data_list['单位净值'].tolist()
+        close_ratio_30 = close_list[-1]/close_list[-30]
+        close_ratio_20 = close_list[-1]/close_list[-20]
+        close_ratio_10 = close_list[-1]/close_list[-10]
+        if close_ratio_30<share_ratio_30 and close_ratio_20<share_ratio_20 and close_ratio_10<share_ratio_10:
+            return True
     return False
 
 def main():
     # close_list = ak.fund_etf_fund_info_em('588300','20250101','20250307')
+    # print(close_list['单位净值'])
     # close_list = query_trade_data_to_pd(close_list)
     # print(close_list)
     # 清除etf缓存
