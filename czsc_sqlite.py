@@ -33,6 +33,24 @@ def sqlite3_connect():
     else:
         print("表 ETF_DAILY 已存在。")
 
+def get_etf_share(dt=""):
+    # 连接数据库
+    sqlite3_connect()
+    # 查询已有数据，避免重复添加
+    if len(dt)>0:
+        sql_connect_cursor.execute("SELECT dt,code,name,share FROM ETF_DAILY WHERE dt > ? order by dt asc",(dt,))
+    else:
+        sql_connect_cursor.execute("SELECT dt,code,name,share FROM ETF_DAILY order by dt asc")
+    
+    res_list = {}
+    rows = sql_connect_cursor.fetchall()
+    for row in rows:
+        code = row[1]
+        if not code in res_list.keys():
+            res_list[code] = {'name':row[2],'share':{'dt':[],'share':[]}}
+        res_list[code]['share']['dt'].append(row[0])
+        res_list[code]['share']['share'].append(row[3])
+    return res_list
 
 def sync_db(file_path):
     global all_rows_data
