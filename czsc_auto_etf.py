@@ -4,10 +4,10 @@ import os
 import sys
 import json
 from urllib import parse
+import baostock as bs
 from czsc_daily_util import *
 from datetime import datetime, timedelta
 from selenium import webdriver
-# from selenium import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 
@@ -121,6 +121,7 @@ def automatic_click():
         today = prev_date(today)
 
 if __name__ == '__main__':
+    LAST_DAYS = get_latest_trade_date()
     automatic_click()
 
                         

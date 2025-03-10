@@ -36,15 +36,16 @@ def output_png(code,etf_share_dict):
 
     # 保存图形为文件
     pngfile = get_data_dir()+'/etf/png/'+etf_share_dict['name']+'.png'
-    print(pngfile)
     plt.savefig(pngfile)  # 保存为 PNG 文件
+
+    plt.close()
 
 def clear_cache(cachedir):
     if os.path.isdir(cachedir):
         shutil.rmtree(cachedir)
     os.makedirs(cachedir)
 
-def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.1):
+def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.5):
     dt_list = etf_share_dict['share']['dt']
     share_list = etf_share_dict['share']['share']
     if len(share_list)<30:
@@ -66,10 +67,6 @@ def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.1):
     return False
 
 def main():
-    # close_list = ak.fund_etf_fund_info_em('588300','20250101','20250307')
-    # print(close_list['单位净值'])
-    # close_list = query_trade_data_to_pd(close_list)
-    # print(close_list)
     # 清除etf缓存
     cachedir = get_data_dir()+'/etf/png/'
     clear_cache(cachedir)
