@@ -60,6 +60,7 @@ def fetch_sh_page(driver):
         if next_page.is_displayed() and next_page.is_enabled():
             next_page.click()
             time.sleep(10)
+
     return data_list
 
 def fetch_sh_day(today):
@@ -90,20 +91,40 @@ def fetch_sh_day(today):
         # 获取改天数据
         res_list = fetch_sh_page(driver)
         write_json(res_list,filepath)
-
-        # 退出chrome
-        driver.quit()
-
-        return True
     except Exception as e:
         print(e)
+        return False
+    finally:
         driver.quit()
-    return False
+    return True
 
-def fetch_sz_day(today):
+def fetch_sz_page(code,driver):
+    data_list = []
+
+    xpath = '//div/table/tbody'
+    tbody_list = driver.find_elements(By.XPATH,xpath)
+    tbody = tbody_list[2]
+    tr_list = tbody.find_elements(By.TAG_NAME,"tr")
+    for tr in tr_list:
+        td_list = tr.find_elements(By.TAG_NAME,"td")
+        if len(td_list) == 4:
+            dt_elm = td_list[0]
+            code_elm = td_list[1]
+            name_elm = td_list[2]
+            num_elm = td_list[3]
+            data_list.append({'dt':dt_elm.text,'code':code_elm.text,'name':name_elm.text,'share':num_elm.text})
+    print(data_list)
+    return data_list
+
+def fetch_sz_etf(code,today):
+    etf_data_dict = {}
     filepath = get_data_dir()+'/etf/sz/{}.json'.format(today)
     if os.path.isfile(filepath):
-        return True
+        etf_data_list = read_json(filepath)
+        for item in etf_data_list:
+            etf_data_dict[item['dt']] = item['share']
+        if today in etf_data_dict.keys():
+            return
 
     driver = webdriver.Chrome()
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
@@ -111,52 +132,159 @@ def fetch_sz_day(today):
     driver.get(url)
     time.sleep(10)
     
+    # 点击进入份额历史数据
+    div_elm = driver.find_element(By.CLASS_NAME,"report-table")
+    xpath = '//div/table/tbody'
+    tbody_list = div_elm.find_elements(By.XPATH,xpath)
+    tbody = tbody_list[1]
+    tr_list = tbody.find_elements(By.TAG_NAME,"tr")
+    for tr in tr_list:
+        td_list = tr.find_elements(By.TAG_NAME,"td")
+        if len(td_list) > 5:
+            link_elm = td_list[5]
+            link_elm = link_elm.find_element(By.TAG_NAME,"a")
+            link_elm.click()
+            time.sleep(10)
+            break
+
+    data_list = []
     try:
-        # 定位到指定的那天
-        if today != LAST_DAYS:
-            div_elm = driver.find_element(By.CLASS_NAME,"sse_searchInput")
-            pre_page = div_elm.find_element(By.TAG_NAME,"input")
-            js = "arguments[0].value = '{}';".format(today)
-            driver.execute_script(js, pre_page)
-            pre_page.click()
-            time.sleep(3)
         
-            confirm_elm = driver.find_element(By.CLASS_NAME,"laydate-btns-confirm")
-            confirm_elm.click()
-            time.sleep(5)
+        last_data_list = None
+        while True:
+            print(today)
+            # 输入框
+            code_elm = driver.find_element(By.ID,"fund_jjgm_tab1_txtDm")
+            js = "arguments[0].value = '{}';".format(code)
+            driver.execute_script(js, code_elm)
+            code_elm.click()
+        
+            # 起始日期
+            start_elm = driver.find_element(By.ID,"fund_jjgm_tab1_txtStart")
+            js = "arguments[0].value = '{}';".format(prev_date(today,20))
+            driver.execute_script(js, start_elm)
+            start_elm.click()
 
-        # 获取改天数据
-        res_list = fetch_sh_page(driver)
-        write_json(res_list,filepath)
+            # 结束日期
+            end_elm = driver.find_element(By.ID,"fund_jjgm_tab1_txtEnd")
+            js = "arguments[0].value = '{}';".format(today)
+            driver.execute_script(js, end_elm)
+            end_elm.click()
 
-        # 退出chrome
-        driver.quit()
+            # 点击查询按钮
+            confirm_elm_list = driver.find_elements(By.TAG_NAME,"button")
+            for confirm_elm in confirm_elm_list:
+                if confirm_elm.text == "查询":
+                    confirm_elm.click()
+                    time.sleep(5)
+                    break
 
-        return True
+            # 获取份额数据
+            res_list = fetch_sz_page(code,driver)
+            # blank page
+            if len(res_list) <= 0:
+                break
+            # dumplicate page
+            if last_data_list and len(last_data_list)>0:
+                cur_item0 = res_list[0]
+                last_item0 = last_data_list[0]
+                if cur_item0["dt"] == last_item0["dt"]:
+                    break
+            last_data_list = res_list
+            data_list.extend(res_list)
+
+            # 日期循环
+            today = prev_date(today,21)
+            if '2023-10' in today or today in etf_data_dict.keys():
+                break
     except Exception as e:
         print(e)
+    finally:
         driver.quit()
-    return False
 
-def prev_date(now_date_str):
+    # 更新本地缓存
+    etf_data_list = read_json(filepath)
+    if not etf_data_list:
+        etf_data_list = []
+    for item in data_list:
+        if not item['dt'] in etf_data_dict.keys():
+            etf_data_list.append(item)
+    write_json(etf_data_list,filepath)
+
+def fetch_sz_tbody(tbody):
+    data_list = []
+    tr_list = tbody.find_elements(By.TAG_NAME,"tr")
+    for tr in tr_list:
+        td_list = tr.find_elements(By.TAG_NAME,"td")
+        if len(td_list) > 3:
+            code_elm = td_list[0]
+            code_elm = code_elm.find_element(By.TAG_NAME,"u")
+            name_elm = td_list[1]
+            name_elm = name_elm.find_element(By.TAG_NAME,"u")
+            type_elm = td_list[3]
+            # if type_elm.text == "股票基金":
+            data_list.append({'code':code_elm.text,'name':name_elm.text})
+    return data_list
+
+def fetch_sz_day():
+    driver = webdriver.Chrome()
+    url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
+    print(url)
+    driver.get(url)
+    time.sleep(10)
+    
+    data_list = []
+    try:
+        last_data_list = None
+        while True:
+            div_elm = driver.find_element(By.CLASS_NAME,"report-table")
+            xpath = '//div/table/tbody'
+            tbody_list = div_elm.find_elements(By.XPATH,xpath)
+            tbody = tbody_list[1]
+            res_list = fetch_sz_tbody(tbody)
+            # blank page
+            if len(res_list) <= 0:
+                break
+            # dumplicate page
+            if last_data_list and len(last_data_list)>0:
+                cur_item0 = res_list[0]
+                last_item0 = last_data_list[0]
+                if cur_item0["code"] == last_item0["code"]:
+                    break
+            last_data_list = res_list
+            data_list.extend(res_list)
+
+            # next page
+            next_page_list = driver.find_elements(By.CLASS_NAME,"next")
+            next_page = next_page_list[0]
+            next_page = next_page.find_element(By.TAG_NAME,"a")
+            if next_page.is_displayed() and next_page.is_enabled():
+                next_page.click()
+                time.sleep(5)
+            else:
+                break
+    except Exception as e:
+        print(e)
+    finally:
+        driver.quit()
+    return data_list
+
+def prev_date(now_date_str,days_val=1):
     today = datetime.strptime(now_date_str, "%Y-%m-%d")
-    yesterday = today - timedelta(days=1)
+    yesterday = today - timedelta(days=days_val)
     return yesterday.strftime("%Y-%m-%d")
 
-def write_json(data, json_path):
-    if os.path.exists(json_path):
-        os.remove(json_path)
-    with open(json_path, 'w') as file:
-        json.dump(data, file, indent=4)
-        file.close()
-
 def automatic_click():
-    today = LAST_DAYS
-    while True:
-        print(today)
-        fetch_sh_day(today)
+    etf_code_list = fetch_sz_day()
+    for item in etf_code_list:
+        fetch_sz_etf(item['code'],LAST_DAYS)
 
-        today = prev_date(today)
+    # today = LAST_DAYS
+    # while True:
+    #     print(today)
+    #     fetch_sh_day(today)
+
+    #     today = prev_date(today)
 
 if __name__ == '__main__':
     lg = bs.login()

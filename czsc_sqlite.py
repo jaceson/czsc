@@ -60,6 +60,7 @@ def sync_db(file_path):
         code = item['code']
         name = item['name']
         share = item['share']
+        share = share.replace(',','')
 
         key = dt+code
         if key in all_rows_data:
