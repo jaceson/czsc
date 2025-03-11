@@ -96,7 +96,7 @@ def fetch_sh_day(today):
         return False
     finally:
         driver.quit()
-    return True
+    return False
 
 def fetch_sz_page(code,driver):
     data_list = []
@@ -284,16 +284,18 @@ def prev_date(now_date_str,days_val=1):
     return yesterday.strftime("%Y-%m-%d")
 
 def automatic_click():
-    etf_code_list = fetch_sz_day(LAST_DAYS)
+    today = LAST_DAYS
+    # 深圳etf数据
+    etf_code_list = fetch_sz_day(today)
     for item in etf_code_list:
-        fetch_sz_etf(item['code'],LAST_DAYS)
+        fetch_sz_etf(item['code'],today)
 
-    # today = LAST_DAYS
-    # while True:
-    #     print(today)
-    #     fetch_sh_day(today)
-
-    #     today = prev_date(today)
+    # 上海etf数据
+    while True:
+        print(today)
+        if fetch_sh_day(today):
+            break
+        today = prev_date(today)
 
 if __name__ == '__main__':
     lg = bs.login()
@@ -303,7 +305,7 @@ if __name__ == '__main__':
     LAST_DAYS = get_latest_trade_date()
     # 登出系统
     bs.logout()
-
+    # 自动抓取上证eft数据和深证etf数据
     automatic_click()
 
                         

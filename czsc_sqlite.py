@@ -34,13 +34,22 @@ def sqlite3_connect():
         print("表 ETF_DAILY 已存在。")
 
 def get_etf_share(dt=""):
+    # 获取当前日期
+    current_date = datetime.now()
+
+    # 获取一年前的日期（考虑闰年）
+    one_year_ago = current_date - relativedelta(years=1)
+
+    # 将日期格式化为字符串
+    one_year_ago_str = one_year_ago.strftime("%Y-%m-%d")
+
     # 连接数据库
     sqlite3_connect()
     # 查询已有数据，避免重复添加
     if len(dt)>0:
-        sql_connect_cursor.execute("SELECT dt,code,name,share FROM ETF_DAILY WHERE dt > ? order by dt asc",(dt,))
+        sql_connect_cursor.execute("SELECT dt,code,name,share FROM ETF_DAILY WHERE dt > ? AND code in (SELECT DISTINCT code FROM ETF_DAILY WHERE dt < ?) order by dt asc",(dt,one_year_ago_str))
     else:
-        sql_connect_cursor.execute("SELECT dt,code,name,share FROM ETF_DAILY order by dt asc")
+        sql_connect_cursor.execute("SELECT dt,code,name,share FROM ETF_DAILY WHERE code in (SELECT DISTINCT code FROM ETF_DAILY WHERE dt < ?) order by dt asc")
     
     res_list = {}
     rows = sql_connect_cursor.fetchall()
@@ -84,11 +93,12 @@ def main():
         all_rows_data.append(row[0]+row[1])
 
     # 本地数据
-    etf_dir = get_data_dir()+'/etf'
+    etf_dir = get_data_dir()+'/etf/'
     for root, dirs, files in os.walk(etf_dir):
         for file in files:
             file_path = os.path.join(root, file)
-            sync_db(file_path)
+            if file_path.endswith('.json'):
+                sync_db(file_path)
 
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
