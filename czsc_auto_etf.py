@@ -118,7 +118,7 @@ def fetch_sz_page(code,driver):
 
 def fetch_sz_etf(code,today):
     etf_data_dict = {}
-    filepath = get_data_dir()+'/etf/sz/{}.json'.format(today)
+    filepath = get_data_dir()+'/etf/sz/{}.json'.format(code)
     if os.path.isfile(filepath):
         etf_data_list = read_json(filepath)
         for item in etf_data_list:
@@ -149,15 +149,13 @@ def fetch_sz_etf(code,today):
 
     data_list = []
     try:
-        
         last_data_list = None
         while True:
             print(today)
             # 输入框
             code_elm = driver.find_element(By.ID,"fund_jjgm_tab1_txtDm")
-            js = "arguments[0].value = '{}';".format(code)
-            driver.execute_script(js, code_elm)
-            code_elm.click()
+            code_elm.clear()
+            code_elm.send_keys(code)
         
             # 起始日期
             start_elm = driver.find_element(By.ID,"fund_jjgm_tab1_txtStart")
@@ -226,7 +224,13 @@ def fetch_sz_tbody(tbody):
             data_list.append({'code':code_elm.text,'name':name_elm.text})
     return data_list
 
-def fetch_sz_day():
+def fetch_sz_day(today):
+    filepath = get_data_dir()+'/etf/sz/eft.json'
+    if os.path.isfile(filepath):
+        etf_data_dict = read_json(filepath)
+        if etf_data_dict and etf_data_dict['today'] == today:
+            return etf_data_dict['list']
+
     driver = webdriver.Chrome()
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
@@ -267,6 +271,11 @@ def fetch_sz_day():
         print(e)
     finally:
         driver.quit()
+
+    # 缓存
+    etf_data_dict = {'today':today,'list':data_list}
+    write_json(etf_data_dict,filepath)
+
     return data_list
 
 def prev_date(now_date_str,days_val=1):
@@ -275,7 +284,7 @@ def prev_date(now_date_str,days_val=1):
     return yesterday.strftime("%Y-%m-%d")
 
 def automatic_click():
-    etf_code_list = fetch_sz_day()
+    etf_code_list = fetch_sz_day(LAST_DAYS)
     for item in etf_code_list:
         fetch_sz_etf(item['code'],LAST_DAYS)
 
