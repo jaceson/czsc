@@ -63,6 +63,7 @@ def get_etf_share(dt=""):
 
 def sync_db(file_path):
     global all_rows_data
+    print(file_path)
     data_arr = read_json(file_path)
     for item in data_arr:
         dt = item['dt']
@@ -97,7 +98,7 @@ def main():
     for root, dirs, files in os.walk(etf_dir):
         for file in files:
             file_path = os.path.join(root, file)
-            if file_path.endswith('.json'):
+            if file_path.endswith('.json') and not file_path.endswith('eft.json'):
                 sync_db(file_path)
 
 """
