@@ -130,7 +130,7 @@ def fetch_sz_etf(code,today):
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
     driver.get(url)
-    time.sleep(10)
+    time.sleep(5)
     
     # 点击进入份额历史数据
     div_elm = driver.find_element(By.CLASS_NAME,"report-table")
@@ -144,7 +144,7 @@ def fetch_sz_etf(code,today):
             link_elm = td_list[5]
             link_elm = link_elm.find_element(By.TAG_NAME,"a")
             link_elm.click()
-            time.sleep(10)
+            time.sleep(5)
             break
 
     data_list = []
@@ -174,7 +174,7 @@ def fetch_sz_etf(code,today):
             for confirm_elm in confirm_elm_list:
                 if confirm_elm.text == "查询":
                     confirm_elm.click()
-                    time.sleep(5)
+                    time.sleep(3)
                     break
 
             # 获取份额数据
@@ -235,7 +235,7 @@ def fetch_sz_day(today):
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
     driver.get(url)
-    time.sleep(10)
+    time.sleep(5)
     
     data_list = []
     try:
