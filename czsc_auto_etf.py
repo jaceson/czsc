@@ -297,6 +297,7 @@ def automatic_click():
     etf_code_list = fetch_sz_day(today)
     out_driver = create_sz_share_webdriver()
     for item in etf_code_list:
+        print("进度：{} / {}".format(etf_code_list.index(item),len(etf_code_list)))
         fetch_sz_etf(out_driver,item['code'],today)
     if out_driver:
         out_driver.quit()
