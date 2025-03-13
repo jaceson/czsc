@@ -156,6 +156,32 @@ def is_macd_bottom_divergence(symbol,df):
     pass
 
 """
+    是否到支撑线位置
+"""
+def is_reach_support_lines(symbol,df,max_ratio=0.05):
+    # 股票czsc结构
+    bars = get_stock_bars(symbol=symbol,df=df)
+    c = CZSC(bars, get_signals=None)
+    bi_list = c.bi_list
+    if len(bi_list) <= 0:
+        return 0
+
+    # 最后一笔向上
+    last_bi = bi_list[-1]
+    if last_bi.direction == Direction.Down:
+        return 0
+    # 最低价小于昨天
+    if c.bars_ubi[-1].low>c.bars_ubi[-2].low:
+        return 0
+    # 
+    for bi in reversed(bi_list):
+        pass
+
+    zs_list = get_zs_seq(bi_list)
+    for zs in reversed(zs_list):
+        pass
+
+"""
     是否同一个fx
 """
 def fx_equal(fx1,fx2):
