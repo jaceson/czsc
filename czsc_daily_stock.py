@@ -314,5 +314,5 @@ def main():
     python czsc_daily_stock.py | tee -a ./data/log.json
 """
 if __name__ == '__main__':
-    main()
-    # test_case()
+    # main()
+    test_case()
