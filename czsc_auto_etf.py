@@ -116,16 +116,7 @@ def fetch_sz_page(code,driver):
     print(data_list)
     return data_list
 
-def fetch_sz_etf(code,today):
-    etf_data_dict = {}
-    filepath = get_data_dir()+'/etf/sz/{}.json'.format(code)
-    if os.path.isfile(filepath):
-        etf_data_list = read_json(filepath)
-        for item in etf_data_list:
-            etf_data_dict[item['dt']] = item['share']
-        if today in etf_data_dict.keys():
-            return
-
+def create_sz_share_webdriver():
     driver = webdriver.Chrome()
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
@@ -146,6 +137,22 @@ def fetch_sz_etf(code,today):
             link_elm.click()
             time.sleep(5)
             break
+    return driver
+
+def fetch_sz_etf(out_driver,code,today):
+    etf_data_dict = {}
+    filepath = get_data_dir()+'/etf/sz/{}.json'.format(code)
+    if os.path.isfile(filepath):
+        etf_data_list = read_json(filepath)
+        for item in etf_data_list:
+            etf_data_dict[item['dt']] = item['share']
+        if today in etf_data_dict.keys():
+            return
+
+    if out_driver:
+        driver = out_driver
+    else:
+        driver = create_sz_share_webdriver()
 
     data_list = []
     try:
@@ -198,7 +205,8 @@ def fetch_sz_etf(code,today):
     except Exception as e:
         print(e)
     finally:
-        driver.quit()
+        if not out_driver:
+            driver.quit()
 
     # 更新本地缓存
     etf_data_list = read_json(filepath)
@@ -287,9 +295,12 @@ def automatic_click():
     today = LAST_DAYS
     # 深圳etf数据
     etf_code_list = fetch_sz_day(today)
+    out_driver = create_sz_share_webdriver()
     for item in etf_code_list:
-        fetch_sz_etf(item['code'],today)
-
+        fetch_sz_etf(out_driver,item['code'],today)
+    if out_driver:
+        out_driver.quit()
+        
     # 上海etf数据
     while True:
         print(today)
