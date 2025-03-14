@@ -210,7 +210,8 @@ def is_reach_support_lines(symbol,df,max_ratio=0.03,days_num=365):
     for zs in reversed(zs_list):
         if (current_date-zs.edt).days>days_num:
             break
-
+        if not zs.is_valid:
+            continue    
         if abs(zs.dd-current_low)/zs.dd<max_ratio:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
             czsc_logger().info("中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
