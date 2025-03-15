@@ -178,30 +178,30 @@ def get_reach_support_lines(symbol,df,max_ratio=0.03,days_num=365*2):
 
     # 有没有靠近一笔的顶底点
     bi_num = 0
-    current_low = df['low'][-1]
-    current_close = df['close'][-1]
+    current_low = df['low'].iloc[-1]
+    current_close = df['close'].iloc[-1]
     current_date = datetime.now()
     for bi in reversed(bi_list):
         if (current_date-bi.fx_b.dt).days>days_num:
             break
         if abs(bi.fx_a.fx-current_low)/bi.fx_a.fx<max_ratio:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
-            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+zs.fx_b.dt.strftime("%Y-%m-%d"))
+            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_a.fx))
             bi_num += 1
         elif abs(bi.fx_b.fx-current_low)/bi.fx_b.fx<max_ratio:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
-            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+zs.fx_b.dt.strftime("%Y-%m-%d"))
+            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_b.fx))
             bi_num += 1
         elif current_low<=bi.fx_a.high and current_low>=bi.fx_a.low:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
-            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+zs.fx_b.dt.strftime("%Y-%m-%d"))
+            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_a.fx))
             bi_num += 1
         elif current_low<=bi.fx_b.high and current_low>=bi.fx_b.low:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
-            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+zs.fx_b.dt.strftime("%Y-%m-%d"))
+            czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_b.fx))
             bi_num += 1
 
@@ -216,7 +216,7 @@ def get_reach_support_lines(symbol,df,max_ratio=0.03,days_num=365*2):
         if abs(zs.dd-current_low)/zs.dd<max_ratio:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
             czsc_logger().info("中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-            czsc_logger().info("【中枢低低】支撑位："+str(zz.dd))
+            czsc_logger().info("【中枢低低】支撑位："+str(zs.dd))
             zs_num += 1
         elif abs(zs.zd-current_low)/zs.zd<max_ratio:
             czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
