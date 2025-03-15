@@ -97,6 +97,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25
     last_fx = c.fx_list[-1]
     if len(bi_list) > 1:
         last_bi = bi_list[-1]
+
         # 当前一笔从最低点到最高点，涨幅已经超过50%
         # if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx and fx_equal(last_fx, last_bi.fx_b):
         if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
@@ -158,7 +159,7 @@ def is_macd_bottom_divergence(symbol,df):
 """
     是否到支撑线位置
 """
-def is_reach_support_lines(symbol,df,max_ratio=0.03,days_num=365*2):
+def get_reach_support_lines(symbol,df,max_ratio=0.03,days_num=365*2):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)

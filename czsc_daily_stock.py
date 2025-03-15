@@ -187,6 +187,24 @@ def test_case():
 
         # 登出系统
         bs.logout()
+    elif option == 4:
+        lg = bs.login()
+        # 登录baostock
+        czsc_logger().info('login respond error_code:' + lg.error_code)
+        czsc_logger().info('login respond  error_msg:' + lg.error_msg)
+        last_trade_date = get_latest_trade_date()
+    
+        res_list = []
+        symbols = read_json(os.path.join(get_data_dir(),"KD线抄底.json"))
+        for symbol in symbols:
+            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            zs_num,bi_num = get_reach_support_lines(symbol,df)
+            if zs_num>0 or bi_num>0:
+                res_list.append(symbol)
+        print(res_list)
+
+        # 登出系统
+        bs.logout()
 
     sys.exit(0)
 
@@ -314,5 +332,5 @@ def main():
     python czsc_daily_stock.py | tee -a ./data/log.json
 """
 if __name__ == '__main__':
-    main()
-    # test_case()
+    # main()
+    test_case()
