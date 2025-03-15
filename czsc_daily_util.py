@@ -159,7 +159,7 @@ def is_macd_bottom_divergence(symbol,df):
 """
     是否到支撑线位置
 """
-def get_reach_support_lines(symbol,df,max_ratio=0.03,days_num=365*2):
+def get_reach_support_lines(symbol,df,max_ratio=0.01,days_num=365*2):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
