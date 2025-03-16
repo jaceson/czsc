@@ -65,6 +65,7 @@ def get_etf_share(dt=""):
 def sync_db(file_path):
     global all_rows_data
     print(file_path)
+    is_has_update = False
     data_arr = read_json(file_path)
     for item in data_arr:
         dt = item['dt']
@@ -77,11 +78,13 @@ def sync_db(file_path):
         if key in all_rows_data:
             continue
 
+        is_has_update = True
         sql_connect_cursor.execute("INSERT INTO ETF_DAILY (dt, name, code, share) VALUES (?, ?, ?, ?)", (dt, name, code, share))
         all_rows_data.append(key)
 
     # 提交事务
-    sql_connect.commit()
+    if is_has_update:
+        sql_connect.commit()
 
 def main():
     global sql_connect,sql_connect_cursor
