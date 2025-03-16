@@ -73,7 +73,7 @@ def rz_rq_symbols(symbols):
             arr.append(symbol)
     return arr
 
-def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols):
+def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols):
     # 打印股票池数据
     czsc_logger().info("月线反转股票列表：")
     czsc_logger().info('     '+', '.join(mline_symbols))
@@ -93,6 +93,9 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,str
     czsc_logger().info("中枢一买点位置：")
     czsc_logger().info('     '+', '.join(one_buypoint_symbols))
 
+    czsc_logger().info("中枢二买点位置：")
+    czsc_logger().info('     '+', '.join(second_buypoint_symbols))
+
     czsc_logger().info("中枢三买点位置：")
     czsc_logger().info('     '+', '.join(third_buypoint_symbols))
 
@@ -103,6 +106,9 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,str
 
         czsc_logger().info("满足月线反转、中枢一买的股票列表：")
         czsc_logger().info('     '+', '.join(intersection_list([mline_symbols,one_buypoint_symbols])))
+
+        czsc_logger().info("满足月线反转、中枢二买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([mline_symbols,second_buypoint_symbols])))
 
         czsc_logger().info("满足月线反转、中枢三买的股票列表：")
         czsc_logger().info('     '+', '.join(intersection_list([mline_symbols,third_buypoint_symbols])))
@@ -138,14 +144,17 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,str
         czsc_logger().info("满足小黄人三线红、黄金分割线、中枢一买的股票列表：")
         czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,golden_symbols,one_buypoint_symbols])))
 
+        czsc_logger().info("满足小黄人三线红、黄金分割线、中枢二买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,golden_symbols,second_buypoint_symbols])))
+
         czsc_logger().info("满足小黄人三线红、KD线抄底、中枢一买的股票列表：")
         czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,one_buypoint_symbols])))
 
-def test_case():
-    cachedir = get_data_dir()+"/html/测试用例"
-    clear_cache(cachedir)
-        
-    option = 4
+        czsc_logger().info("满足小黄人三线红、KD线抄底、中枢二买的股票列表：")
+        czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,second_buypoint_symbols])))
+
+def test_case():    
+    option = 5
     if option == 1:
         # arr = ["600060","600081","600126","600398","600422","600588","600595","600633","600699","600812","600845","600988","601100","601231","603108","603171","603197","603300","603305","603758","603786","603915","605020","000032","000042","000818","000837","001282","002044","002153","002212","002250","002284","002664","002841","002913","002929","002965","300133","300226","300244","300251","300253","300258","300451","300454","300496","300676"]
         arr = ["600120","600126","600255","600363","600580","600602","600633","600797","600986","601689","603005","603039","603119","603236","603296","603319","603583","603636","603662","603667","603728","603803","603881","603893","000034","000681","000785","000977","002031","002036","002112","002117","002123","002131","002195","002261","002354","002369","002379","002530","002630","002681","002765","002851","002881","003021","300007","300017"]
@@ -191,6 +200,9 @@ def test_case():
         # 登出系统
         bs.logout()
     elif option == 4:
+        cachedir = get_data_dir()+"/html/测试用例"
+        clear_cache(cachedir)
+    
         lg = bs.login()
         # 登录baostock
         czsc_logger().info('login respond error_code:' + lg.error_code)
@@ -203,6 +215,31 @@ def test_case():
             df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             zs_num,bi_num = get_reach_support_lines(symbol,df)
             if zs_num>0 or bi_num>0:
+                res_list.append(symbol)
+        print(res_list)
+
+        # 登出系统
+        bs.logout()
+    elif option == 5:
+        cachedir = get_data_dir()+"/html/测试用例"
+        clear_cache(cachedir)
+    
+        lg = bs.login()
+        # 登录baostock
+        czsc_logger().info('login respond error_code:' + lg.error_code)
+        czsc_logger().info('login respond  error_msg:' + lg.error_msg)
+        last_trade_date = get_latest_trade_date()
+    
+        # df = get_stcok_pd("sh.600000", START_TRADE_DATE, last_trade_date, 'd')
+        # buypoint_type = get_buy_point_type("sh.600000",df,True)
+        # output_chart("sh.600000",df,cachedir)
+        res_list = []
+        symbols = read_json(os.path.join(get_data_dir(),"中枢二买点.json"))
+        for symbol in symbols:
+            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            buypoint_type = get_buy_point_type(symbol,df,True)
+            if buypoint_type>0:
+                output_chart(symbol,df,cachedir)
                 res_list.append(symbol)
         print(res_list)
 
@@ -229,6 +266,7 @@ def main():
     chaodi_symbols = []
     strong_symbols = []
     one_buypoint_symbols = []
+    second_buypoint_symbols = []
     third_buypoint_symbols = []
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
@@ -242,6 +280,7 @@ def main():
         chaodi_symbols = read_symbols("KD线抄底.json")
         strong_symbols = read_symbols("强势上涨.json")
         one_buypoint_symbols = read_symbols("中枢一买点.json")
+        second_buypoint_symbols = read_symbols("中枢二买点.json")
         third_buypoint_symbols = read_symbols("中枢三买点.json")
     else:
         # 清除缓存图标
@@ -251,6 +290,7 @@ def main():
         clear_cache(chaodi_chart_dir())
         clear_cache(strong_chart_dir())
         clear_cache(buypoint_chart_dir(1))
+        clear_cache(buypoint_chart_dir(2))
         clear_cache(buypoint_chart_dir(3))
         # 选择月线反转股票
         for symbol in all_symbols:
@@ -301,6 +341,8 @@ def main():
                 output_chart(symbol, df, buypoint_chart_dir(buypoint_type))
                 if buypoint_type == 1:
                     one_buypoint_symbols.append(symbol)
+                elif buypoint_type == 2:
+                    second_buypoint_symbols.append(symbol)
                 elif buypoint_type == 3:
                     third_buypoint_symbols.append(symbol)
                     
@@ -311,16 +353,17 @@ def main():
         save_symbols(chaodi_symbols,"KD线抄底.json")
         save_symbols(strong_symbols,"强势上涨.json")
         save_symbols(one_buypoint_symbols,"中枢一买点.json")
+        save_symbols(second_buypoint_symbols,"中枢二买点.json")
         save_symbols(third_buypoint_symbols,"中枢三买点.json")
     
     #打印筛选结果
-    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,third_buypoint_symbols)
+    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols)
 
     #打印可融资融券筛选结果
     czsc_logger().info("\n\n")
     czsc_logger().info("========================以下是可融资融券的结果========================")
     czsc_logger().info("\n\n")
-    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
+    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
 
     # 登出系统
     bs.logout()
@@ -335,5 +378,5 @@ def main():
     python czsc_daily_stock.py | tee -a ./data/log.json
 """
 if __name__ == '__main__':
-    # main()
-    test_case()
+    main()
+    # test_case()
