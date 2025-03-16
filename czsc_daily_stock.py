@@ -237,7 +237,7 @@ def test_case():
         symbols = read_json(os.path.join(get_data_dir(),"中枢二买点.json"))
         for symbol in symbols:
             df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
-            buypoint_type = get_buy_point_type(symbol,df,True)
+            buypoint_type = get_buy_point_type(symbol,df,True,True)
             if buypoint_type>0:
                 output_chart(symbol,df,cachedir)
                 res_list.append(symbol)

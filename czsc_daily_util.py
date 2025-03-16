@@ -388,7 +388,7 @@ def has_close_ma(df,N=5,diff=0.02):
         2，表示二买点
         3，表示三买点
 """
-def get_buy_point_type(symbol,df,by_macd=False,max_ratio=0.05,macd_ratio=0.05):
+def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,macd_ratio=0.05):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
@@ -435,6 +435,11 @@ def get_buy_point_type(symbol,df,by_macd=False,max_ratio=0.05,macd_ratio=0.05):
             zs_gg = last_zs.gg
 
         if last_bi.direction == Direction.Up and last_bi.fx_b.dt == zs.edt:
+            # 是否限制中枢高低点
+            if not by_range:
+                czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+" 不限制距离, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
+                return 3
+
             # 回到中枢高高点或者中枢高
             if abs(stock_close-zs_gg)/zs_gg<max_ratio:
                 # macd靠近0轴
@@ -456,6 +461,11 @@ def get_buy_point_type(symbol,df,by_macd=False,max_ratio=0.05,macd_ratio=0.05):
             return 0
         # 中枢离开的向上一笔完成后向下一笔
         if last_bi.direction == Direction.Down and last_bi.fx_a.dt == zs.edt:
+            # 是否限制中枢高低点
+            if not by_range:
+                czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+" 不限制距离, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
+                return 3
+
             # 向下一笔开始向上，没有超过中枢高高或者向下一笔的最高点时
             if stock_close<max(last_bi.fx_a.fx,zs_gg):
                 dif,dea,macd = MACD(df['close'])
@@ -476,6 +486,11 @@ def get_buy_point_type(symbol,df,by_macd=False,max_ratio=0.05,macd_ratio=0.05):
             zs_dd = last_zs.dd
             
         if last_bi.direction == Direction.Up and last_bi.fx_a.dt == zs.edt:
+            # 是否限制中枢高低点
+            if not by_range:
+                czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 不限制距离, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
+                return 2
+
             if last_bi.fx_b.fx>zs_dd and last_bi.fx_b.fx<zs.zd:
                 dif,dea,macd = MACD(df['close'])
                 # 靠近0轴
@@ -497,6 +512,11 @@ def get_buy_point_type(symbol,df,by_macd=False,max_ratio=0.05,macd_ratio=0.05):
         # 中枢向下一笔、向上一笔、向下一笔
         prev_last_bi = bi_list[-2]
         if last_bi.direction == Direction.Down and prev_last_bi.fx_a.dt == zs.edt:
+            # 是否限制中枢高低点
+            if not by_range:
+                czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 不限制距离, 二买点 "+str(last_bi.fx_b.fx))
+                return 2
+
             # 刚形成二买点
             if abs(stock_close-last_bi.fx_b.fx)/last_bi.fx_b.fx<max_ratio:
                 dif,dea,macd = MACD(df['close'])
