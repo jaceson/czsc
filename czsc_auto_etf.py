@@ -147,8 +147,9 @@ def fetch_sz_etf(out_driver,code,today):
         for item in etf_data_list:
             etf_data_dict[item['dt']] = item['share']
         if today in etf_data_dict.keys():
-            return
+            return True
 
+    is_failed = False
     if out_driver:
         driver = out_driver
     else:
@@ -204,6 +205,7 @@ def fetch_sz_etf(out_driver,code,today):
                 break
     except Exception as e:
         print(e)
+        is_failed = True
     finally:
         if not out_driver:
             driver.quit()
@@ -216,6 +218,7 @@ def fetch_sz_etf(out_driver,code,today):
         if not item['dt'] in etf_data_dict.keys():
             etf_data_list.append(item)
     write_json(etf_data_list,filepath)
+    return 
 
 def fetch_sz_tbody(tbody):
     data_list = []
