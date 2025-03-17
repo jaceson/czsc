@@ -62,6 +62,17 @@ def get_etf_share(dt=""):
         res_list[code]['share']['share'].append(row[3])
     return res_list
 
+def get_etf_list():
+    # 连接数据库
+    sqlite3_connect()
+    # etf code列表
+    sql_connect_cursor.execute("SELECT code FROM ETF_DAILY GROUP BY code")
+    res_list = []
+    rows = sql_connect_cursor.fetchall()
+    for row in rows:
+        res_list.append(row[0])
+    return res_list
+
 def sync_db(file_path):
     global all_rows_data
     print(file_path)
