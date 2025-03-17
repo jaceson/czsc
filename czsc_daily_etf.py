@@ -22,8 +22,14 @@ def plot_data(ax, x, y, title, xlabel, ylabel, label, rotation=45):
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.set_xticks(x[::10])  # 每10个日期显示一个标签
-    ax.set_xticklabels(x[::10], rotation=rotation, ha='right')  # 旋转 x 轴标签，避免重叠
+    # 确保最后一个数据点始终显示
+    if len(x) > 10:
+        ticks = x[::10]  # 每10个日期显示一个标签
+        ticks = np.append(ticks, x[-1])  # 添加最后一个数据点
+    else:
+        ticks = x  # 如果数据点少于10个，显示所有标签
+    ax.set_xticks(ticks)  # 设置刻度位置
+    ax.set_xticklabels(ticks, rotation=rotation, ha='right')  # 旋转 x 轴标签，避免重叠
     ax.legend()
 
 def output_png(code, etf_share_dict, etf_price_dict):
