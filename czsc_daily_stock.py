@@ -6,9 +6,9 @@ import shutil
 import baostock as bs
 from czsc_daily_util import *
 from czsc.analyze import *
+from datetime import datetime
 
 START_TRADE_DATE = "2020-01-01"
-
 def output_chart(symbol, df, cachedir):
     if is_rz_rq_symobl(symbol):
         cachedir = cachedir+"/rzrq"
@@ -272,6 +272,9 @@ def main():
     last_trade_date = get_latest_trade_date()
     df = get_stcok_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
     is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
+    by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
+    by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
+    by_range = last_trade_date == datetime.now().strftime('%Y-%m-%d')
     if not is_stock_updated:
         czsc_logger().info("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
         mline_symbols = read_symbols("月线反转.json")
@@ -308,16 +311,28 @@ def main():
             # 获取满足月线反转日期
             mline_dates = get_mline_turn(df)
             if symbol_last_trade_date in mline_dates:
-                czsc_logger().info(symbol+"出现月线反转")
-                mline_symbols.append(symbol)
-                output_chart(symbol, df, mline_chart_dir())
+                is_can_add = !by_reach
+                if by_reach:
+                    zs_num,bi_num = get_reach_support_lines(symbol,df)
+                    if zs_num>0 or bi_num>0:
+                        is_can_add = True
+                if is_can_add:
+                    czsc_logger().info(symbol+"出现月线反转")
+                    mline_symbols.append(symbol)
+                    output_chart(symbol, df, mline_chart_dir())
 
             # 小黄人三线红
             minion_dates = get_minion_trend(df)
             if symbol_last_trade_date in minion_dates:
-                czsc_logger().info(symbol+"出现小黄人三线红")
-                minion_symbols.append(symbol)
-                output_chart(symbol, df, minion_chart_dir())
+                is_can_add = !by_reach
+                if by_reach:
+                    zs_num,bi_num = get_reach_support_lines(symbol,df)
+                    if zs_num>0 or bi_num>0:
+                        is_can_add = True
+                if is_can_add:
+                    czsc_logger().info(symbol+"出现小黄人三线红")
+                    minion_symbols.append(symbol)
+                    output_chart(symbol, df, minion_chart_dir())
 
             # kd线抄底位置
             if is_kd_buy_point(symbol,df):
@@ -332,19 +347,31 @@ def main():
             # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
             if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
                 if has_cross_ma(df) or has_close_ma(df):
-                    strong_symbols.append(symbol)
-                    output_chart(symbol, df, strong_chart_dir())
+                    is_can_add = !by_reach
+                    if by_reach:
+                        zs_num,bi_num = get_reach_support_lines(symbol,df)
+                        if zs_num>0 or bi_num>0:
+                            is_can_add = True
+                    if is_can_add:
+                        strong_symbols.append(symbol)
+                        output_chart(symbol, df, strong_chart_dir())
 
             # 是否是买卖点
-            buypoint_type = get_buy_point_type(symbol,df)
+            buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range)
             if buypoint_type>0:
-                output_chart(symbol, df, buypoint_chart_dir(buypoint_type))
-                if buypoint_type == 1:
-                    one_buypoint_symbols.append(symbol)
-                elif buypoint_type == 2:
-                    second_buypoint_symbols.append(symbol)
-                elif buypoint_type == 3:
-                    third_buypoint_symbols.append(symbol)
+                is_can_add = !by_reach
+                if by_reach:
+                    zs_num,bi_num = get_reach_support_lines(symbol,df)
+                    if zs_num>0 or bi_num>0:
+                        is_can_add = True
+                if is_can_add:
+                    output_chart(symbol, df, buypoint_chart_dir(buypoint_type))
+                    if buypoint_type == 1:
+                        one_buypoint_symbols.append(symbol)
+                    elif buypoint_type == 2:
+                        second_buypoint_symbols.append(symbol)
+                    elif buypoint_type == 3:
+                        third_buypoint_symbols.append(symbol)
                     
         # 保存缓存缓存数据
         save_symbols(mline_symbols,"月线反转.json")
