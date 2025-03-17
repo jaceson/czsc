@@ -311,7 +311,7 @@ def main():
             # 获取满足月线反转日期
             mline_dates = get_mline_turn(df)
             if symbol_last_trade_date in mline_dates:
-                is_can_add = !by_reach
+                is_can_add = (not by_reach)
                 if by_reach:
                     zs_num,bi_num = get_reach_support_lines(symbol,df)
                     if zs_num>0 or bi_num>0:
@@ -324,7 +324,7 @@ def main():
             # 小黄人三线红
             minion_dates = get_minion_trend(df)
             if symbol_last_trade_date in minion_dates:
-                is_can_add = !by_reach
+                is_can_add = (not by_reach)
                 if by_reach:
                     zs_num,bi_num = get_reach_support_lines(symbol,df)
                     if zs_num>0 or bi_num>0:
@@ -347,7 +347,7 @@ def main():
             # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
             if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
                 if has_cross_ma(df) or has_close_ma(df):
-                    is_can_add = !by_reach
+                    is_can_add = (not by_reach)
                     if by_reach:
                         zs_num,bi_num = get_reach_support_lines(symbol,df)
                         if zs_num>0 or bi_num>0:
@@ -359,7 +359,7 @@ def main():
             # 是否是买卖点
             buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range)
             if buypoint_type>0:
-                is_can_add = !by_reach
+                is_can_add = (not by_reach)
                 if by_reach:
                     zs_num,bi_num = get_reach_support_lines(symbol,df)
                     if zs_num>0 or bi_num>0:
