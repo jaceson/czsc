@@ -43,10 +43,10 @@ def output_png(code, etf_share_dict, etf_price_dict):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10))
 
     # 绘制场内份额数据
-    plot_data(ax1, share_x, share_y, '场内份额【单位：万份】', '日期', '场内份额', '份额')
+    plot_data(ax1, share_x, share_y, '【{}】场内份额【单位：万份】'.format(code), '日期', '场内份额', '份额')
 
     # 绘制单位净值数据
-    plot_data(ax2, price_x, price_y, '单位净值', '日期', '单位净值', '净值')
+    plot_data(ax2, price_x, price_y, '【{}】单位净值'.format(code), '日期', '单位净值', '净值')
 
     # 调整布局
     plt.tight_layout()
