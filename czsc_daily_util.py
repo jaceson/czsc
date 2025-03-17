@@ -532,6 +532,7 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
         # 一买点
         if last_bi.direction == Direction.Down and last_bi.fx_b.dt == last_zs.edt: 
             if abs(stock_close-last_bi.fx_b.fx)/last_bi.fx_b.fx<max_ratio:
+                dif,dea,macd = MACD(df['close'])
                 if (not by_macd) or macd[-1]>macd[-2]:
                     czsc_logger().info("✅满足中枢一买：当前股价 "+str(stock_close)+" 向下一笔结束, 一买点 "+str(last_bi.fx_b.fx))
                     return 1
