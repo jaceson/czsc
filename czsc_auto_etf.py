@@ -218,7 +218,7 @@ def fetch_sz_etf(out_driver,code,today):
         if not item['dt'] in etf_data_dict.keys():
             etf_data_list.append(item)
     write_json(etf_data_list,filepath)
-    return 
+    return not is_failed
 
 def fetch_sz_tbody(tbody):
     data_list = []
@@ -301,9 +301,11 @@ def automatic_click():
     out_driver = create_sz_share_webdriver()
     for item in etf_code_list:
         print("进度：{} / {}".format(etf_code_list.index(item),len(etf_code_list)))
-        fetch_sz_etf(out_driver,item['code'],today)
-    if out_driver:
-        out_driver.quit()
+        while True:
+            if fetch_sz_etf(out_driver,item['code'],today):
+                break
+            out_driver.quit()
+            out_driver = create_sz_share_webdriver()
         
     # 上海etf数据
     while True:
