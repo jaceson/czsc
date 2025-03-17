@@ -116,12 +116,12 @@ def fetch_sz_page(code,driver):
     print(data_list)
     return data_list
 
-def create_sz_share_webdriver():
+def create_sz_share_webdriver(retry_num=1):
     driver = webdriver.Chrome()
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
     driver.get(url)
-    time.sleep(5)
+    time.sleep(MIN(20, 5*retry_num))
     
     # 点击进入份额历史数据
     div_elm = driver.find_element(By.CLASS_NAME,"report-table")
@@ -135,11 +135,11 @@ def create_sz_share_webdriver():
             link_elm = td_list[5]
             link_elm = link_elm.find_element(By.TAG_NAME,"a")
             link_elm.click()
-            time.sleep(5)
+            time.sleep(MIN(20, 5*retry_num))
             break
     return driver
 
-def fetch_sz_etf(out_driver,code,today):
+def fetch_sz_etf(out_driver,code,today,retry_num=1):
     etf_data_dict = {}
     filepath = get_data_dir()+'/etf/sz/{}.json'.format(code)
     if os.path.isfile(filepath):
@@ -153,7 +153,7 @@ def fetch_sz_etf(out_driver,code,today):
     if out_driver:
         driver = out_driver
     else:
-        driver = create_sz_share_webdriver()
+        driver = create_sz_share_webdriver(retry_num)
 
     data_list = []
     try:
@@ -182,7 +182,7 @@ def fetch_sz_etf(out_driver,code,today):
             for confirm_elm in confirm_elm_list:
                 if confirm_elm.text == "查询":
                     confirm_elm.click()
-                    time.sleep(3)
+                    time.sleep(MIN(10,3*retry_num))
                     break
 
             # 获取份额数据
@@ -301,11 +301,16 @@ def automatic_click():
     out_driver = create_sz_share_webdriver()
     for item in etf_code_list:
         print("进度：{} / {}".format(etf_code_list.index(item),len(etf_code_list)))
+
+        retry_num = 1
         while True:
-            if fetch_sz_etf(out_driver,item['code'],today):
+            if fetch_sz_etf(out_driver,item['code'],today,retry_num):
                 break
+            retry_num = retry_num + 1
             out_driver.quit()
             out_driver = create_sz_share_webdriver()
+            print(item['code'])
+            print("重试第【{}】次".format(retry_num))
         
     # 上海etf数据
     while True:
