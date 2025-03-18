@@ -8,6 +8,7 @@ import time
 import requests
 import baostock as bs
 from lib.MyTT import *
+from Chan import CChan
 from datetime import datetime, timedelta
 from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
@@ -544,6 +545,31 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
     return 0
 
 """
+    通过chan.y获取1、2、3买点
+"""
+def get_chan_buy_point_type(symbol,df):
+    begin_time = "2023-06-01"
+    end_time = None
+    data_src = DATA_SRC.BAO_STOCK
+    lv_list = [KL_TYPE.K_DAY, KL_TYPE.K_30M]
+
+    config = CChanConfig({
+        "trigger_step": True,
+        "divergence_rate": 0.8,
+        "min_zs_cnt": 1,
+    })
+
+    chan = CChan(
+        code=code,
+        begin_time=begin_time,  # 已经没啥用了这一行
+        end_time=end_time,  # 已经没啥用了这一行
+        data_src=data_src,  # 已经没啥用了这一行
+        lv_list=lv_list,
+        config=config,
+        autype=AUTYPE.QFQ,  # 已经没啥用了这一行
+    )
+
+"""
     生成扩展数据extrs和rps数据
 """
 def get_rps_data(df):
@@ -584,7 +610,7 @@ def get_kd_data(df):
         end_date：结束日期
         
 """
-def get_stcok_pd(symbol, start_date, end_date, frequency):
+def get_stock_pd(symbol, start_date, end_date, frequency):
     """
         code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
         fields：指示简称，支持多指标输入，以半角逗号分隔，填写内容作为返回类型的列。详细指标列表见历史行情指标参数章节，日线与分钟线参数不同。此参数不可为空；
@@ -595,7 +621,7 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
     """
     rs = bs.query_history_k_data_plus(
             code=symbol,
-            fields="date,open,high,low,close,volume,amount",
+            fields="date,open,high,low,close,volume,amount,turn",
             start_date=start_date,
             end_date=end_date,
             frequency=frequency,
@@ -616,7 +642,8 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
             stock_close = float(row_data[4])
             stock_volume = float(row_data[5])
             stock_amount = float(row_data[6])
-            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
+            stock_turn = float(row_data[7])
+            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
                 continue
             data_list.append(row_data)
             # data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
@@ -631,6 +658,7 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
     df['close'] = df['close'].astype(float)
     df['volume'] = df['volume'].astype(float)
     df['amount'] = df['amount'].astype(float)
+    df['turn'] = df['turn'].astype(float)
     df['datetime'] = pd.to_datetime(df['date'])
     # df.set_index('date', inplace=True)
     return df
@@ -641,7 +669,7 @@ def get_stcok_pd(symbol, start_date, end_date, frequency):
 def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=None):
     if df is None or len(df.columns.tolist()) <= 0:
         if start_date and end_date and frequency:
-            df = get_stcok_pd(symbol, start_date, end_date, frequency)
+            df = get_stock_pd(symbol, start_date, end_date, frequency)
         else:
             return []
 

@@ -70,7 +70,7 @@ class CZSCStragegy(bt.Strategy):
 
 def backtrader_symbol(symbol,start_date,end_date,strategy,showplot=False):
     lg = bs.login()
-    df = get_stcok_pd(symbol,start_date,end_date,"d")
+    df = get_stock_pd(symbol,start_date,end_date,"d")
     df = get_kd_data(df)
     df = get_rps_data(df)
 

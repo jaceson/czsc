@@ -69,13 +69,13 @@ if __name__ == '__main__':
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
-        df = get_stcok_pd(symbol,start_date,end_date,"d")
+        df = get_stock_pd(symbol,start_date,end_date,"d")
         while len(df) <= 0:
             lg = bs.login()
             print('login respond error_code:' + lg.error_code)
             print('login respond  error_msg:' + lg.error_msg)
             # 重新获取
-            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
 
         bars = get_stock_bars(symbol=symbol,df=df)
         c = CZSC(bars, get_signals=None)

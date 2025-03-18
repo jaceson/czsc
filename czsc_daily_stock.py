@@ -180,7 +180,7 @@ def test_case():
     
         symbols = read_json(os.path.join(get_data_dir(),"黄金分割线抄底.json"))
         for symbol in symbols:
-            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             is_golden_point(symbol,df)
 
         # 登出系统
@@ -194,7 +194,7 @@ def test_case():
     
         symbols = read_json(os.path.join(get_data_dir(),"KD线抄底.json"))
         for symbol in symbols:
-            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             is_kd_buy_point(symbol,df)
 
         # 登出系统
@@ -212,7 +212,7 @@ def test_case():
         res_list = []
         symbols = read_json(os.path.join(get_data_dir(),"KD线抄底.json"))
         for symbol in symbols:
-            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             zs_num,bi_num = get_reach_support_lines(symbol,df)
             if zs_num>0 or bi_num>0:
                 res_list.append(symbol)
@@ -230,13 +230,13 @@ def test_case():
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
         last_trade_date = get_latest_trade_date()
     
-        # df = get_stcok_pd("sh.600000", START_TRADE_DATE, last_trade_date, 'd')
+        # df = get_stock_pd("sh.600000", START_TRADE_DATE, last_trade_date, 'd')
         # buypoint_type = get_buy_point_type("sh.600000",df,True)
         # output_chart("sh.600000",df,cachedir)
         res_list = []
         symbols = read_json(os.path.join(get_data_dir(),"中枢二买点.json"))
         for symbol in symbols:
-            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             buypoint_type = get_buy_point_type(symbol,df,True,True)
             if buypoint_type>0:
                 output_chart(symbol,df,cachedir)
@@ -270,7 +270,7 @@ def main():
     third_buypoint_symbols = []
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
-    df = get_stcok_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
+    df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
     is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
     by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
     by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
@@ -298,14 +298,14 @@ def main():
         # 选择月线反转股票
         for symbol in all_symbols:
             # 股票数据
-            df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             while len(df) <= 0:
                 lg = bs.login()
                 # 登录baostock
                 czsc_logger().info('login respond error_code:' + lg.error_code)
                 czsc_logger().info('login respond  error_msg:' + lg.error_msg)
                 # 重新获取
-                df = get_stcok_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+                df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             # 当前股票最后一个交易日
             symbol_last_trade_date = df['date'].iloc[-1]
             # 获取满足月线反转日期

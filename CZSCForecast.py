@@ -10,7 +10,7 @@ from statsmodels.graphics.tsaplots import plot_acf,plot_pacf
 
 def main():
     lg = bs.login()
-    df = get_stcok_pd('sh.000001','2010-01-01','2025-02-26',"d")
+    df = get_stock_pd('sh.000001','2010-01-01','2025-02-26',"d")
     close = np.diff(np.log(df['close']))
 
     # 绘制自相关图
