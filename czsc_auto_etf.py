@@ -310,8 +310,9 @@ def automatic_click():
             out_driver.quit()
             out_driver = create_sz_share_webdriver()
             print(item['code'])
-            print("重试第【{}】次".format(retry_num))
-        
+            print("重试第【{}】次".format(retry_num))    
+    out_driver.quit()
+
     # 上海etf数据
     while True:
         print(today)
