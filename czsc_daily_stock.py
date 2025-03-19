@@ -405,6 +405,7 @@ def main():
                         output_chart(symbol, df, strong_chart_dir())
 
             # 是否是买卖点
+            buypoint_type = 0
             buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range)
             if buypoint_type>0:
                 is_can_add = (not by_reach)
@@ -422,20 +423,21 @@ def main():
                         third_buypoint_symbols.append(symbol)
 
             # 是否chan买卖点
-            buypoint_type = get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df)
-            if buypoint_type:
-                output_chart(symbol, df, buypoint_chart_dir(buypoint_type))
-                if buypoint_type == "1":
+            chan_buypoint_type = None
+            chan_buypoint_type = get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df)
+            if chan_buypoint_type:
+                output_chart(symbol, df, buypoint_chart_dir(chan_buypoint_type))
+                if chan_buypoint_type == "1":
                     one_chan_buypoint_symbols.append(symbol)
-                elif buypoint_type == "1p":
+                elif chan_buypoint_type == "1p":
                     one_p_chan_buypoint_symbols.append(symbol)
-                elif buypoint_type == "2":
+                elif chan_buypoint_type == "2":
                     second_chan_buypoint_symbols.append(symbol)
-                elif buypoint_type == "2s":
+                elif chan_buypoint_type == "2s":
                     second_s_chan_buypoint_symbols.append(symbol)
-                elif buypoint_type == "3a":
+                elif chan_buypoint_type == "3a":
                     third_a_chan_buypoint_symbols.append(symbol)
-                elif buypoint_type == "3b":
+                elif chan_buypoint_type == "3b":
                     third_b_chan_buypoint_symbols.append(symbol)
 
         # 保存缓存缓存数据

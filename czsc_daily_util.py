@@ -555,7 +555,7 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         if start_date and end_date and frequency:
             df = get_stock_pd(symbol, start_date, end_date, frequency)
         else:
-            return ""
+            return None
 
     # 缠论分析配置
     config = CChanConfig({
