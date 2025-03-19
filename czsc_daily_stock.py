@@ -50,6 +50,31 @@ def buypoint_chart_dir(buypoint_type):
     else:
         return get_data_dir()+"/html/中枢买点"
 
+def buypoint_chan_chart_dir(buypoint_type):
+    """
+    T1 = '1'
+    T1P = '1p'
+    T2 = '2'
+    T2S = '2s'
+    T3A = '3a'  # 中枢在1类后面
+    T3B = '3b'  # 中枢在1类前面
+    """
+    buypoint_type = buypoint_type.lower()
+    if buypoint_type == "1":
+        return get_data_dir()+"/html/chan中枢T1买点"
+    elif buypoint_type == "1p":
+        return get_data_dir()+"/html/chan中枢T1P买点"
+    elif buypoint_type == "2":
+        return get_data_dir()+"/html/chan中枢T2买点"
+    elif buypoint_type == "2s":
+        return get_data_dir()+"/html/chan中枢T2S买点"
+    elif buypoint_type == "3a":
+        return get_data_dir()+"/html/chan中枢T3A买点"
+    elif buypoint_type == "3b":
+        return get_data_dir()+"/html/chan中枢T3B买点"
+    else:
+        return get_data_dir()+"/html/chan中枢买点"
+
 def clear_cache(cachedir):
     if os.path.isdir(cachedir):
         shutil.rmtree(cachedir)
@@ -268,6 +293,14 @@ def main():
     one_buypoint_symbols = []
     second_buypoint_symbols = []
     third_buypoint_symbols = []
+
+    one_chan_buypoint_symbols = []
+    one_p_chan_buypoint_symbols = []
+    second_chan_buypoint_symbols = []
+    second_s_chan_buypoint_symbols = []
+    third_a_chan_buypoint_symbols = []
+    third_b_chan_buypoint_symbols = []
+    
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
     df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
@@ -285,6 +318,13 @@ def main():
         one_buypoint_symbols = read_symbols("中枢一买点.json")
         second_buypoint_symbols = read_symbols("中枢二买点.json")
         third_buypoint_symbols = read_symbols("中枢三买点.json")
+
+        one_chan_buypoint_symbols = read_symbols("chan中枢T1买点.json")
+        one_p_chan_buypoint_symbols = read_symbols("chan中枢T1P买点.json")
+        second_chan_buypoint_symbols = read_symbols("chan中枢T2买点.json")
+        second_s_chan_buypoint_symbols = read_symbols("chan中枢T2S买点.json")
+        third_a_chan_buypoint_symbols = read_symbols("chan中枢T3A买点.json")
+        third_b_chan_buypoint_symbols = read_symbols("chan中枢T3B买点.json")
     else:
         # 清除缓存图标
         clear_cache(mline_chart_dir())
@@ -295,6 +335,14 @@ def main():
         clear_cache(buypoint_chart_dir(1))
         clear_cache(buypoint_chart_dir(2))
         clear_cache(buypoint_chart_dir(3))
+
+        clear_cache(buypoint_chan_chart_dir('1'))
+        clear_cache(buypoint_chan_chart_dir('2'))
+        clear_cache(buypoint_chan_chart_dir('1p'))
+        clear_cache(buypoint_chan_chart_dir('2s'))
+        clear_cache(buypoint_chan_chart_dir('3a'))
+        clear_cache(buypoint_chan_chart_dir('3b'))
+        
         # 选择月线反转股票
         for symbol in all_symbols:
             # 股票数据
@@ -372,7 +420,24 @@ def main():
                         second_buypoint_symbols.append(symbol)
                     elif buypoint_type == 3:
                         third_buypoint_symbols.append(symbol)
-                    
+
+            # 是否chan买卖点
+            buypoint_type = get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df)
+            if buypoint_type:
+                output_chart(symbol, df, buypoint_chart_dir(buypoint_type))
+                if buypoint_type == "1":
+                    one_chan_buypoint_symbols.append(symbol)
+                elif buypoint_type == "1p":
+                    one_p_chan_buypoint_symbols.append(symbol)
+                elif buypoint_type == "2":
+                    second_chan_buypoint_symbols.append(symbol)
+                elif buypoint_type == "2s":
+                    second_s_chan_buypoint_symbols.append(symbol)
+                elif buypoint_type == "3a":
+                    third_a_chan_buypoint_symbols.append(symbol)
+                elif buypoint_type == "3b":
+                    third_b_chan_buypoint_symbols.append(symbol)
+
         # 保存缓存缓存数据
         save_symbols(mline_symbols,"月线反转.json")
         save_symbols(minion_symbols,"小黄人三线红.json")
@@ -382,6 +447,13 @@ def main():
         save_symbols(one_buypoint_symbols,"中枢一买点.json")
         save_symbols(second_buypoint_symbols,"中枢二买点.json")
         save_symbols(third_buypoint_symbols,"中枢三买点.json")
+
+        save_symbols(one_chan_buypoint_symbols,"chan中枢T1买点.json")
+        save_symbols(one_p_chan_buypoint_symbols,"chan中枢T1P买点.json")
+        save_symbols(second_chan_buypoint_symbols,"chan中枢T2买点.json")
+        save_symbols(second_s_chan_buypoint_symbols,"chan中枢T2S买点.json")
+        save_symbols(third_a_chan_buypoint_symbols,"chan中枢T3A买点.json")
+        save_symbols(third_b_chan_buypoint_symbols,"chan中枢T3B买点.json")
     
     #打印筛选结果
     print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols)

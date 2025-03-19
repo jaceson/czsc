@@ -9,6 +9,9 @@ import requests
 import baostock as bs
 from lib.MyTT import *
 from Chan import CChan
+from ChanConfig import CChanConfig
+from DataAPI.BaoStockAPI import *
+from Common.CEnum import *
 from datetime import datetime, timedelta
 from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
@@ -547,27 +550,68 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
 """
     通过chan.y获取1、2、3买点
 """
-def get_chan_buy_point_type(symbol,df):
-    begin_time = "2023-06-01"
-    end_time = None
-    data_src = DATA_SRC.BAO_STOCK
-    lv_list = [KL_TYPE.K_DAY, KL_TYPE.K_30M]
+def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d', df=None):
+    if df is None or len(df.columns.tolist()) <= 0:
+        if start_date and end_date and frequency:
+            df = get_stock_pd(symbol, start_date, end_date, frequency)
+        else:
+            return ""
 
+    # 缠论分析配置
     config = CChanConfig({
         "trigger_step": True,
         "divergence_rate": 0.8,
         "min_zs_cnt": 1,
     })
 
+    # 缠论分析
     chan = CChan(
-        code=code,
-        begin_time=begin_time,  # 已经没啥用了这一行
-        end_time=end_time,  # 已经没啥用了这一行
-        data_src=data_src,  # 已经没啥用了这一行
-        lv_list=lv_list,
+        code=symbol,
+        begin_time=start_date,  # 已经没啥用了这一行
+        end_time=end_date,  # 已经没啥用了这一行
+        data_src=DATA_SRC.BAO_STOCK,  # 已经没啥用了这一行
+        lv_list=[KL_TYPE.K_DAY],
         config=config,
         autype=AUTYPE.QFQ,  # 已经没啥用了这一行
     )
+
+    # 寻找1、2、3买点
+    today = df['date'].iloc[-1]
+    yestoday = df['date'].iloc[-2]
+    for klu in get_kl_data(df):  # 获取单根K线
+        chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
+        bsp_list = chan.get_bsp()
+        if not bsp_list:
+            continue
+        last_bsp = bsp_list[-1]
+        if not last_bsp.is_buy:
+            continue
+
+        trade_date = last_bsp.klu.time.toDateStr("-")
+        if trade_date == today or trade_date == yestoday:
+            if BSP_TYPE.T1 in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                return BSP_TYPE.T1.value.lower()
+            elif BSP_TYPE.T1P in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T1P买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                return BSP_TYPE.T1.value.lower()
+            elif BSP_TYPE.T2 in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T2买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                return BSP_TYPE.T1.value.lower()
+            elif BSP_TYPE.T2S in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T2S买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                return BSP_TYPE.T1.value.lower()
+            elif BSP_TYPE.T3A in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T3A买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                return BSP_TYPE.T1.value.lower()
+            elif BSP_TYPE.T3B in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T3B买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                return BSP_TYPE.T1.value.lower()
+            else:
+                czsc_logger().info(f'❎没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                continue
+    return None
+        
 
 """
     生成扩展数据extrs和rps数据
@@ -603,6 +647,14 @@ def get_kd_data(df):
     return df
 
 """
+    生成chan需要的数据结构
+"""
+def get_kl_data(df):
+    fields = "date,open,high,low,close,volume,amount,turn"
+    for row_data in df[fields.split(",")].values.tolist():
+        yield CKLine_Unit(create_item_dict(row_data, GetColumnNameFromFieldList(fields)))
+
+"""
     获取股票数据
     参数：
         symbol：股票代码
@@ -610,7 +662,7 @@ def get_kd_data(df):
         end_date：结束日期
         
 """
-def get_stock_pd(symbol, start_date, end_date, frequency):
+def get_stock_data(symbol, start_date, end_date, frequency):
     """
         code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
         fields：指示简称，支持多指标输入，以半角逗号分隔，填写内容作为返回类型的列。详细指标列表见历史行情指标参数章节，日线与分钟线参数不同。此参数不可为空；
@@ -630,7 +682,7 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
     if int(rs.error_code) > 0:
         czsc_logger().info('query_history_k_data_plus respond error_code:' + rs.error_code)
         czsc_logger().info('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
-        return []
+        return [],[]
     data_list = []
     while (rs.error_code == '0') & rs.next():
         row_data = rs.get_row_data()
@@ -650,8 +702,11 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
         except Exception as e:
             # czsc_logger().info(e)
             continue
-        
-    df = pd.DataFrame(data_list, columns=rs.fields)
+    return data_list,rs.fields
+
+def get_stock_pd(symbol, start_date, end_date, frequency):
+    data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
+    df = pd.DataFrame(data_list, columns=fields)
     df['low'] = df['low'].astype(float)
     df['high'] = df['high'].astype(float)
     df['open'] = df['open'].astype(float)

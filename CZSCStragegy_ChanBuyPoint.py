@@ -1,0 +1,209 @@
+# coding: utf-8
+import os
+import sys
+from czsc_daily_util import *
+from lib.MyTT import *
+from Chan import *
+from ChanConfig import *
+from DataAPI.BaoStockAPI import *
+from Common.CEnum import *
+
+import pandas as pd
+import baostock as bs
+
+plus_list = {BSP_TYPE.T1:[],BSP_TYPE.T1P:[],BSP_TYPE.T2:[],BSP_TYPE.T2S:[],BSP_TYPE.T3A:[],BSP_TYPE.T3B:[]}
+minus_list = {BSP_TYPE.T1:[],BSP_TYPE.T1P:[],BSP_TYPE.T2:[],BSP_TYPE.T2S:[],BSP_TYPE.T3A:[],BSP_TYPE.T3B:[]}
+hold_days = 5
+ratio_map = {BSP_TYPE.T1:{},BSP_TYPE.T1P:{},BSP_TYPE.T2:{},BSP_TYPE.T2S:{},BSP_TYPE.T3A:{},BSP_TYPE.T3B:{}}
+for k in ratio_map.keys():
+    for x in range(1,hold_days+1):
+        ratio_map[k][x] = []
+
+def get_kl_data(data_list):
+    fields = "date,open,high,low,close,volume,amount,turn"
+    for row_data in data_list:
+        yield CKLine_Unit(create_item_dict(row_data, GetColumnNameFromFieldList(fields)))
+
+def get_chan_buy_point(symbol, start_date, end_date, frequency):
+    config = CChanConfig({
+        "trigger_step": True,
+        "divergence_rate": 0.8,
+        "min_zs_cnt": 1,
+    })
+
+    chan = CChan(
+        code=symbol,
+        begin_time=start_date,  # 已经没啥用了这一行
+        end_time=end_date,  # 已经没啥用了这一行
+        data_src=DATA_SRC.BAO_STOCK,  # 已经没啥用了这一行
+        lv_list=[KL_TYPE.K_DAY],
+        config=config,
+        autype=AUTYPE.QFQ,  # 已经没啥用了这一行
+    )
+
+    data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
+    while len(data_list) <= 0:
+        lg = bs.login()
+        print('login respond error_code:' + lg.error_code)
+        print('login respond  error_msg:' + lg.error_msg)
+        # 重新获取
+        data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
+
+    df = pd.DataFrame(data_list, columns=fields)
+    df['low'] = df['low'].astype(float)
+    df['high'] = df['high'].astype(float)
+    df['open'] = df['open'].astype(float)
+    df['close'] = df['close'].astype(float)
+    df['volume'] = df['volume'].astype(float)
+    df['amount'] = df['amount'].astype(float)
+    df['turn'] = df['turn'].astype(float)
+    df['datetime'] = pd.to_datetime(df['date'])
+
+    for klu in get_kl_data(data_list):  # 获取单根K线
+        chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
+        bsp_list = chan.get_bsp()
+        if not bsp_list:
+            continue
+        last_bsp = bsp_list[-1]
+        if not last_bsp.is_buy:
+            continue
+
+        print(f'{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+        
+        buy_type = None
+        if BSP_TYPE.T1 in last_bsp.type:
+            buy_type = BSP_TYPE.T1
+        elif BSP_TYPE.T1P in last_bsp.type:
+            buy_type = BSP_TYPE.T1P
+        elif BSP_TYPE.T2 in last_bsp.type:
+            buy_type = BSP_TYPE.T2
+        elif BSP_TYPE.T2S in last_bsp.type:
+            buy_type = BSP_TYPE.T2S
+        elif BSP_TYPE.T3A in last_bsp.type:
+            buy_type = BSP_TYPE.T3A
+        elif BSP_TYPE.T3B in last_bsp.type:
+            buy_type = BSP_TYPE.T3B
+        else:
+            print('无法识别的买卖点类型')
+            continue
+
+        buy_date = last_bsp.klu.time.toDateStr('-')
+        start_index = df.iloc[df['date'].values == buy_date].index[0]
+        buy_price = df['close'].iloc[start_index]
+        max_val = -1000
+        for idx in range(start_index+1,start_index+hold_days+1):
+            if idx<len(df['date']):
+                stock_close = df['close'].iloc[idx]
+                ratio = round(100*(stock_close-buy_price)/buy_price,2)
+                ratio_map[buy_type][idx-start_index].append(ratio)
+                max_val = max(max_val,ratio)
+
+        if max_val>0:
+            plus_list[buy_type].append(max_val)
+        else:
+            minus_list[buy_type].append(max_val)
+
+def get_buy_point(df,last_bi,threshold=2,klines=10,min_angle=30):
+    if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
+        # 上一波涨幅必须超过10个交易
+        up_kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
+        if up_kline_num<klines:
+            return False
+        # 笔的角度
+        if bi_angle(last_bi)<30:
+            return False
+        # 是否在抄底区间内
+        sqr_val = sqrt_val(last_bi.fx_a.fx, last_bi.fx_b.fx)
+        gold_low_val = gold_val_low(last_bi.fx_a.fx, last_bi.fx_b.fx)
+        min_val = min(sqr_val,gold_low_val)
+        start_index = df.iloc[df['date'].values == last_bi.edt.strftime("%Y-%m-%d")].index[0]
+        for idx in range(start_index,len(df['date'])):
+            stock_open = df['open'].iloc[idx]
+            stock_close = df['close'].iloc[idx]
+            stock_high = df['high'].iloc[idx]
+            stock_low = df['low'].iloc[idx]
+
+            # 三天内上涨
+            if stock_low <= min_val and (idx+3)<len(df['date']):
+                # 调整到黄金点位时间太长
+                # down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[idx])
+                # if down_kline_num>=up_kline_num:
+                #     break
+                sdt = last_bi.sdt.strftime("%Y-%m-%d")
+                edt = last_bi.edt.strftime("%Y-%m-%d")
+                print("{} {}到{}笔：{}到黄金分割点".format(symbol,sdt,edt,df['date'].iloc[idx]))
+                max_val = -1000
+                # min_val = 1000
+                for x in range(1,hold_days+1):
+                    stock_high = df['high'].iloc[idx+x]
+                    ratio = round(100*(stock_high-min_val)/min_val,2)
+                    ratio_map[x].append(ratio)
+                    max_val = max(max_val,ratio)
+                    # min_val = min(min_val,ratio)
+                    if ratio>0:
+                        print("第 {} 天{}：正收益，{}".format(x, df['date'].iloc[idx+x],ratio))
+                    else:
+                        print("第 {} 天{}：负收益，{}".format(x, df['date'].iloc[idx+x],ratio))
+
+                if max_val>0:
+                    plus_list.append(max_val)
+                else:
+                    minus_list.append(max_val)
+                break
+
+def print_console(s_plus_list,s_minus_list,s_ratio_map):
+    print("正收益次数："+str(len(s_plus_list)))
+    if len(s_minus_list)>0 or len(s_plus_list):
+        print("正收益占比："+str(round(100*len(s_plus_list)/(len(s_minus_list)+len(s_plus_list)),2))+"%")
+    total = 0
+    for x in range(0,len(s_plus_list)):
+        total += s_plus_list[x]
+    print("总的正收益："+str(total))
+
+    total = 0
+    for x in range(0,len(s_minus_list)):
+        total += s_minus_list[x]
+    print("总的负收益："+str(total))
+    
+    # 每天
+    for x in range(1,hold_days+1):
+        print("第 {} 天：".format(x))
+        res_list = s_ratio_map[x]
+        plus_num = 0
+        plus_val = 0
+        minus_num = 0
+        minus_val = 0
+        for idx in range(0,len(res_list)):
+            ratio = res_list[idx]
+            if ratio>0:
+                plus_num += 1
+                plus_val += ratio
+            else:
+                minus_num += 1
+                minus_val += ratio
+        print("     正收益次数："+str(plus_num))
+        if plus_num>0 or minus_num>0:
+            print("     正收益占比："+str(round(100*plus_num/(plus_num+minus_num),2))+"%")
+        print("     总的正收益："+str(plus_val))
+        print("     总的负收益："+str(minus_val))
+
+if __name__ == '__main__':
+    lg = bs.login()
+
+    start_date = "2024-01-01"
+    current_date = datetime.now()
+    current_date_str = current_date.strftime('%Y-%m-%d')    
+    df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
+    end_date = df['date'].iloc[-1]
+    
+    all_symbols  = get_daily_symbols()
+    for symbol in all_symbols:
+        # if symbol != "sh.600001":
+        #     continue
+        get_chan_buy_point(symbol,start_date,end_date,'d')
+
+    for buy_type in plus_list.keys():
+        print('购买类型：{}'.format(buy_type))
+        print_console(plus_list[buy_type],minus_list[buy_type],ratio_map[buy_type])
+        
+    bs.logout()
