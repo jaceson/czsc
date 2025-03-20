@@ -426,7 +426,7 @@ def main():
             chan_buypoint_type = None
             chan_buypoint_type = get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df)
             if chan_buypoint_type:
-                output_chart(symbol, df, buypoint_chart_dir(chan_buypoint_type))
+                output_chart(symbol, df, buypoint_chan_chart_dir(chan_buypoint_type))
                 if chan_buypoint_type == "1":
                     one_chan_buypoint_symbols.append(symbol)
                 elif chan_buypoint_type == "1p":
