@@ -576,8 +576,12 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
     )
 
     # 寻找1、2、3买点
+    hold_days = 5
     today = df['date'].iloc[-1]
     yestoday = df['date'].iloc[-2]
+    
+    plus_res = {}
+    minus_res = {}
     for klu in get_kl_data(df):  # 获取单根K线
         chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
         bsp_list = chan.get_bsp()
@@ -587,28 +591,70 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         if not last_bsp.is_buy:
             continue
 
+        # 买卖点类型
+        buy_type = None
+        if BSP_TYPE.T1 in last_bsp.type:
+            buy_type = BSP_TYPE.T1
+        elif BSP_TYPE.T1P in last_bsp.type:
+            buy_type = BSP_TYPE.T1P
+        elif BSP_TYPE.T2 in last_bsp.type:
+            buy_type = BSP_TYPE.T2
+        elif BSP_TYPE.T2S in last_bsp.type:
+            buy_type = BSP_TYPE.T2S
+        elif BSP_TYPE.T3A in last_bsp.type:
+            buy_type = BSP_TYPE.T3A
+        elif BSP_TYPE.T3B in last_bsp.type:
+            buy_type = BSP_TYPE.T3B
+        else:
+            print('无法识别的买卖点类型')
+            continue
+        # 统计一段时间内正负收益
+        if buy_type not in plus_res.keys():
+            plus_res[buy_type] = []
+        if buy_type not in minus_res.keys():
+            minus_res[buy_type] = []
         trade_date = last_bsp.klu.time.toDateStr("-")
+        start_index = df.iloc[df['date'].values == trade_date].index[0]
+        buy_price = df['close'].iloc[start_index]
+        if (start_index+hold_days+1)<len(df['date']):
+            buy_price = df['close'].iloc[start_index+1]
+            sell_price = df['close'].iloc[start_index+1+hold_days]
+            ratio = round(100*(sell_price-buy_price)/buy_price,2)
+            if ratio>0:
+                plus_res[buy_type].append(ratio)
+            else:
+                minus_res[buy_type].append(ratio)
+
         if trade_date == today or trade_date == yestoday:
+            # 数据样本太少
+            if len(plus_res[buy_type])<=0 and len(minus_res[buy_type])<=0:
+                return None
+            # 正收益率不超过80%
+            plus_ratio = round(100*len(plus_res[buy_type])/(len(minus_res[buy_type])+len(plus_res[buy_type])),2)
+            if plus_ratio<80:
+                czsc_logger().info(f'❎满足chan 买点，但是正收益率不高：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                return None
+
             if BSP_TYPE.T1 in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T1.value.lower()
             elif BSP_TYPE.T1P in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T1P买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'✅满足chan T1P买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T1P.value.lower()
             elif BSP_TYPE.T2 in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T2买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'✅满足chan T2买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T2.value.lower()
             elif BSP_TYPE.T2S in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T2S买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'✅满足chan T2S买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T2S.value.lower()
             elif BSP_TYPE.T3A in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T3A买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'✅满足chan T3A买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T3A.value.lower()
             elif BSP_TYPE.T3B in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T3B买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'✅满足chan T3B买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T3B.value.lower()
             else:
-                czsc_logger().info(f'❎没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+                czsc_logger().info(f'❎没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 continue
     return None
         
