@@ -306,8 +306,10 @@ def main():
     df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
     is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
     by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
-    by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
-    by_range = last_trade_date == datetime.now().strftime('%Y-%m-%d')
+    # by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
+    by_macd = False
+    # by_range = last_trade_date == datetime.now().strftime('%Y-%m-%d')
+    by_range = False
     if not is_stock_updated:
         czsc_logger().info("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
         mline_symbols = read_symbols("月线反转.json")
