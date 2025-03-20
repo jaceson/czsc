@@ -7,6 +7,15 @@ source ~/workspace/czsc/czsc_env/bin/activate
 # 股票筛选
 cd ~/czsc
 python czsc_daily_stock.py
+#commit
+if [[ "$param1" == "push" ]]; then
+	current_datetime=$(date +%Y-%m-%d_%H:%M:%S)
+	if grep -q "Stock Finished!" ~/czsc/data/log.json; then
+		git add .
+		git commit -m "${current_datetime} update daily stock"
+		git push
+	fi
+fi
 # etf数据更新
 python czsc_auto_etf.py
 # etf数据写入数据库
@@ -18,7 +27,7 @@ if [[ "$param1" == "push" ]]; then
 	current_datetime=$(date +%Y-%m-%d_%H:%M:%S)
 	if grep -q "Stock Finished!" ~/czsc/data/log.json; then
 		git add .
-		git commit -m "${current_datetime} update daily stock"
+		git commit -m "${current_datetime} update daily etf"
 		git push
 	fi
 fi
