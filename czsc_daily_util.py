@@ -608,33 +608,50 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         else:
             print('无法识别的买卖点类型')
             continue
+
         # 统计一段时间内正负收益
         if buy_type not in plus_res.keys():
-            plus_res[buy_type] = []
+            plus_res[buy_type] = {}
+            for x in range(1,hold_days+1):
+                plus_res[buy_type][x] = []
         if buy_type not in minus_res.keys():
-            minus_res[buy_type] = []
+            minus_res[buy_type] = {}
+            for x in range(1,hold_days+1):
+                minus_res[buy_type][x] = []
+
         trade_date = last_bsp.klu.time.toDateStr("-")
         start_index = df.iloc[df['date'].values == trade_date].index[0]
         buy_price = df['close'].iloc[start_index]
         if (start_index+hold_days+1)<len(df['date']):
-            buy_price = df['close'].iloc[start_index+1]
-            sell_price = df['close'].iloc[start_index+1+hold_days]
-            ratio = round(100*(sell_price-buy_price)/buy_price,2)
-            if ratio>0:
-                plus_res[buy_type].append(ratio)
-            else:
-                minus_res[buy_type].append(ratio)
+            buy_price = df['close'].iloc[start_index]
+            for x in range(1,hold_days+1):
+                sell_price = df['close'].iloc[start_index+x]
+                ratio = round(100*(sell_price-buy_price)/buy_price,2)
+                if ratio>0:
+                    plus_res[buy_type][x].append(ratio)
+                else:
+                    minus_res[buy_type][x].append(ratio)
 
         if trade_date == today or trade_date == yestoday:
+            plus_cnt = len(plus_res[buy_type][hold_days])
+            minus_cnt = len(minus_res[buy_type][hold_days])
             # 数据样本太少
-            if len(plus_res[buy_type])<=0 and len(minus_res[buy_type])<=0:
-                return None
+            if plus_cnt<=0 and minus_cnt<=0:
+                return None    
             # 正收益率不超过80%
-            plus_ratio = round(100*len(plus_res[buy_type])/(len(minus_res[buy_type])+len(plus_res[buy_type])),2)
+            plus_ratio = round(100*plus_cnt/(plus_cnt+minus_cnt),2)
             if plus_ratio<80:
                 czsc_logger().info(f'❎满足chan 买点，但是正收益率不高：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return None
-
+            # 打印购买后第N填收益情况
+            for x in range(1,hold_days+1):
+                plus_cnt = len(plus_res[buy_type][x])
+                minus_cnt = len(minus_res[buy_type][x])
+                plus_ratio = 0
+                if plus_cnt>0 or minus_cnt>0:
+                    plus_ratio = round(100*plus_cnt/(plus_cnt+minus_cnt),2)
+                czsc_logger().info(f'{symbol} 满足chan {buy_type.value}买点：第{x}天 {plus_cnt+minus_cnt},{plus_ratio}')
+            # 返回指定买卖点
             if BSP_TYPE.T1 in last_bsp.type:
                 czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T1.value.lower()
