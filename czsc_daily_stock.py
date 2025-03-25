@@ -347,6 +347,9 @@ def main():
         
         # 选择月线反转股票
         for symbol in all_symbols:
+            # 打印进度
+            print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
+
             # 股票数据
             df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             while len(df) <= 0:
