@@ -582,6 +582,7 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
     
     plus_res = {}
     minus_res = {}
+    trade_date_list = []
     for klu in get_kl_data(df):  # 获取单根K线
         chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
         bsp_list = chan.get_bsp()
@@ -590,7 +591,11 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         last_bsp = bsp_list[-1]
         if not last_bsp.is_buy:
             continue
-
+        trade_date = last_bsp.klu.time.toDateStr("-")
+        if trade_date in buy_date_list:
+            continue
+        trade_date_list.append(trade_date)
+        
         # 买卖点类型
         buy_type = None
         if BSP_TYPE.T1 in last_bsp.type:
@@ -619,7 +624,6 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
             for x in range(1,hold_days+1):
                 minus_res[buy_type][x] = []
 
-        trade_date = last_bsp.klu.time.toDateStr("-")
         start_index = df.iloc[df['date'].values == trade_date].index[0]
         buy_price = df['close'].iloc[start_index]
         if (start_index+hold_days+1)<len(df['date']):
@@ -638,9 +642,9 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
             # 数据样本太少
             if plus_cnt<=0 and minus_cnt<=0:
                 return None    
-            # 正收益率不超过80%
+            # 正收益率不超过90%
             plus_ratio = round(100*plus_cnt/(plus_cnt+minus_cnt),2)
-            if plus_ratio<80:
+            if plus_ratio<90:
                 czsc_logger().info(f'❎满足chan 买点，但是正收益率不高：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return None
             # 打印购买后第N填收益情况
