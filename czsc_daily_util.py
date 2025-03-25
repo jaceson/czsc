@@ -592,7 +592,7 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         if not last_bsp.is_buy:
             continue
         trade_date = last_bsp.klu.time.toDateStr("-")
-        if trade_date in buy_date_list:
+        if trade_date in trade_date_list:
             continue
         trade_date_list.append(trade_date)
         
