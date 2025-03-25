@@ -59,6 +59,7 @@ def get_chan_buy_point(symbol, start_date, end_date, frequency):
     df['turn'] = df['turn'].astype(float)
     df['datetime'] = pd.to_datetime(df['date'])
 
+    buy_date_list = []
     for klu in get_kl_data(data_list):  # 获取单根K线
         chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
         bsp_list = chan.get_bsp()
@@ -68,7 +69,11 @@ def get_chan_buy_point(symbol, start_date, end_date, frequency):
         if not last_bsp.is_buy:
             continue
 
-        print(f'{symbol} {last_bsp.klu.time} {last_bsp.type[0]}')
+        buy_date = last_bsp.klu.time.toDateStr('-')
+        if buy_date in buy_date_list:
+            continue
+        buy_date_list.append(buy_date)
+        print(f'{symbol} {last_bsp.klu.time} {last_bsp.type}')
         
         buy_type = None
         if BSP_TYPE.T1 in last_bsp.type:
@@ -87,7 +92,6 @@ def get_chan_buy_point(symbol, start_date, end_date, frequency):
             print('无法识别的买卖点类型')
             continue
 
-        buy_date = last_bsp.klu.time.toDateStr('-')
         start_index = df.iloc[df['date'].values == buy_date].index[0]
         buy_price = df['close'].iloc[start_index]
         max_val = -1000
@@ -198,7 +202,7 @@ if __name__ == '__main__':
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
-        # if symbol != "sh.600001":
+        # if symbol != "sh.600562":
         #     continue
         get_chan_buy_point(symbol,start_date,end_date,'d')
 
