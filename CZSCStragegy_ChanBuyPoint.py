@@ -76,18 +76,18 @@ def get_chan_buy_point(symbol, start_date, end_date, frequency):
         print(f'{symbol} {last_bsp.klu.time} {last_bsp.type}')
         
         buy_type = None
-        if BSP_TYPE.T1 in last_bsp.type:
-            buy_type = BSP_TYPE.T1
-        elif BSP_TYPE.T1P in last_bsp.type:
-            buy_type = BSP_TYPE.T1P
-        elif BSP_TYPE.T2 in last_bsp.type:
-            buy_type = BSP_TYPE.T2
+        if BSP_TYPE.T3B in last_bsp.type:
+            buy_type = BSP_TYPE.T3B
+        elif BSP_TYPE.T3A in last_bsp.type:
+            buy_type = BSP_TYPE.T3A 
         elif BSP_TYPE.T2S in last_bsp.type:
             buy_type = BSP_TYPE.T2S
-        elif BSP_TYPE.T3A in last_bsp.type:
-            buy_type = BSP_TYPE.T3A
-        elif BSP_TYPE.T3B in last_bsp.type:
-            buy_type = BSP_TYPE.T3B
+        elif BSP_TYPE.T2 in last_bsp.type:
+            buy_type = BSP_TYPE.T2
+        elif BSP_TYPE.T1P in last_bsp.type:
+            buy_type = BSP_TYPE.T1P
+        elif BSP_TYPE.T1 in last_bsp.type:
+            buy_type = BSP_TYPE.T1
         else:
             print('无法识别的买卖点类型')
             continue

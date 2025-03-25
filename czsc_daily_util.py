@@ -598,18 +598,18 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         
         # 买卖点类型
         buy_type = None
-        if BSP_TYPE.T1 in last_bsp.type:
-            buy_type = BSP_TYPE.T1
-        elif BSP_TYPE.T1P in last_bsp.type:
-            buy_type = BSP_TYPE.T1P
-        elif BSP_TYPE.T2 in last_bsp.type:
-            buy_type = BSP_TYPE.T2
-        elif BSP_TYPE.T2S in last_bsp.type:
-            buy_type = BSP_TYPE.T2S
+        if BSP_TYPE.T3B in last_bsp.type:
+            buy_type = BSP_TYPE.T3B
         elif BSP_TYPE.T3A in last_bsp.type:
             buy_type = BSP_TYPE.T3A
-        elif BSP_TYPE.T3B in last_bsp.type:
-            buy_type = BSP_TYPE.T3B
+        elif BSP_TYPE.T2S in last_bsp.type:
+            buy_type = BSP_TYPE.T2S
+        elif BSP_TYPE.T2 in last_bsp.type:
+            buy_type = BSP_TYPE.T2
+        elif BSP_TYPE.T1P in last_bsp.type:
+            buy_type = BSP_TYPE.T1P
+        elif BSP_TYPE.T1 in last_bsp.type:
+            buy_type = BSP_TYPE.T1
         else:
             print('无法识别的买卖点类型')
             continue
@@ -656,24 +656,24 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
                     plus_ratio = round(100*plus_cnt/(plus_cnt+minus_cnt),2)
                 czsc_logger().info(f'{symbol} 满足chan {buy_type.value}买点：第{x}天 {plus_cnt+minus_cnt},{plus_ratio}')
             # 返回指定买卖点
-            if BSP_TYPE.T1 in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
-                return BSP_TYPE.T1.value.lower()
-            elif BSP_TYPE.T1P in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T1P买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
-                return BSP_TYPE.T1P.value.lower()
-            elif BSP_TYPE.T2 in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T2买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
-                return BSP_TYPE.T2.value.lower()
-            elif BSP_TYPE.T2S in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T2S买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
-                return BSP_TYPE.T2S.value.lower()
+            if BSP_TYPE.T3B in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T3B买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                return BSP_TYPE.T3B.value.lower()
             elif BSP_TYPE.T3A in last_bsp.type:
                 czsc_logger().info(f'✅满足chan T3A买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T3A.value.lower()
-            elif BSP_TYPE.T3B in last_bsp.type:
-                czsc_logger().info(f'✅满足chan T3B买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
-                return BSP_TYPE.T3B.value.lower()
+            elif BSP_TYPE.T2S in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T2S买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                return BSP_TYPE.T2S.value.lower()
+            elif BSP_TYPE.T2 in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T2买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                return BSP_TYPE.T2.value.lower()
+            elif BSP_TYPE.T1P in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T1P买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                return BSP_TYPE.T1P.value.lower()
+            elif BSP_TYPE.T1 in last_bsp.type:
+                czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                return BSP_TYPE.T1.value.lower()
             else:
                 czsc_logger().info(f'❎没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 continue
