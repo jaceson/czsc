@@ -647,6 +647,9 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
             if plus_ratio<90:
                 czsc_logger().info(f'❎满足chan 买点，但是正收益率不高：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return None
+            if (plus_cnt+minus_cnt)<3:
+                czsc_logger().info(f'❎满足chan 买点，但是可回测次数不多：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {(plus_cnt+minus_cnt)}')
+                return None
             # 打印购买后第N填收益情况
             for x in range(1,hold_days+1):
                 plus_cnt = len(plus_res[buy_type][x])
