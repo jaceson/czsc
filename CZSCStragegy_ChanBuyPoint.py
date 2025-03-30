@@ -202,8 +202,8 @@ if __name__ == '__main__':
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
-        # if symbol != "sh.600562":
-        #     continue
+        if symbol != "sz.301378":
+            continue
         get_chan_buy_point(symbol,start_date,end_date,'d')
 
     for buy_type in plus_list.keys():
