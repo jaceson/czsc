@@ -1,88 +1,108 @@
 # coding: utf-8
 import os
 import sys
-from CZSCStragegy import *
+from czsc_daily_util import *
+from lib.MyTT import *
+import pandas as pd
+import baostock as bs
 
-class KDChaodiStrategy(CZSCStragegy):
-    def __init__(self):
-        super().__init__()
-        self.has_Profit = False
-        self.has_over_three = False
-        self.has_over_five = False
-        # Keep a reference to the "close" line in the data[0] dataseries
+plus_list = []
+minus_list = []
+hold_days = 5
+ratio_map = {}
+for x in range(1,hold_days+1):
+    ratio_map[x] = []
 
-    def get_datak0(self,idx):
-        return self.datak0[self.dataclose.get_idx()+idx]
+def get_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
+    ndf = get_kd_data(df)
+    buy_con = (
+        (df['K0'] < MIN_K) & (df['K0'] < REF(df['K0'],1)) &
+        (((df['K0']-REF(df['K0'],1))>=MIN_KD) | ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= MIN_KR)) & 
+        (REF(df['K0'],1)<REF(df['K0'],2)) & 
+        (REF(df['K0'],2)<REF(df['K0'],3)) & 
+        (REF(df['K0'],3)<REF(df['K0'],4)) & 
+        (REF(df['K0'],4)<REF(df['K0'],5)) & 
+        (REF(df['K0'],5)<REF(df['K0'],6)) & 
+        (REF(df['K0'],6)<REF(df['K0'],7)) & 
+        (REF(df['K0'],7)<REF(df['K0'],8)) &
+        (df['low'] <= REF(df['low'], 1)) &
+        (df['high'] <= REF(df['high'], 1)) &
+        (REF(df['low'], 1) <= REF(df['low'], 2)) &
+        (REF(df['high'], 1) <= REF(df['high'], 2)) 
+    )
 
-    def next(self):
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
-        if self.order:
-            return
+    if not df[buy_con].empty:
+        selected_indexs = ndf[buy_con].index
+        for idx in selected_indexs:
+            buy_date = ndf['date'][idx]
+            start_index = df.iloc[df['date'].values == buy_date].index[0]
+            buy_price = df['close'].iloc[start_index]
+            max_val = -1000
+            for idx in range(start_index+1,start_index+hold_days+1):
+                if idx<len(df['date']):
+                    stock_close = df['close'].iloc[idx]
+                    ratio = round(100*(stock_close-buy_price)/buy_price,2)
+                    ratio_map[idx-start_index].append(ratio)
+                    max_val = max(max_val,ratio)
 
-        k0 = self.get_datak0(0)
-        k1 = self.get_datak0(-1)
-        k2 = self.get_datak0(-2)
-        # Check if we are in the market
-        if not self.position:
-            self.has_Profit = False
-            self.has_over_three = False
-            self.has_over_five = False
-        
-            k3 = self.get_datak0(-3)
-            k4 = self.get_datak0(-4)
-            k5 = self.get_datak0(-5)
-            k6 = self.get_datak0(-6)
-            k7 = self.get_datak0(-7)
-            k8 = self.get_datak0(-8)
-            
-            buy_con = (
-                (k0 < 30) & (k1<k2) & (k2<k3) &
-                (k3<k4) & (k4<k5) & (k5<k6) &
-                (k6<k7) & (k7<k8) &
-                (self.datalow[0]<=self.datalow[-1]) &
-                (self.datahigh[0]<=self.datahigh[-1]) &
-                (self.datalow[-1]<=self.datalow[-2]) &
-                (self.datahigh[-2]<=self.datahigh[-2]) 
-            )
-            if buy_con:
-                if k0-k1<0 and k0-k1>-0.5 and k0 < 20:
-                    self.order = self.buy()
-                elif (k0-k1)/k1>=-0.03:
-                    self.order = self.buy()
-        else:
-            if not self.has_Profit:
-                if self.dataclose[0]>self.buy_price:
-                    self.has_Profit = True
-                if self.dataclose[0]/self.buy_price<0.95:
-                    self.order = self.sell()
+            if max_val>0:
+                plus_list.append(max_val)
             else:
-                if self.dataclose[0]/self.buy_price>1.05:
-                    if k0-k1<3:
-                        self.order = self.sell()
-                elif self.dataclose[0]/self.buy_price>1.03:
-                    if self.has_over_five:
-                        self.order = self.sell()
-                    elif (k0-k1)<(k1-k2):
-                        self.order = self.sell()
-                else:
-                    if self.has_over_three:
-                        self.order = self.sell()
-                    elif (k0-k1)<(k1-k2):
-                        self.order = self.sell()
-                    else:
-                        if self.dataclose[0]<self.buy_price:
-                            self.order = self.sell()
+                minus_list.append(max_val)
 
-            if not self.has_over_three:
-                if self.dataclose[0]/self.buy_price>1.03:
-                    self.has_over_three = True
-            if not self.has_over_five:
-                if self.dataclose[0]/self.buy_price>1.05:
-                    self.has_over_five = True            
+def print_console(s_plus_list,s_minus_list,s_ratio_map):
+    print("正收益次数："+str(len(s_plus_list)))
+    if len(s_minus_list)>0 or len(s_plus_list):
+        print("正收益占比："+str(round(100*len(s_plus_list)/(len(s_minus_list)+len(s_plus_list)),2))+"%")
+    total = 0
+    for x in range(0,len(s_plus_list)):
+        total += s_plus_list[x]
+    print("总的正收益："+str(total))
+
+    total = 0
+    for x in range(0,len(s_minus_list)):
+        total += s_minus_list[x]
+    print("总的负收益："+str(total))
+    
+    # 每天
+    for x in range(1,hold_days+1):
+        print("第 {} 天：".format(x))
+        res_list = s_ratio_map[x]
+        plus_num = 0
+        plus_val = 0
+        minus_num = 0
+        minus_val = 0
+        for idx in range(0,len(res_list)):
+            ratio = res_list[idx]
+            if ratio>0:
+                plus_num += 1
+                plus_val += ratio
+            else:
+                minus_num += 1
+                minus_val += ratio
+        print("     正收益次数："+str(plus_num))
+        if plus_num>0 or minus_num>0:
+            print("     正收益占比："+str(round(100*plus_num/(plus_num+minus_num),2))+"%")
+        print("     总的正收益："+str(plus_val))
+        print("     总的负收益："+str(minus_val))
 
 if __name__ == '__main__':
-    code = "sh.600699"  # 示例股票代码
+    lg = bs.login()
+
     start_date = "2024-01-01"
-    end_date = "2025-02-21"
-    backtrader_symbol(code, start_date, end_date, KDChaodiStrategy)
+    current_date = datetime.now()
+    current_date_str = current_date.strftime('%Y-%m-%d')    
+    df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
+    end_date = df['date'].iloc[-1]
+    
+    all_symbols  = get_daily_symbols()
+    for symbol in all_symbols:
+        if symbol != "sz.301378":
+            continue
+        get_kd_buy_point(symbol,start_date,end_date,'d')
+
+    print_console(plus_list,minus_list,ratio_map)
+        
+    bs.logout()
+
 

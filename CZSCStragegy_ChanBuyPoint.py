@@ -107,54 +107,6 @@ def get_chan_buy_point(symbol, start_date, end_date, frequency):
         else:
             minus_list[buy_type].append(max_val)
 
-def get_buy_point(df,last_bi,threshold=2,klines=10,min_angle=30):
-    if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
-        # 上一波涨幅必须超过10个交易
-        up_kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
-        if up_kline_num<klines:
-            return False
-        # 笔的角度
-        if bi_angle(last_bi)<30:
-            return False
-        # 是否在抄底区间内
-        sqr_val = sqrt_val(last_bi.fx_a.fx, last_bi.fx_b.fx)
-        gold_low_val = gold_val_low(last_bi.fx_a.fx, last_bi.fx_b.fx)
-        min_val = min(sqr_val,gold_low_val)
-        start_index = df.iloc[df['date'].values == last_bi.edt.strftime("%Y-%m-%d")].index[0]
-        for idx in range(start_index,len(df['date'])):
-            stock_open = df['open'].iloc[idx]
-            stock_close = df['close'].iloc[idx]
-            stock_high = df['high'].iloc[idx]
-            stock_low = df['low'].iloc[idx]
-
-            # 三天内上涨
-            if stock_low <= min_val and (idx+3)<len(df['date']):
-                # 调整到黄金点位时间太长
-                # down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[idx])
-                # if down_kline_num>=up_kline_num:
-                #     break
-                sdt = last_bi.sdt.strftime("%Y-%m-%d")
-                edt = last_bi.edt.strftime("%Y-%m-%d")
-                print("{} {}到{}笔：{}到黄金分割点".format(symbol,sdt,edt,df['date'].iloc[idx]))
-                max_val = -1000
-                # min_val = 1000
-                for x in range(1,hold_days+1):
-                    stock_high = df['high'].iloc[idx+x]
-                    ratio = round(100*(stock_high-min_val)/min_val,2)
-                    ratio_map[x].append(ratio)
-                    max_val = max(max_val,ratio)
-                    # min_val = min(min_val,ratio)
-                    if ratio>0:
-                        print("第 {} 天{}：正收益，{}".format(x, df['date'].iloc[idx+x],ratio))
-                    else:
-                        print("第 {} 天{}：负收益，{}".format(x, df['date'].iloc[idx+x],ratio))
-
-                if max_val>0:
-                    plus_list.append(max_val)
-                else:
-                    minus_list.append(max_val)
-                break
-
 def print_console(s_plus_list,s_minus_list,s_ratio_map):
     print("正收益次数："+str(len(s_plus_list)))
     if len(s_minus_list)>0 or len(s_plus_list):
