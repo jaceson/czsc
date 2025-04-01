@@ -98,6 +98,9 @@ if __name__ == '__main__':
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
+        # 打印进度
+        print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
+            
         # if symbol != "sz.300264":
         #     continue
         df = get_stock_pd(symbol, start_date, current_date_str, 'd')

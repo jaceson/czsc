@@ -154,6 +154,9 @@ if __name__ == '__main__':
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
+        # 打印进度
+        print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
+        
         if symbol != "sz.301378":
             continue
         get_chan_buy_point(symbol,start_date,end_date,'d')
