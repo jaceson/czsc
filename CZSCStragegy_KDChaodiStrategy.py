@@ -35,6 +35,7 @@ def get_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
         selected_indexs = ndf[buy_con].index
         for idx in selected_indexs:
             buy_date = ndf['date'][idx]
+            print(symbol+" 抄底日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             buy_price = df['close'].iloc[start_index]
             max_val = -1000
@@ -89,7 +90,7 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
 if __name__ == '__main__':
     lg = bs.login()
 
-    start_date = "2024-01-01"
+    start_date = "2020-01-01"
     current_date = datetime.now()
     current_date_str = current_date.strftime('%Y-%m-%d')    
     df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
@@ -97,9 +98,10 @@ if __name__ == '__main__':
     
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
-        if symbol != "sz.301378":
-            continue
-        get_kd_buy_point(symbol,start_date,end_date,'d')
+        # if symbol != "sz.300264":
+        #     continue
+        df = get_stock_pd(symbol, start_date, current_date_str, 'd')
+        get_kd_buy_point(symbol,df)
 
     print_console(plus_list,minus_list,ratio_map)
         

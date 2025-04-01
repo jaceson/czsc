@@ -862,6 +862,17 @@ def is_rz_rq_symobl(symbol):
     return symbol in symbols
 
 """
+    股票当季度是否盈利
+"""
+def is_growth_benefit(symbol):
+    growth_list = []
+    rs_growth = bs.query_forecast_report(symbol, start_date="2024-01-01", end_date="2025-03-31")
+    # rs_growth = bs.query_growth_data(code=symbol,year="2024")
+    while (rs_growth.error_code == '0') & rs_growth.next():
+        growth_list.append(rs_growth.get_row_data())
+    print(growth_list)
+
+"""
     获取所有可融资融券
 """
 RZ_RQ_STOCKS = []
