@@ -11,12 +11,12 @@ SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
 rm -rf ${SCRIPT_DIR}/data/log.json
 source ${SCRIPT_DIR}/czsc_env/bin/activate
 # 股票筛选
-cd ${SCRIPT_DIR}/czsc
+cd ${SCRIPT_DIR}
 python czsc_daily_stock.py
 #commit
 if [[ "$param1" == "push" ]]; then
 	current_datetime=$(date +%Y-%m-%d_%H:%M:%S)
-	if grep -q "Stock Finished!" ~/czsc/data/log.json; then
+	if grep -q "Stock Finished!" ${SCRIPT_DIR}/data/log.json; then
 		git add .
 		git commit -m "${current_datetime} update daily stock"
 		git push
@@ -33,7 +33,7 @@ if [[ "$param2" == "push" ]]; then
 	python czsc_daily_etf.py
 
 	current_datetime=$(date +%Y-%m-%d_%H:%M:%S)
-	if grep -q "Stock Finished!" ~/czsc/data/log.json; then
+	if grep -q "Stock Finished!" ${SCRIPT_DIR}/data/log.json; then
 		git add .
 		git commit -m "${current_datetime} update daily etf"
 		git push
