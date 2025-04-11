@@ -3,11 +3,15 @@ param1="$1"
 param2="$2"
 echo "参数1: $param1"
 echo "参数2: $param2"
+# 获取当前脚本的绝对路径
+SCRIPT_PATH=$(realpath "$0")
+# 获取当前脚本所在的目录
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
 # 激活虚拟环境
-rm -rf ~/czsc/data/log.json
-source ~/workspace/czsc/czsc_env/bin/activate
+rm -rf ${SCRIPT_DIR}/data/log.json
+source ${SCRIPT_DIR}/czsc_env/bin/activate
 # 股票筛选
-cd ~/czsc
+cd ${SCRIPT_DIR}/czsc
 python czsc_daily_stock.py
 #commit
 if [[ "$param1" == "push" ]]; then
