@@ -37,6 +37,7 @@ fonttools==4.55.3
 fsspec==2025.2.0
 gitdb==4.0.12
 GitPython==3.1.44
+h11==0.14.0
 html5lib==1.1
 huggingface-hub==0.28.1
 hyperlink==21.0.0
@@ -73,6 +74,7 @@ numpy==1.26.4
 openpyxl==3.1.5
 optuna==4.1.0
 oss2==2.19.1
+outcome==1.3.0.post0
 packaging==24.2
 pandas==2.2.3
 parse==1.20.2
@@ -98,6 +100,7 @@ Pygments==2.19.1
 pyOpenSSL==25.0.0
 pyotp==2.9.0
 pyparsing==3.2.1
+PySocks==1.7.1
 pytdx==1.72
 pytest==8.3.4
 python-dateutil==2.9.0.post0
@@ -116,10 +119,13 @@ safetensors==0.5.2
 scikit-learn==1.6.1
 scipy==1.15.1
 seaborn==0.13.2
+selenium==4.29.0
 service-identity==24.2.0
 simplejson==3.19.3
 six==1.17.0
 smmap==5.0.2
+sniffio==1.3.1
+sortedcontainers==2.4.0
 soupsieve==2.6
 SQLAlchemy==2.0.37
 stack-data==0.6.3
@@ -138,6 +144,8 @@ tqdm==4.67.1
 traitlets==5.14.3
 transformers==4.48.2
 trendmaster==0.2.3
+trio==0.29.0
+trio-websocket==0.12.2
 tushare==1.4.17
 Twisted==24.11.0
 txaio==23.1.1
@@ -150,6 +158,7 @@ websocket-client==1.8.0
 websockets==14.2
 Werkzeug==3.1.3
 wrapt==1.17.2
+wsproto==1.2.0
 xlrd==2.0.1
 zope.interface==7.2
 zstandard==0.23.0
