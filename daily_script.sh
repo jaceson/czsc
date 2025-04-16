@@ -8,10 +8,10 @@ SCRIPT_PATH=$(realpath "$0")
 # 获取当前脚本所在的目录
 SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
 # 激活虚拟环境
+cd ${SCRIPT_DIR}
 rm -rf ${SCRIPT_DIR}/data/log.json
 source ${SCRIPT_DIR}/czsc_env/bin/activate
 # 股票筛选
-cd ${SCRIPT_DIR}
 python czsc_daily_stock.py
 #commit
 if [[ "$param1" == "push" ]]; then

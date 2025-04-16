@@ -1,5 +1,5 @@
 {
-    "today": "2025-04-07",
+    "today": "2025-04-15",
     "list": [
         {
             "code": "159001",
@@ -26,12 +26,28 @@
             "name": "\u536b\u661fETF"
         },
         {
+            "code": "159207",
+            "name": "\u9ad8\u80a1\u606fETF"
+        },
+        {
             "code": "159209",
             "name": "\u4e2d\u8bc1\u7ea2\u5229\u8d28\u91cfETF"
         },
         {
+            "code": "159211",
+            "name": "\u6df1\u8bc1100ETF\u5bcc\u56fd"
+        },
+        {
+            "code": "159212",
+            "name": "\u6df1100ETF\u5357\u65b9"
+        },
+        {
             "code": "159215",
             "name": "\u4e2d\u8bc1A500ETF\u6307\u6570\u57fa\u91d1"
+        },
+        {
+            "code": "159216",
+            "name": "\u6df1\u8bc1100ETF\u5927\u6210"
         },
         {
             "code": "159217",
@@ -214,6 +230,10 @@
             "name": "\u521b\u4e1a\u677f\u4eba\u5de5\u667a\u80fdETF\u534e\u5b9d"
         },
         {
+            "code": "159366",
+            "name": "\u6e2f\u80a1\u533b\u7597ETF"
+        },
+        {
             "code": "159367",
             "name": "\u521b\u4e1a\u677f50ETF\u534e\u590f"
         },
@@ -242,6 +262,10 @@
             "name": "A500ETF\u6307\u6570\u57fa\u91d1"
         },
         {
+            "code": "159377",
+            "name": "\u521b\u4e1a\u677f\u533b\u836fETF\u56fd\u6cf0"
+        },
+        {
             "code": "159378",
             "name": "\u901a\u7528\u822a\u7a7aETF"
         },
@@ -268,6 +292,10 @@
         {
             "code": "159388",
             "name": "\u521b\u4e1a\u677f\u4eba\u5de5\u667a\u80fdETF\u56fd\u6cf0"
+        },
+        {
+            "code": "159390",
+            "name": "A50\u6307\u6570ETF"
         },
         {
             "code": "159393",
@@ -487,7 +515,7 @@
         },
         {
             "code": "159559",
-            "name": "\u673a\u5668\u4eba100ETF"
+            "name": "\u673a\u5668\u4eba50ETF"
         },
         {
             "code": "159560",
