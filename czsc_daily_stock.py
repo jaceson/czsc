@@ -365,10 +365,10 @@ def main():
             mline_dates = get_mline_turn(df)
             if symbol_last_trade_date in mline_dates:
                 is_can_add = (not by_reach)
-                if by_reach:
-                    zs_num,bi_num = get_reach_support_lines(symbol,df)
-                    if zs_num>0 or bi_num>0:
-                        is_can_add = True
+                # if by_reach:
+                #     zs_num,bi_num = get_reach_support_lines(symbol,df)
+                #     if zs_num>0 or bi_num>0:
+                #         is_can_add = True
                 if is_can_add:
                     czsc_logger().info(symbol+"出现月线反转")
                     mline_symbols.append(symbol)
@@ -378,10 +378,10 @@ def main():
             minion_dates = get_minion_trend(df)
             if symbol_last_trade_date in minion_dates:
                 is_can_add = (not by_reach)
-                if by_reach:
-                    zs_num,bi_num = get_reach_support_lines(symbol,df)
-                    if zs_num>0 or bi_num>0:
-                        is_can_add = True
+                # if by_reach:
+                #     zs_num,bi_num = get_reach_support_lines(symbol,df)
+                #     if zs_num>0 or bi_num>0:
+                #         is_can_add = True
                 if is_can_add:
                     czsc_logger().info(symbol+"出现小黄人三线红")
                     minion_symbols.append(symbol)
@@ -401,10 +401,10 @@ def main():
             if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
                 if has_cross_ma(df) or has_close_ma(df):
                     is_can_add = (not by_reach)
-                    if by_reach:
-                        zs_num,bi_num = get_reach_support_lines(symbol,df)
-                        if zs_num>0 or bi_num>0:
-                            is_can_add = True
+                    # if by_reach:
+                    #     zs_num,bi_num = get_reach_support_lines(symbol,df)
+                    #     if zs_num>0 or bi_num>0:
+                    #         is_can_add = True
                     if is_can_add:
                         strong_symbols.append(symbol)
                         output_chart(symbol, df, strong_chart_dir())
@@ -414,10 +414,10 @@ def main():
             buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range)
             if buypoint_type>0:
                 is_can_add = (not by_reach)
-                if by_reach:
-                    zs_num,bi_num = get_reach_support_lines(symbol,df)
-                    if zs_num>0 or bi_num>0:
-                        is_can_add = True
+                # if by_reach:
+                    # zs_num,bi_num = get_reach_support_lines(symbol,df)
+                    # if zs_num>0 or bi_num>0:
+                        # is_can_add = True
                 if is_can_add:
                     output_chart(symbol, df, buypoint_chart_dir(buypoint_type))
                     if buypoint_type == 1:
