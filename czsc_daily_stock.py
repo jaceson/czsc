@@ -305,7 +305,8 @@ def main():
     last_trade_date = get_latest_trade_date()
     df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
     is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
-    by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
+    by_reach = False
+    # by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
     # by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
     by_macd = False
     # by_range = last_trade_date == datetime.now().strftime('%Y-%m-%d')
