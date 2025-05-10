@@ -31,6 +31,11 @@ def output_chart(symbol, df, cachedir):
     file_png = "{}.png".format(symbol)
     chart.render(os.path.join(cachedir, file_html))
 
+    # png目录
+    cachedir = cachedir+"/png"
+    if not os.path.isdir(cachedir):
+        os.makedirs(cachedir)
+
     # 输出png
     config = CChanConfig({
         "bi_strict": True,
