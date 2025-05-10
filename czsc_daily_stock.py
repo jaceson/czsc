@@ -7,7 +7,10 @@ import baostock as bs
 from czsc_daily_util import *
 from czsc.analyze import *
 from datetime import datetime
-from snapshot_phantomjs import snapshot
+from ChanConfig import CChanConfig
+from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
+from Plot.AnimatePlotDriver import CAnimateDriver
+from Plot.PlotDriver import CPlotDriver
 
 START_TRADE_DATE = "2020-01-01"
 def output_chart(symbol, df, cachedir):
@@ -22,11 +25,83 @@ def output_chart(symbol, df, cachedir):
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
          [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx}]
 
+    # 输出html
     chart = kline_pro(kline, bi=bi, title="{} - {}".format(get_symbols_name(c.symbol), c.freq))
     file_html = "{}.html".format(symbol)
     file_png = "{}.png".format(symbol)
     chart.render(os.path.join(cachedir, file_html))
-    snapshot(file_html, file_png)
+
+    # 输出png
+    config = CChanConfig({
+        "bi_strict": True,
+        "trigger_step": True,
+        "skip_step": 0,
+        "divergence_rate": float("inf"),
+        "bsp2_follow_1": False,
+        "bsp3_follow_1": False,
+        "min_zs_cnt": 0,
+        "bs1_peak": False,
+        "macd_algo": "peak",
+        "bs_type": '1,2,3a,1p,2s,3b',
+        "print_warning": True,
+        "zs_algo": "normal",
+    })
+
+    plot_config = {
+        "plot_kline": True,
+        "plot_kline_combine": True,
+        "plot_bi": True,
+        "plot_seg": True,
+        "plot_eigen": False,
+        "plot_zs": True,
+        "plot_macd": True,
+        "plot_mean": False,
+        "plot_channel": False,
+        "plot_bsp": True,
+        "plot_extrainfo": False,
+        "plot_demark": False,
+        "plot_marker": False,
+        "plot_rsi": False,
+        "plot_kdj": False,
+    }
+
+    plot_para = {
+        "seg": {
+            "plot_trendline": True,
+        },
+        "bi": {
+            "show_num": True,
+            "disp_end": True,
+        },
+        "figure": {
+            "x_range": 400,
+        },
+        "marker": {
+            # "markers": {  # text, position, color
+            #     '2023/06/01': ('marker here', 'up', 'red'),
+            #     '2023/06/08': ('marker here', 'down')
+            # },
+        }
+    }
+    chan = CChan(
+        code=symbol,
+        begin_time=START_TRADE_DATE,
+        end_time=None,
+        data_src=DATA_SRC.BAO_STOCK,
+        lv_list=[KL_TYPE.K_DAY],
+        config=config,
+        autype=AUTYPE.QFQ,
+    )
+    for klu in get_kl_data(df):  # 获取单根K线
+        chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
+    plot_driver = CPlotDriver(
+            chan,
+            plot_config=plot_config,
+            plot_para=plot_para,
+        )
+    # plot_driver.figure.show()
+    plot_driver.save2img(os.path.join(cachedir, file_png))
+
 
 def mline_chart_dir():
     return get_data_dir()+"/html/月线反转"

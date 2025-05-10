@@ -878,7 +878,7 @@ def get_daily_symbols():
     result = read_json(symbol_file)
     all_codes = []
     for item in result:
-        all_codes.append(item.keys[0])
+        all_codes.append(list(item.keys())[0])
     return all_codes
 
 """
@@ -887,7 +887,10 @@ def get_daily_symbols():
 def get_symbols_name(symbol):
     symbol_file = os.path.join(get_data_dir(), 'sh_sz_stock.json')
     result = read_json(symbol_file)
-    return result[symbol]
+    for item in result:
+        if symbol in item.keys():
+            return item[symbol]
+    return 'UNKNOWN'
 
 """
     更新A股所有股票
