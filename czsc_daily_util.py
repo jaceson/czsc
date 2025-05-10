@@ -283,6 +283,28 @@ def bi_day_ratio(bi):
 def is_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
     ndf = get_kd_data(df)
     buy_con = (
+        (df['K0'] <= REF(df['K0'],1)) &
+        (((df['K0']-REF(df['K0'],1))>=MIN_KD) | ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= MIN_KR)) & 
+        (REF(df['K0'],1)<=REF(df['K0'],2)) & 
+        (REF(df['K0'],2)<=REF(df['K0'],3)) & 
+        (REF(df['K0'],3)<20)
+    )
+    if not df[buy_con].empty:
+        selected_indexs = ndf[buy_con].index
+        selected_dates = []
+        for idx in selected_indexs:
+            selected_dates.append(ndf['date'][idx])
+
+        last_trading_day = df['date'].iloc[-1]
+        if last_trading_day in selected_dates:
+            czsc_logger().info("【"+symbol+"】")
+            czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
+            czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
+            czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
+            czsc_logger().info("     4）KR0："+str(round((df['K0'].iloc[-1]-df['K0'].iloc[-2])/df['K0'].iloc[-2],2)))
+            return True
+
+    buy_con = (
         (df['K0'] < MIN_K) & (df['K0'] < REF(df['K0'],1)) &
         (((df['K0']-REF(df['K0'],1))>=MIN_KD) | ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= MIN_KR)) & 
         (REF(df['K0'],1)<REF(df['K0'],2)) & 
@@ -297,6 +319,7 @@ def is_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
         (REF(df['low'], 1) <= REF(df['low'], 2)) &
         (REF(df['high'], 1) <= REF(df['high'], 2)) 
     )
+
 
     if not df[buy_con].empty:
         selected_indexs = ndf[buy_con].index
