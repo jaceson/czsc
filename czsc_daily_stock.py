@@ -54,14 +54,14 @@ def output_chart(symbol, df, cachedir):
 
     plot_config = {
         "plot_kline": True,
-        "plot_kline_combine": True,
+        "plot_kline_combine": False,
         "plot_bi": True,
         "plot_seg": True,
-        "plot_eigen": False,
+        "plot_segseg": True,
         "plot_zs": True,
         "plot_macd": True,
         "plot_mean": False,
-        "plot_channel": False,
+        "plot_channel": True,
         "plot_bsp": True,
         "plot_extrainfo": False,
         "plot_demark": False,
@@ -79,7 +79,10 @@ def output_chart(symbol, df, cachedir):
             "disp_end": True,
         },
         "figure": {
-            "x_range": 400,
+            "x_range": 300,
+        },
+        "cbsp": {
+            "plot_cover": True,  # 绘制平仓操作
         },
         "marker": {
             # "markers": {  # text, position, color
