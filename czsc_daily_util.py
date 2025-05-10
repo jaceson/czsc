@@ -852,7 +852,107 @@ def get_latest_trade_date():
 """
 def get_daily_symbols():
     symbol_file = os.path.join(get_data_dir(), 'sh_sz_stock.json')
-    return read_json(symbol_file)
+    result = read_json(symbol_file)
+    all_codes = []
+    for item in result:
+        all_codes.append(item.keys[0])
+    return all_codes
+
+"""
+    更新A股所有股票
+"""
+def update_daily_symbols():
+    symbol_file = os.path.join(get_data_dir(), 'sh_sz_stock.json')
+
+    # 获取最后一个交易日
+    last_trading_day = get_latest_trade_date()
+    # 获取所有股票的基本信息
+    rs = bs.query_all_stock(day=last_trading_day)
+    result = querydata_to_list(rs)
+
+    # 筛选出所有code
+    all_codes = result[result['tradeStatus'] == '1']['code']
+
+    # 筛选出所有股票code
+    stock_codes = []
+    for code in all_codes:
+        before1Year,stock_name = is_stock_and_oneYear(code)
+        if before1Year:
+            stock_codes.append({code:stock_name})
+
+    # 保存到缓存文件中 
+    write_json(stock_codes, symbol_file)
+
+"""
+    baostock查询结果转换成数组
+"""
+def querydata_to_list(rs):
+    data_list = []
+    while (rs.error_code == '0') & rs.next():
+        data_list.append(rs.get_row_data())
+    result = pd.DataFrame(data_list, columns=rs.fields)
+    return result
+
+# 查询股票基本信息
+def is_stock_and_oneYear(code):
+    if not stock_market(code) in ["创业板", "上证", "深证"]:
+        return False,None
+
+    rs = bs.query_stock_basic(code=code)
+    result = querydata_to_list(rs)
+    print(result)
+    if result.empty:
+        return False,None #"未知"
+    elif result['type'][0] == '1':
+        # 股票名称
+        stock_name = result['code_name'][0]
+        if "ST" in stock_name or "*ST" in stock_name or "S" in stock_name:
+            return False,None
+
+        # 提取上市日期
+        ipo_date = result['ipoDate'][0]
+        ipo_date = datetime.strptime(ipo_date, '%Y-%m-%d')
+    
+        # 计算与当前日期的差值
+        current_date = datetime.now()
+        time_diff = current_date - ipo_date
+    
+        # 判断是否超过1年
+        if time_diff.days > 365:
+            return True,stock_name
+        else:
+            return False,None
+        #return "股票"
+    elif result['type'][0] == '2':
+        return False,None #"指数"
+    else:
+        return False,None #"其他"
+
+"""
+    股票属于哪个交易所
+"""
+def stock_market(code):
+    if '.' in code:
+        arr = code.split('.')
+        code = arr[-1]
+    if code.startswith('688'):
+        return "科创板"
+    elif code.startswith('300'):
+        return "创业板"
+    elif code.startswith("8"):
+        return "北交所"
+    elif code.startswith("60"):
+        return "上证"
+    elif code.startswith("00"):
+        return "深证"
+    elif code.startswith("30"):
+        return "深证"
+    elif code.startswith("000"):
+        return "上证指数"
+    elif code.startswith("399"):
+        return "深证指数"
+    else:
+        return "其他"
 
 """
     股票是否是融资融券
