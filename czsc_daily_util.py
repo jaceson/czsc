@@ -882,6 +882,14 @@ def get_daily_symbols():
     return all_codes
 
 """
+    获取股票名称
+"""
+def get_symbols_name(symbol):
+    symbol_file = os.path.join(get_data_dir(), 'sh_sz_stock.json')
+    result = read_json(symbol_file)
+    return result[symbol]
+
+"""
     更新A股所有股票
 """
 def update_daily_symbols():

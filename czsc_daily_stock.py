@@ -7,6 +7,7 @@ import baostock as bs
 from czsc_daily_util import *
 from czsc.analyze import *
 from datetime import datetime
+from snapshot_phantomjs import snapshot
 
 START_TRADE_DATE = "2020-01-01"
 def output_chart(symbol, df, cachedir):
@@ -21,9 +22,11 @@ def output_chart(symbol, df, cachedir):
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
          [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx}]
 
-    chart = kline_pro(kline, bi=bi, title="{} - {}".format(c.symbol, c.freq))
+    chart = kline_pro(kline, bi=bi, title="{} - {}".format(get_symbols_name(c.symbol), c.freq))
     file_html = "{}.html".format(symbol)
+    file_png = "{}.png".format(symbol)
     chart.render(os.path.join(cachedir, file_html))
+    snapshot(file_html, file_png)
 
 def mline_chart_dir():
     return get_data_dir()+"/html/月线反转"
