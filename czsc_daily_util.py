@@ -286,8 +286,9 @@ def is_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
         (df['K0'] <= REF(df['K0'],1)) &
         (((df['K0']-REF(df['K0'],1))>=MIN_KD) | ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= MIN_KR)) & 
         (REF(df['K0'],1)<=REF(df['K0'],2)) & 
-        (REF(df['K0'],2)<=REF(df['K0'],3)) & 
-        (REF(df['K0'],3)<20)
+        # (REF(df['K0'],2)<=REF(df['K0'],3)) & 
+        # (REF(df['K0'],3)<20)
+        (REF(df['K0'],2)<20)
     )
     if not df[buy_con].empty:
         selected_indexs = ndf[buy_con].index
