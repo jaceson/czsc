@@ -61,7 +61,7 @@ def output_chart(symbol, df, cachedir):
         "plot_zs": True,
         "plot_macd": True,
         "plot_mean": False,
-        "plot_channel": True,
+        "plot_channel": False,
         "plot_bsp": True,
         "plot_extrainfo": False,
         "plot_demark": False,
