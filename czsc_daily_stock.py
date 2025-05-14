@@ -13,13 +13,13 @@ from Plot.AnimatePlotDriver import CAnimateDriver
 from Plot.PlotDriver import CPlotDriver
 
 START_TRADE_DATE = "2020-01-01"
-def output_chart(symbol, df, cachedir):
+def output_chart(symbol, df, cachedir, frequency='d'):
     if is_rz_rq_symobl(symbol):
         cachedir = cachedir+"/rzrq"
         if not os.path.isdir(cachedir):
             os.makedirs(cachedir)
 
-    bars = get_stock_bars(symbol=symbol,df=df)
+    bars = get_stock_bars(symbol=symbol,df=df,frequency=frequency)
     c = CZSC(bars, get_signals=None)
     kline = [x.__dict__ for x in c.bars_raw]
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
@@ -27,8 +27,7 @@ def output_chart(symbol, df, cachedir):
 
     # 输出html
     chart = kline_pro(kline, bi=bi, title="{} - {}".format(get_symbols_name(c.symbol), c.freq))
-    file_html = "{}.html".format(symbol)
-    file_png = "{}.png".format(symbol)
+    file_html = "{}_{}.html".format(symbol,frequency)
     chart.render(os.path.join(cachedir, file_html))
 
     # png目录
@@ -37,6 +36,22 @@ def output_chart(symbol, df, cachedir):
         os.makedirs(cachedir)
 
     # 输出png
+    lv_list=[KL_TYPE.K_DAY]
+    if frequency.lower() == 'w':
+        lv_list=[KL_TYPE.K_WEEK]
+    elif frequency.lower() == 'm':
+        lv_list=[KL_TYPE.K_1M]
+    elif frequency.lower() == '5':
+        lv_list=[KL_TYPE.K_5M]
+    elif frequency.lower() == '15':
+        lv_list=[KL_TYPE.K_15M]
+    elif frequency.lower() == '30':
+        lv_list=[KL_TYPE.K_30M]
+    elif frequency.lower() == '60':
+        lv_list=[KL_TYPE.K_60M]
+    else:
+        lv_list=[KL_TYPE.K_DAY]
+
     config = CChanConfig({
         "bi_strict": True,
         "trigger_step": True,
@@ -96,20 +111,24 @@ def output_chart(symbol, df, cachedir):
         begin_time=START_TRADE_DATE,
         end_time=None,
         data_src=DATA_SRC.BAO_STOCK,
-        lv_list=[KL_TYPE.K_DAY],
+        lv_list=lv_list,
         config=config,
         autype=AUTYPE.QFQ,
     )
     for klu in get_kl_data(df):  # 获取单根K线
-        chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
+        chan.trigger_load({lv_list[0]: [klu]})  # 喂给CChan新增k线
     plot_driver = CPlotDriver(
             chan,
             plot_config=plot_config,
             plot_para=plot_para,
         )
     # plot_driver.figure.show()
+    file_png = "{}_{}.png".format(symbol,frequency)
     plot_driver.save2img(os.path.join(cachedir, file_png))
 
+
+def sz_chart_dir():
+    return get_data_dir()+"/html/上证指数"
 
 def mline_chart_dir():
     return get_data_dir()+"/html/月线反转"
@@ -427,6 +446,7 @@ def main():
         third_b_chan_buypoint_symbols = read_symbols("chan中枢T3B买点.json")
     else:
         # 清除缓存图标
+        clear_cache(sz_chart_dir())
         clear_cache(mline_chart_dir())
         clear_cache(minion_chart_dir())
         clear_cache(golden_chart_dir())
@@ -443,6 +463,12 @@ def main():
         clear_cache(buypoint_chan_chart_dir('3a'))
         clear_cache(buypoint_chan_chart_dir('3b'))
         
+        # 上证指数缠论图
+        for frequency in ['d','30','5']:
+            symbol = 'sh.000001'
+            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, frequency)
+            output_chart(symbol, df, sz_chart_dir(), frequency)
+            
         # 选择月线反转股票
         for symbol in all_symbols:
             # 打印进度
