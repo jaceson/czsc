@@ -13,7 +13,7 @@ from Plot.AnimatePlotDriver import CAnimateDriver
 from Plot.PlotDriver import CPlotDriver
 
 START_TRADE_DATE = "2020-01-01"
-def output_chart(symbol, df, cachedir, frequency='d'):
+def output_chart(symbol, df, cachedir):
     if is_rz_rq_symobl(symbol):
         cachedir = cachedir+"/rzrq"
         if not os.path.isdir(cachedir):
@@ -36,22 +36,6 @@ def output_chart(symbol, df, cachedir, frequency='d'):
         os.makedirs(cachedir)
 
     # 输出png
-    lv_list=[KL_TYPE.K_DAY]
-    if frequency.lower() == 'w':
-        lv_list=[KL_TYPE.K_WEEK]
-    elif frequency.lower() == 'm':
-        lv_list=[KL_TYPE.K_1M]
-    elif frequency.lower() == '5':
-        lv_list=[KL_TYPE.K_5M]
-    elif frequency.lower() == '15':
-        lv_list=[KL_TYPE.K_15M]
-    elif frequency.lower() == '30':
-        lv_list=[KL_TYPE.K_30M]
-    elif frequency.lower() == '60':
-        lv_list=[KL_TYPE.K_60M]
-    else:
-        lv_list=[KL_TYPE.K_DAY]
-
     config = CChanConfig({
         "bi_strict": True,
         "trigger_step": True,
@@ -111,7 +95,7 @@ def output_chart(symbol, df, cachedir, frequency='d'):
         begin_time=START_TRADE_DATE,
         end_time=None,
         data_src=DATA_SRC.BAO_STOCK,
-        lv_list=lv_list,
+        lv_list=[KL_TYPE.K_DAY],
         config=config,
         autype=AUTYPE.QFQ,
     )
@@ -446,7 +430,6 @@ def main():
         third_b_chan_buypoint_symbols = read_symbols("chan中枢T3B买点.json")
     else:
         # 清除缓存图标
-        clear_cache(sz_chart_dir())
         clear_cache(mline_chart_dir())
         clear_cache(minion_chart_dir())
         clear_cache(golden_chart_dir())
@@ -462,12 +445,6 @@ def main():
         clear_cache(buypoint_chan_chart_dir('2s'))
         clear_cache(buypoint_chan_chart_dir('3a'))
         clear_cache(buypoint_chan_chart_dir('3b'))
-        
-        # 上证指数缠论图
-        for frequency in ['d','30','5']:
-            symbol = 'sh.000001'
-            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, frequency)
-            output_chart(symbol, df, sz_chart_dir(), frequency)
             
         # 选择月线反转股票
         for symbol in all_symbols:
