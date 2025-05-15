@@ -19,7 +19,7 @@ def output_chart(symbol, df, cachedir):
         if not os.path.isdir(cachedir):
             os.makedirs(cachedir)
 
-    bars = get_stock_bars(symbol=symbol,df=df,frequency=frequency)
+    bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
     kline = [x.__dict__ for x in c.bars_raw]
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
@@ -27,7 +27,7 @@ def output_chart(symbol, df, cachedir):
 
     # 输出html
     chart = kline_pro(kline, bi=bi, title="{} - {}".format(get_symbols_name(c.symbol), c.freq))
-    file_html = "{}_{}.html".format(symbol,frequency)
+    file_html = "{}_{}.html".format(symbol)
     chart.render(os.path.join(cachedir, file_html))
 
     # png目录
@@ -107,7 +107,7 @@ def output_chart(symbol, df, cachedir):
             plot_para=plot_para,
         )
     # plot_driver.figure.show()
-    file_png = "{}_{}.png".format(symbol,frequency)
+    file_png = "{}_{}.png".format(symbol)
     plot_driver.save2img(os.path.join(cachedir, file_png))
 
 
