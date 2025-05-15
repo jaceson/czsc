@@ -27,7 +27,7 @@ def output_chart(symbol, df, cachedir):
 
     # 输出html
     chart = kline_pro(kline, bi=bi, title="{} - {}".format(get_symbols_name(c.symbol), c.freq))
-    file_html = "{}_{}.html".format(symbol)
+    file_html = "{}.html".format(symbol)
     chart.render(os.path.join(cachedir, file_html))
 
     # png目录
@@ -107,7 +107,7 @@ def output_chart(symbol, df, cachedir):
             plot_para=plot_para,
         )
     # plot_driver.figure.show()
-    file_png = "{}_{}.png".format(symbol)
+    file_png = "{}.png".format(symbol)
     plot_driver.save2img(os.path.join(cachedir, file_png))
 
 
@@ -495,7 +495,7 @@ def main():
 
             # 黄金分割抄底位置
             # symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1
-            if is_golden_point(symbol,df,1.7,10,1.1,20,1.05):
+            if is_golden_point(symbol,df,1.6,7,1.1,20,1.05):
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
