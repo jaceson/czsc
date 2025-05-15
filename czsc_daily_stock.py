@@ -100,7 +100,7 @@ def output_chart(symbol, df, cachedir):
         autype=AUTYPE.QFQ,
     )
     for klu in get_kl_data(df):  # 获取单根K线
-        chan.trigger_load({lv_list[0]: [klu]})  # 喂给CChan新增k线
+        chan.trigger_load({KL_TYPE.K_DAY: [klu]})  # 喂给CChan新增k线
     plot_driver = CPlotDriver(
             chan,
             plot_config=plot_config,
