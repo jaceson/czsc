@@ -494,7 +494,8 @@ def main():
                 output_chart(symbol, df, chaodi_chart_dir())
 
             # 黄金分割抄底位置
-            if is_golden_point(symbol,df):
+            # symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1
+            if is_golden_point(symbol,df,1.7,10,1.1,20,1.05):
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
