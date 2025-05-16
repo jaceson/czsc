@@ -13,6 +13,19 @@ ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
 
+
+def get_last_bi(c):
+    bi_list = c.bi_list
+    if len(bi_list)>0:
+        last_bi = bi_list[-1]
+        # 最后一笔是向上一笔
+        if last_bi.fx_a.fx<last_bi.fx_b.fx:
+            fx_a = last_bi.fx_a
+            fx_b = last_bi.fx_b
+            pass
+        else:
+
+
 def get_buy_point(df,last_bi,threshold=2,klines=10,min_angle=30):
     if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
         # 上一波涨幅必须超过10个交易
