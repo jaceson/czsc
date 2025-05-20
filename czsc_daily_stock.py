@@ -4,7 +4,7 @@ import sys
 import json
 import shutil
 import baostock as bs
-from email_sender import *
+from lib.email_sender import *
 from czsc_daily_util import *
 from czsc.analyze import *
 from datetime import datetime
@@ -111,6 +111,39 @@ def output_chart(symbol, df, cachedir):
     file_png = "{}.png".format(symbol)
     plot_driver.save2img(os.path.join(cachedir, file_png))
 
+def email_html_header():
+    return '''<table>
+                <tr>
+                    <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">策略类型</td>
+                    <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">筛选结果</td>
+                </tr>'''
+
+def email_html_footer():
+    return '</table>'
+
+def email__html_row_file(jsonfile):
+    filename = os.path.basename(jsonfile)
+    base_name, extension = os.path.splitext(filename)
+
+    # 没有股票信息
+    symbols = read_json(jsonfile)
+    if len(symbols)<=0:
+        return None
+
+    sub_text_info = ''
+    for symbol in symbols:
+        symbol = get_symbols_name(symbol)+": "+symbol
+        if len(sub_text_info)>0:
+            sub_text_info += '<br/>'
+        sub_text_info += '<font color=\"#a11\">'+symbol+'</font>'
+
+    return '''
+        <tr>
+            <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 30px; width: 160px;">{base_name}</td>
+            <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 30px; width: 160px;">{sub_text}</td>
+        </tr>
+    '''.format(base_name=base_name, sub_text=sub_text_info)
+
 def send_summary_email():
     # 获取autobuild4ios密码
     response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
@@ -118,35 +151,16 @@ def send_summary_email():
         result = json.loads(response.content)
         password = result["password"]
     create_mail_conf("autobuild4ios", password)
+
     # 邮件内容
-    last_trade_date = get_latest_trade_date()
-    html = """
-        <h1>[{date}]精选列表</h1>
-        <table>
-            <tr>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Commit URL</td>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">
-                    <a href="{scmurl}">{scmurl}</a>
-                </td>
-            </tr>
-            <tr>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Author</td>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">{author}</td>
-            </tr>
-            <tr>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Commit id</td>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">{commitid}</td>
-            </tr>
-            <tr>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Commit Message</td>
-                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">{commitmsg}</td>
-            </tr>
-        </table>
-        """.format(head=title, scmurl=scmurl,author=author,commitid=commitid,commitmsg=commitmsg)
-
-    html = '<head>BUILD FAILED</head><body><a href="http://www.baidu.com">http://www.baidu.com</a></body>'
-    send_html_email("autobuild4ios", "vickywang@qiyi.com", "Hi, This is a Test", html, None, None)
-
+    data_dir = get_data_dir()
+    html_content = email_html_header()
+    for filename in ['黄金分割线抄底.json','KD线抄底.json','chan中枢T1买点.json','chan中枢T1P买点.json','chan中枢T2买点.json','chan中枢T2S买点.json','chan中枢T3A买点.json','chan中枢T3B买点.json']:
+        html_row = email__html_row_file(os.path.join(data_dir, filename))
+        if html_row:
+            html_content += html_row
+    html_content += email_html_footer()
+    send_html_email("autobuild4ios", "vickywang@qiyi.com", "每日精选", html_content)
 
 def sz_chart_dir():
     return get_data_dir()+"/html/上证指数"
@@ -609,6 +623,9 @@ def main():
     czsc_logger().info("========================以下是可融资融券的结果========================")
     czsc_logger().info("\n\n")
     print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
+
+    # 发送邮件通知
+    send_summary_email()
 
     # 登出系统
     bs.logout()
