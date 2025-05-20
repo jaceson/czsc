@@ -4,6 +4,7 @@ import sys
 import json
 import shutil
 import baostock as bs
+from email_sender import *
 from czsc_daily_util import *
 from czsc.analyze import *
 from datetime import datetime
@@ -109,6 +110,42 @@ def output_chart(symbol, df, cachedir):
     # plot_driver.figure.show()
     file_png = "{}.png".format(symbol)
     plot_driver.save2img(os.path.join(cachedir, file_png))
+
+def send_summary_email():
+    # 获取autobuild4ios密码
+    response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
+    if response.status_code == 200:
+        result = json.loads(response.content)
+        password = result["password"]
+    create_mail_conf("autobuild4ios", password)
+    # 邮件内容
+    last_trade_date = get_latest_trade_date()
+    html = """
+        <h1>[{date}]精选列表</h1>
+        <table>
+            <tr>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Commit URL</td>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">
+                    <a href="{scmurl}">{scmurl}</a>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Author</td>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">{author}</td>
+            </tr>
+            <tr>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Commit id</td>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">{commitid}</td>
+            </tr>
+            <tr>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; width: 160px;">Commit Message</td>
+                <td style="padding-left: 1em; text-align: left; background-color:#F3F3F3; height: 40px; min-width: 400px;">{commitmsg}</td>
+            </tr>
+        </table>
+        """.format(head=title, scmurl=scmurl,author=author,commitid=commitid,commitmsg=commitmsg)
+
+    html = '<head>BUILD FAILED</head><body><a href="http://www.baidu.com">http://www.baidu.com</a></body>'
+    send_html_email("autobuild4ios", "vickywang@qiyi.com", "Hi, This is a Test", html, None, None)
 
 
 def sz_chart_dir():
