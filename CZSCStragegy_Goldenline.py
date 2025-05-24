@@ -5,13 +5,38 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
+import numpy as np
 
 plus_list = []
 minus_list = []
+total_ratio = []
+total_hold_days = []
 hold_days = 5
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
+
+def print_console(title, arr):
+    # 计算平均值
+    average = np.mean(arr)
+
+    # 计算最大值
+    max_value = np.max(arr)
+
+    # 计算最小值
+    min_value = np.min(arr)
+
+    # 计算 5% 和 95% 的百分位数
+    lower_bound = np.percentile(arr, 50)
+    upper_bound = np.percentile(arr, 95)
+
+    # 输出结果
+    print(title)
+    print(f"    平均值：{average}")
+    print(f"    最大值：{max_value}")
+    print(f"    最小值：{min_value}")
+    print(f"    50% 的百分位数：{lower_bound}")
+    print(f"    95% 的百分位数：{upper_bound}")
 
 def get_buy_point(df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=20):
     sdt = fx_a.dt.strftime("%Y-%m-%d")
@@ -40,11 +65,19 @@ def get_buy_point(df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=20):
 
             # 三天内上涨
             if stock_low <= min_val and (idx+hold_days)<len(df['date']):
+                if next_up_bi:
+                    days_num = days_trade_delta(df,df['date'].iloc[idx],next_up_bi.fx_b.dt.strftime("%Y-%m-%d"))
+                    ratio = round(100*(next_up_bi.fx_b.fx-stock_close)/stock_close,2)
+                    total_ratio.append(ratio)
+                    total_hold_days.append(days_num)
+                    print("{} {}到{}笔：{}到黄金分割点,持有时间：{}，总收益：{}".format(symbol,sdt,edt,df['date'].iloc[idx],days_num,ratio))
+                else:
+                    print("{} {}到{}笔：{}到黄金分割点".format(symbol,sdt,edt,df['date'].iloc[idx]))
                 # 调整到黄金点位时间太长
                 # down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[idx])
                 # if down_kline_num>=up_kline_num:
                 #     break
-                print("{} {}到{}笔：{}到黄金分割点".format(symbol,sdt,edt,df['date'].iloc[idx]))
+
                 max_val = -1000
                 # min_val = 1000
                 for x in range(1,hold_days+1):
@@ -102,6 +135,19 @@ if __name__ == '__main__':
             get_buy_point(df,fx_a,fx_b,next_up_bi,threshold)
             idx += 1
 
+    # 初始化计数器
+    greater_than_zero = 0
+    less_than_zero = 0
+
+    # 遍历数组并统计
+    for num in total_ratio:
+        if num > 0:
+            greater_than_zero += 1
+        else:
+            less_than_zero += 1
+    print("正收益次数："+str(greater_than_zero))
+    print("正收益占比："+str(round(100*greater_than_zero/len(total_ratio),2))+"%")    
+
     print("正收益次数："+str(len(plus_list)))
     print("正收益占比："+str(round(100*len(plus_list)/(len(minus_list)+len(plus_list)),2))+"%")
     total = 0
@@ -134,6 +180,14 @@ if __name__ == '__main__':
         print("     正收益占比："+str(round(100*plus_num/(plus_num+minus_num),2))+"%")
         print("     总的正收益："+str(plus_val))
         print("     总的负收益："+str(minus_val))
+        
+    # 打印总体统计
+    print_console('总收益：', total_ratio)
+    print_console('总持有天数：', total_hold_days)
+    print_console('正收益：', plus_list)
+    print_console('负收益：', minus_list)
+    for x in range(1,hold_days+1):
+        print_console("第 {} 天：".format(x), ratio_map[x])
         
     bs.logout()
 
