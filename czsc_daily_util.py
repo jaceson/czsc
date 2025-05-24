@@ -101,13 +101,22 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25
     last_fx = c.fx_list[-1]
     if len(bi_list) > 1:
         # 查找上一波主升浪
+        idx = -1
         last_bi = bi_list[-1]
         if last_bi.fx_a.fx>last_bi.fx_b.fx:
+            idx = -2
             last_bi = bi_list[-2]
+        fx_a = last_bi.fx_a
+        fx_b = last_bi.fx_b
+        if fx_a.fx*threshold > fx_b.fx:
+            if len(bi_list)>(abs(idx)+2):
+                pre_up_bi = bi_list[idx-2]
+                if pre_up_bi.fx_a.fx < fx_a.fx and pre_up_bi.fx_b.fx < fx_b.fx:
+                    fx_a = pre_up_bi.fx_a
 
         # 当前一笔从最低点到最高点，涨幅已经超过50%
-        # if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx and fx_equal(last_fx, last_bi.fx_b):
-        if last_bi.fx_a.fx*threshold < last_bi.fx_b.fx:
+        # if fx_a.fx*threshold < fx_b.fx and fx_equal(last_fx, fx_b):
+        if fx_a.fx*threshold <= fx_b.fx:
             # 当前收盘价格
             stock_open = df['open'].iloc[-1]
             stock_close = df['close'].iloc[-1]
@@ -115,42 +124,41 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25
             stock_low = df['low'].iloc[-1]
             min_price = np.min(np.array([stock_open, stock_close, stock_high, stock_low]))
             # 是否在抄底区间内
-            sqr_val = sqrt_val(last_bi.fx_a.fx, last_bi.fx_b.fx)
-            gold_low_val = gold_val_low(last_bi.fx_a.fx, last_bi.fx_b.fx)
+            sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
+            gold_low_val = gold_val_low(fx_a.fx, fx_b.fx)
             max_val = max(sqr_val,gold_low_val)
             # 距离黄金分割点还差5%以下
             if max_val*max_ratio<min_price:
                 czsc_logger().info("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
             # 上一波涨幅必须超过10个交易
-            up_kline_num = days_trade_delta(df,last_bi.sdt.strftime("%Y-%m-%d"),last_bi.edt.strftime("%Y-%m-%d"))
+            up_kline_num = days_trade_delta(df,fx_a.dt.strftime("%Y-%m-%d"),fx_b.dt.strftime("%Y-%m-%d"))
             if up_kline_num<klines:
                 czsc_logger().info("【"+symbol+"】"+" 上涨K线数量 "+str(up_kline_num))
                 return False
             # 调整时间必须小于上涨时间
-            # down_kline_num = days_trade_delta(df,last_bi.edt.strftime("%Y-%m-%d"),df['date'].iloc[-1])
+            # down_kline_num = days_trade_delta(df,fx_b.dt.strftime("%Y-%m-%d"),df['date'].iloc[-1])
             # if down_kline_num>=up_kline_num:
             #     czsc_logger().info("【"+symbol+"】"+" 下跌K线数量 "+str(down_kline_num)+"大于上涨K线数量 "+str(up_kline_num))
             #     return False
             # 笔的角度
-            if bi_angle(last_bi)<min_angle:
-                czsc_logger().info("【"+symbol+"】"+" 最后一笔角度是 "+str(round(bi_angle(last_bi),2)))
+            if bi_angle(df,fx_a,fx_b)<min_angle:
+                czsc_logger().info("【"+symbol+"】"+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
-            min_close = get_min_close(df, last_bi.edt.strftime("%Y-%m-%d"))
+            min_close = get_min_close(df, fx_a.dt.strftime("%Y-%m-%d"))
             if stock_close <= min_close*close_ratio:
-                czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(last_bi.fx_a.fx)+"，最高价："+str(last_bi.fx_b.fx))
+                czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
                 czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
                 czsc_logger().info("     2）黄金分割低点："+str(round(gold_low_val,2)))
                 if stock_close<max_val:
                     czsc_logger().info("     3）可以考虑直接买入！！！")
                 else:
                     czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
-                czsc_logger().info("     4）笔的角度："+str(round(bi_angle(last_bi),2)))
-                czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(last_bi)*100,2))+"%")
-                czsc_logger().info("     6）笔的K线数量："+str(last_bi.length))
-                czsc_logger().info("     7）笔的分型数量："+str(len(last_bi.fxs)))
-                czsc_logger().info("     8）平均每天涨幅："+str(round(100*bi_day_ratio(last_bi),2))+"%")
+                czsc_logger().info("     4）笔的角度："+str(round(bi_angle(df,fx_a,fx_b),2)))
+                czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(fx_a,fx_b)*100,2))+"%")
+                czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
+                czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
                 return True
             else:
                 czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
@@ -261,23 +269,23 @@ def fx_equal(fx1,fx2):
     自定义比的角度
     每天涨10%默认角度为45
 """
-def bi_angle(bi):
-    max_ratio = 10*(bi.fx_b.fx-bi.fx_a.fx)/bi.fx_a.fx
-    days_num = bi.length
+def bi_angle(df,fx_a,fx_b):
+    max_ratio = 10*(fx_b.fx-fx_a.fx)/fx_a.fx
+    days_num = days_trade_delta(df,fx_a.dt.strftime("%Y-%m-%d"),fx_b.dt.strftime("%Y-%m-%d"))
     return 45*max_ratio/days_num
 
 """
     笔的涨幅
 """
-def bi_ratio(bi):
-    return (bi.fx_b.fx-bi.fx_a.fx)/bi.fx_a.fx
+def bi_ratio(fx_a,fx_b):
+    return (fx_b.fx-fx_a.fx)/fx_a.fx
 
 """
     笔平均每天的涨幅
 """
-def bi_day_ratio(bi):
-    max_ratio = (bi.fx_b.fx-bi.fx_a.fx)/bi.fx_a.fx
-    days_num = bi.length
+def bi_day_ratio(df,fx_a,fx_b):
+    max_ratio = (fx_b.fx-fx_a.fx)/fx_a.fx
+    days_num = days_trade_delta(df,fx_a.dt.strftime("%Y-%m-%d"),fx_b.dt.strftime("%Y-%m-%d"))
     return max_ratio/days_num
 
 """
