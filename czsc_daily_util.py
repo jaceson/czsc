@@ -91,7 +91,7 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
-def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1.1):
+def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20,close_ratio=1.1):
     # 股票czsc结构
     bars = get_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
@@ -146,7 +146,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25
                 czsc_logger().info("【"+symbol+"】"+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
-            min_close = get_min_close(df, fx_a.dt.strftime("%Y-%m-%d"))
+            min_close = get_min_close(df, fx_b.dt.strftime("%Y-%m-%d"))
             if stock_close <= min_close*close_ratio:
                 czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
                 czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))

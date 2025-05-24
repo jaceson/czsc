@@ -318,8 +318,7 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,str
         czsc_logger().info("满足小黄人三线红、KD线抄底、中枢二买的股票列表：")
         czsc_logger().info('     '+', '.join(intersection_list([minion_symbols,chaodi_symbols,second_buypoint_symbols])))
 
-def test_case():    
-    option = 6
+def test_case(option):
     if option == 1:
         # arr = ["600060","600081","600126","600398","600422","600588","600595","600633","600699","600812","600845","600988","601100","601231","603108","603171","603197","603300","603305","603758","603786","603915","605020","000032","000042","000818","000837","001282","002044","002153","002212","002250","002284","002664","002841","002913","002929","002965","300133","300226","300244","300251","300253","300258","300451","300454","300496","300676"]
         arr = ["600120","600126","600255","600363","600580","600602","600633","600797","600986","601689","603005","603039","603119","603236","603296","603319","603583","603636","603662","603667","603728","603803","603881","603893","000034","000681","000785","000977","002031","002036","002112","002117","002123","002131","002195","002261","002354","002369","002379","002530","002630","002681","002765","002851","002881","003021","300007","300017"]
@@ -344,6 +343,7 @@ def test_case():
         last_trade_date = get_latest_trade_date()
     
         symbols = read_json(os.path.join(get_data_dir(),"黄金分割线抄底.json"))
+        # symbols = ['sz.301066']
         for symbol in symbols:
             df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             is_golden_point(symbol,df)
@@ -640,5 +640,9 @@ def main():
     python czsc_daily_stock.py | tee -a ./data/log.json
 """
 if __name__ == '__main__':
-    main()
-    # test_case()
+    if len(sys.argv) > 1:
+        test_case(int(sys.argv[1]))
+    else:
+        main()
+
+
