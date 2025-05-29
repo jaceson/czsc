@@ -6,6 +6,7 @@ import math
 import logging
 import time
 import requests
+import akshare as ak
 import baostock as bs
 from lib.MyTT import *
 from Chan import CChan
@@ -807,7 +808,40 @@ def get_stock_data(symbol, start_date, end_date, frequency):
         except Exception as e:
             # czsc_logger().info(e)
             continue
-    return data_list,rs.fields
+    if data_list[-1][0] == end_date:
+        return data_list,rs.fields
+
+    symbol = symbol.split('.')[-1]
+    start_date = start_date.replace('-','')
+    end_date = end_date.replace('-','')
+    data = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start_date, end_date=end_date, adjust="")
+    '''
+         日期    股票代码     开盘     收盘     最高     最低      成交量           成交额    振幅   涨跌幅   涨跌额   换手率
+0     2020-01-02  000001  16.65  16.87  16.95  16.55  1530232  2.571196e+09  2.43  2.55  0.42  0.79
+1     2020-01-03  000001  16.94  17.18  17.31  16.92  1116195  1.914495e+09  2.31  1.84  0.31  0.58
+2     2020-01-06  000001  17.01  17.07  17.34  16.91   862084  1.477930e+09  2.50 -0.64 -0.11  0.44
+3     2020-01-07  000001  17.13  17.15  17.28  16.95   728608  1.247047e+09  1.93  0.47  0.08  0.38
+4     2020-01-08  000001  17.00  16.66  17.05  16.63   847824  1.423609e+09  2.45 -2.86 -0.49  0.44
+    '''
+    data_list = []
+    columns = ['date','open','high','low','close','volume','amount','turn']
+    for index, row_data in data.iterrows():
+        try:
+            stock_date = row_data['日期'].strftime('%Y-%m-%d')
+            stock_open = float(row_data['开盘'])
+            stock_close = float(row_data['收盘'])
+            stock_high = float(row_data['最高'])
+            stock_low = float(row_data['最低'])
+            stock_volume = float(row_data['成交量'])
+            stock_amount = float(row_data['成交额'])
+            stock_turn = float(row_data['换手率'])
+            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+                continue
+            data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount, stock_turn])
+        except Exception as e:
+            # czsc_logger().info(e)
+            continue
+    return data_list,columns
 
 def get_stock_pd(symbol, start_date, end_date, frequency):
     data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
