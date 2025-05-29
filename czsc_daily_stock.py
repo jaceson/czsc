@@ -433,6 +433,8 @@ def main():
     czsc_logger().info('login respond error_code:' + lg.error_code)
     czsc_logger().info('login respond  error_msg:' + lg.error_msg)
     
+    # 计算配置
+    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'buypoint':False,'chan':False}
     # 所有股票
     all_symbols  = get_daily_symbols()
     # 股票池
@@ -514,7 +516,7 @@ def main():
             # 当前股票最后一个交易日
             symbol_last_trade_date = df['date'].iloc[-1]
             # 获取满足月线反转日期
-            mline_dates = get_mline_turn(df)
+            mline_dates = daily_config['mline']?get_mline_turn(df):[]
             if symbol_last_trade_date in mline_dates:
                 is_can_add = (not by_reach)
                 # if by_reach:
@@ -527,7 +529,7 @@ def main():
                     output_chart(symbol, df, mline_chart_dir())
 
             # 小黄人三线红
-            minion_dates = get_minion_trend(df)
+            minion_dates = daily_config['minion']?get_minion_trend(df):[]
             if symbol_last_trade_date in minion_dates:
                 is_can_add = (not by_reach)
                 # if by_reach:
@@ -540,18 +542,18 @@ def main():
                     output_chart(symbol, df, minion_chart_dir())
 
             # kd线抄底位置
-            if is_kd_buy_point(symbol,df):
+            if daily_config['chaodi'] and is_kd_buy_point(symbol,df):
                 chaodi_symbols.append(symbol)
                 output_chart(symbol, df, chaodi_chart_dir())
 
             # 黄金分割抄底位置
             # symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1
-            if is_golden_point(symbol,df):
+            if daily_config['golden'] and is_golden_point(symbol,df):
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
             # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
-            if has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
+            if daily_config['strong'] and has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
                 if has_cross_ma(df) or has_close_ma(df):
                     is_can_add = (not by_reach)
                     # if by_reach:
@@ -564,7 +566,7 @@ def main():
 
             # 是否是买卖点
             buypoint_type = 0
-            buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range)
+            buypoint_type = daily_config['buypoint']?get_buy_point_type(symbol,df,by_macd,by_range):0
             if buypoint_type>0:
                 is_can_add = (not by_reach)
                 # if by_reach:
@@ -582,7 +584,7 @@ def main():
 
             # 是否chan买卖点
             chan_buypoint_type = None
-            chan_buypoint_type = get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df)
+            chan_buypoint_type = daily_config['chan']?get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df):None
             if chan_buypoint_type:
                 output_chart(symbol, df, buypoint_chan_chart_dir(chan_buypoint_type))
                 if chan_buypoint_type == "1":
