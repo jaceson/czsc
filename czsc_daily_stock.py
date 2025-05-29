@@ -626,14 +626,13 @@ def main():
     czsc_logger().info("\n\n")
     print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
 
-    # 发送邮件通知
-    send_summary_email()
-
     # 登出系统
     bs.logout()
 
     # 结束日志
     if is_stock_updated:
+        # 发送邮件通知
+        send_summary_email()
         czsc_logger().info('Stock Finished!')
 
 """
