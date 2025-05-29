@@ -516,7 +516,7 @@ def main():
             # 当前股票最后一个交易日
             symbol_last_trade_date = df['date'].iloc[-1]
             # 获取满足月线反转日期
-            mline_dates = daily_config['mline']?get_mline_turn(df):[]
+            mline_dates = get_mline_turn(df) if daily_config['mline']  else []
             if symbol_last_trade_date in mline_dates:
                 is_can_add = (not by_reach)
                 # if by_reach:
@@ -529,7 +529,7 @@ def main():
                     output_chart(symbol, df, mline_chart_dir())
 
             # 小黄人三线红
-            minion_dates = daily_config['minion']?get_minion_trend(df):[]
+            minion_dates = get_minion_trend(df) if daily_config['minion'] else []
             if symbol_last_trade_date in minion_dates:
                 is_can_add = (not by_reach)
                 # if by_reach:
@@ -566,7 +566,7 @@ def main():
 
             # 是否是买卖点
             buypoint_type = 0
-            buypoint_type = daily_config['buypoint']?get_buy_point_type(symbol,df,by_macd,by_range):0
+            buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range) if daily_config['buypoint'] else 0
             if buypoint_type>0:
                 is_can_add = (not by_reach)
                 # if by_reach:
@@ -584,7 +584,7 @@ def main():
 
             # 是否chan买卖点
             chan_buypoint_type = None
-            chan_buypoint_type = daily_config['chan']?get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df):None
+            chan_buypoint_type = get_chan_buy_point_type(symbol=symbol,start_date=START_TRADE_DATE,end_date=last_trade_date,df=df) if daily_config['chan'] else None
             if chan_buypoint_type:
                 output_chart(symbol, df, buypoint_chan_chart_dir(chan_buypoint_type))
                 if chan_buypoint_type == "1":
