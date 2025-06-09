@@ -130,12 +130,12 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             max_val = max(sqr_val,gold_low_val)
             # 距离黄金分割点还差5%以下
             if max_val*max_ratio<min_price:
-                czsc_logger().info("【"+symbol+"]"+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
             # 上一波涨幅必须超过10个交易
             up_kline_num = days_trade_delta(df,fx_a.dt.strftime("%Y-%m-%d"),fx_b.dt.strftime("%Y-%m-%d"))
             if up_kline_num<klines:
-                czsc_logger().info("【"+symbol+"】"+" 上涨K线数量 "+str(up_kline_num))
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 上涨K线数量 "+str(up_kline_num))
                 return False
             # 调整时间必须小于上涨时间
             # down_kline_num = days_trade_delta(df,fx_b.dt.strftime("%Y-%m-%d"),df['date'].iloc[-1])
@@ -144,12 +144,12 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             #     return False
             # 笔的角度
             if bi_angle(df,fx_a,fx_b)<min_angle:
-                czsc_logger().info("【"+symbol+"】"+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
             min_close = get_min_close(df, fx_b.dt.strftime("%Y-%m-%d"))
             if stock_close <= min_close*close_ratio:
-                czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
                 czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
                 czsc_logger().info("     2）黄金分割低点："+str(round(gold_low_val,2)))
                 if stock_close<max_val:
@@ -162,7 +162,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
                 return True
             else:
-                czsc_logger().info("【"+symbol+"】"+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
 
 """
@@ -201,22 +201,22 @@ def get_reach_support_lines(symbol,df,max_ratio=0.01,days_num=365*2):
         if (current_date-bi.fx_b.dt).days>days_num:
             break
         if abs(bi.fx_a.fx-current_low)/bi.fx_a.fx<max_ratio:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_a.fx))
             bi_num += 1
         elif abs(bi.fx_b.fx-current_low)/bi.fx_b.fx<max_ratio:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_b.fx))
             bi_num += 1
         elif current_low<=bi.fx_a.high and current_low>=bi.fx_a.low:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_a.fx))
             bi_num += 1
         elif current_low<=bi.fx_b.high and current_low>=bi.fx_b.low:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("一笔区间："+bi.fx_a.dt.strftime("%Y-%m-%d")+"到"+bi.fx_b.dt.strftime("%Y-%m-%d"))
             czsc_logger().info("支撑位："+str(bi.fx_b.fx))
             bi_num += 1
@@ -230,22 +230,22 @@ def get_reach_support_lines(symbol,df,max_ratio=0.01,days_num=365*2):
         if not zs.is_valid:
             continue    
         if abs(zs.dd-current_low)/zs.dd<max_ratio:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
             czsc_logger().info("【中枢低低】支撑位："+str(zs.dd))
             zs_num += 1
         elif abs(zs.zd-current_low)/zs.zd<max_ratio:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
             czsc_logger().info("【中枢中低】支撑位："+str(zs.zd))
             zs_num += 1
         elif abs(zs.zg-current_low)/zs.zg<max_ratio:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
             czsc_logger().info("【中枢中高】支撑位："+str(zs.zg))
             zs_num += 1
         elif abs(zs.gg-current_low)/zs.gg<max_ratio:
-            czsc_logger().info("【"+symbol+"】"+"股票当前价："+str(current_close))
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(current_close))
             czsc_logger().info("中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
             czsc_logger().info("【中枢高高】支撑位："+str(zs.gg))
             zs_num += 1
@@ -310,7 +310,7 @@ def is_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
 
         last_trading_day = df['date'].iloc[-1]
         if last_trading_day in selected_dates:
-            czsc_logger().info("【"+symbol+"】")
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
             czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
             czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
             czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
@@ -344,7 +344,7 @@ def is_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
         last_trading_day = df['date'].iloc[-1]
         if last_trading_day in selected_dates:
             stock_k1 = df['K0'].iloc[-2]
-            czsc_logger().info("【"+symbol+"】")
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
             czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
             czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
             czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
@@ -373,7 +373,7 @@ def is_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
                     stock_high = df['high'].iloc[-(delta+1)]
 
             if is_valid:
-                czsc_logger().info("【"+symbol+"】")
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
                 czsc_logger().info("     1）K0："+str(round(df['K0'].iloc[-1],2)))
                 czsc_logger().info("     2）D0："+str(round(df['K0'].iloc[-2],2)))
                 czsc_logger().info("     3）KD0："+str(round(df['K0'].iloc[-1]-df['K0'].iloc[-2],2)))
@@ -455,7 +455,7 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
     # 收盘价在中枢内
     stock_close = df['close'].iloc[-1]
     if stock_close>last_zs.zd and stock_close < last_zs.zg:
-        czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
+        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
         czsc_logger().info("策略结算结果：当前收盘价在中枢内"+str(stock_close))
         return 0
 
@@ -466,7 +466,7 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
     #     return False
 
     # 判断两个中枢方法
-    czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
+    czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
     # 三买点
     if stock_close>last_zs.zg:
         # 中枢离开的向上最后一笔
