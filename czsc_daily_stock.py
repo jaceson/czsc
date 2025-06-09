@@ -28,7 +28,7 @@ def output_chart(symbol, df, cachedir):
 
     # 输出html
     chart = kline_pro(kline, bi=bi, title="{} - {}".format(get_symbols_name(c.symbol), c.freq))
-    file_html = "{}.html".format(symbol)
+    file_html = "【{}】{}.html".format(symbol,get_symbols_name(symbol))
     chart.render(os.path.join(cachedir, file_html))
 
     # png目录
