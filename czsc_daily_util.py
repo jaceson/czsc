@@ -128,10 +128,6 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
             gold_low_val = gold_val_low(fx_a.fx, fx_b.fx)
             max_val = max(sqr_val,gold_low_val)
-            # 距离黄金分割点还差5%以下
-            if max_val*max_ratio<min_price:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
-                return False
             # 上一波涨幅必须超过10个交易
             up_kline_num = days_trade_delta(df,fx_a.dt.strftime("%Y-%m-%d"),fx_b.dt.strftime("%Y-%m-%d"))
             if up_kline_num<klines:
@@ -145,6 +141,10 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             # 笔的角度
             if bi_angle(df,fx_a,fx_b)<min_angle:
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
+                return False
+            # 距离黄金分割点还差5%以下
+            if max_val*max_ratio<min_price:
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"距离黄金点较远, 黄金点位："+str(max_val)+", 当前价位："+str(min_price))
                 return False
             # 今天收盘价是这波调整依赖最低收盘价
             min_close = get_min_close(df, fx_b.dt.strftime("%Y-%m-%d"))
