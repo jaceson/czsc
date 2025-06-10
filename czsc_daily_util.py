@@ -768,6 +768,7 @@ def get_kl_data(df):
         end_date：结束日期
         
 """
+ak_request_count = 0
 def get_stock_data(symbol, start_date, end_date, frequency):
     """
         code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
@@ -811,10 +812,17 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     if data_list[-1][0] == end_date:
         return data_list,rs.fields
 
+    # 控制ak请求频次
+    global ak_request_count
+    if ak_request_count>100:
+        time.sleep(60)
+        ak_request_count = 0
+    ak_request_count = ak_request_count+1
+
     symbol = symbol.split('.')[-1]
     start_date = start_date.replace('-','')
     end_date = end_date.replace('-','')
-    data = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start_date, end_date=end_date, adjust="")
+    data = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start_date, end_date=end_date, adjust="", timeout=120)
     '''
          日期    股票代码     开盘     收盘     最高     最低      成交量           成交额    振幅   涨跌幅   涨跌额   换手率
 0     2020-01-02  000001  16.65  16.87  16.95  16.55  1530232  2.571196e+09  2.43  2.55  0.42  0.79
