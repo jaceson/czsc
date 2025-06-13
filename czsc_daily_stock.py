@@ -436,7 +436,7 @@ def main():
     # 计算配置
     daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'buypoint':False,'chan':False}
     # 获取当前日期
-    today = datetime.datetime.today()
+    today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
     weekday = today.weekday()
     if weekday>=4:
