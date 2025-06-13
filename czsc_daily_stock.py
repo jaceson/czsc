@@ -467,6 +467,7 @@ def main():
         is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
         if is_stock_updated:
             break
+        print(df)
         time.sleep(30)
     by_reach = False
     # by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
