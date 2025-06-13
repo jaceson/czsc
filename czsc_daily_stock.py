@@ -462,8 +462,12 @@ def main():
     
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
-    df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
-    is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
+    while True:
+        df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
+        is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
+        if is_stock_updated:
+            break
+        time.sleep(30)
     by_reach = False
     # by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
     # by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))

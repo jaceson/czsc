@@ -809,8 +809,8 @@ def get_stock_data(symbol, start_date, end_date, frequency):
         except Exception as e:
             # czsc_logger().info(e)
             continue
-    if data_list[-1][0] == end_date:
-        return data_list,rs.fields
+    # if data_list[-1][0] == end_date:
+    return data_list,rs.fields
 
     # 控制ak请求频次
     global ak_request_count
