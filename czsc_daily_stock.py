@@ -435,6 +435,12 @@ def main():
     
     # 计算配置
     daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'buypoint':False,'chan':False}
+    # 获取当前日期
+    today = datetime.datetime.today()
+    # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
+    weekday = today.weekday()
+    if weekday>=4:
+        daily_config = {'mline':True,'minion':True,'chaodi':True,'golden':True,'strong':True,'buypoint':True,'chan':True}
     # 所有股票
     all_symbols  = get_daily_symbols()
     # 股票池
