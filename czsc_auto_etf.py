@@ -280,6 +280,7 @@ def fetch_sz_day(today):
                 break
     except Exception as e:
         print(e)
+        sys.exit(-1)
     finally:
         driver.quit()
 
