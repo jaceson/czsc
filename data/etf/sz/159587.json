@@ -1228,5 +1228,35 @@
         "code": "159587",
         "name": "\u7cae\u98df50ETF",
         "share": "4,144.70"
+    },
+    {
+        "dt": "2025-07-04",
+        "code": "159587",
+        "name": "\u7cae\u98dfETF\u5e7f\u53d1",
+        "share": "3,644.70"
+    },
+    {
+        "dt": "2025-07-03",
+        "code": "159587",
+        "name": "\u7cae\u98dfETF\u5e7f\u53d1",
+        "share": "3,744.70"
+    },
+    {
+        "dt": "2025-07-02",
+        "code": "159587",
+        "name": "\u7cae\u98dfETF\u5e7f\u53d1",
+        "share": "3,744.70"
+    },
+    {
+        "dt": "2025-07-01",
+        "code": "159587",
+        "name": "\u7cae\u98dfETF\u5e7f\u53d1",
+        "share": "3,844.70"
+    },
+    {
+        "dt": "2025-06-30",
+        "code": "159587",
+        "name": "\u7cae\u98dfETF\u5e7f\u53d1",
+        "share": "3,844.70"
     }
 ]
