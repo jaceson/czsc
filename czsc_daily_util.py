@@ -784,7 +784,7 @@ def get_stock_data(symbol, start_date, end_date, frequency):
             start_date=start_date,
             end_date=end_date,
             frequency=frequency,
-            adjustflag="3",
+            adjustflag="2",
         )
     if int(rs.error_code) > 0:
         czsc_logger().info('query_history_k_data_plus respond error_code:' + rs.error_code)
