@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 def main():
     lg = bs.login()
     # df_v = get_stock_pd('sh.000001','2010-01-01','2025-07-04',"d")
-    df = get_stock_pd('sh.601318','2010-01-01','2025-07-04',"d")
+    df = get_stock_pd('sh.601318','2000-01-01','2025-07-04',"d")
     
     # df['CLOSE_V'] = df_v['close']
     # df['CLOSE_volume'] = df_v['volume']
@@ -30,19 +30,20 @@ def main():
     df['MACD'],_,_ = MACD(df['close'])
     df['VAR'] = (df['close'] - LLV(df['low'], 10)) / (HHV(df['high'], 10) - LLV(df['low'], 10)) * 100
     df['K0'] = SMA(df['VAR'], 10, 1)
+    df['KD0'] = df['K0']-REF(df['K0'],1)
     df['target'] = (df['close'].shift(-1) > df['close']).astype(int)
 
     # 特征工程之后一定要丢掉NA，不然模型直接闹罢工
     df.dropna(inplace=True)
 
-    features = ['MA5', 'MA10', 'MA20', 'MA60', 'RSI', 'K0', 'MACD', 'volume']
+    features = ['MA5', 'MA10', 'MA20', 'MA60', 'RSI', 'KD0', 'MACD', 'volume']
     X = df[features]
     y = df['target']
     # 90%数据训练
-    X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.9)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.95)
 
     # 用100棵决策树,每棵树最多问3个问题,学习速度
-    model = XGBClassifier(n_estimators=100, max_depth=3, learning_rate=0.1)
+    model = XGBClassifier(n_estimators=1000, max_depth=7, learning_rate=0.05)
     model.fit(X_train, y_train)
 
     # 预测后10%的数据
