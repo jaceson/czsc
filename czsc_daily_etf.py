@@ -32,7 +32,7 @@ def plot_data(ax, x, y, title, xlabel, ylabel, label, rotation=45):
     ax.set_xticklabels(ticks, rotation=rotation, ha='right')  # 旋转 x 轴标签，避免重叠
     ax.legend()
 
-def output_png(code, etf_share_dict, etf_price_dict):
+def output_png(code, etf_share_dict, etf_price_dict, cachedir):
     # 定义数据
     share_x = etf_share_dict['share']['dt']
     share_y = etf_share_dict['share']['share']
@@ -53,7 +53,7 @@ def output_png(code, etf_share_dict, etf_price_dict):
     plt.grid(True)
 
     # 保存图形为文件
-    pngfile = get_data_dir()+'/etf/png/'+etf_share_dict['name']+'.png'
+    pngfile = cachedir+etf_share_dict['name']+'【'+code+'】'+'.png'
     plt.savefig(pngfile)  # 保存为 PNG 文件
 
     plt.close()
@@ -83,19 +83,31 @@ def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.5):
         if close_ratio_30<share_ratio_30 and close_ratio_20<share_ratio_20 and close_ratio_10<share_ratio_10:
             print(START_DATE.replace('-',''),dt_list[-1].replace('-',''))
             return True,{'dt':data_list['净值日期'].tolist(),'close':close_list}
+        else:
+            return False,{'dt':data_list['净值日期'].tolist(),'close':close_list}
+    elif code in ['159919','510300','159330','159949','159632','588000','159659','512100','159813','562500','159770','515070','560800','560580','561170','516900','159669','159518','515220','159655','159599','513220']:
+        data_list = ak.fund_etf_fund_info_em(code,START_DATE.replace('-',''),dt_list[-1].replace('-',''))
+        if len(data_list)<30:
+            return False,None
+        close_list = data_list['单位净值'].tolist()
+        return False,{'dt':data_list['净值日期'].tolist(),'close':close_list}
+
     return False,None
 
 def main():
     # 清除etf缓存
     cachedir = get_data_dir()+'/etf/png/'
     clear_cache(cachedir)
+    clear_cache(cachedir+'买入观察/')
     # etf场内份额
     etf_share_list = get_etf_share(dt=START_DATE)
     for code in etf_share_list.keys():
         etf_share_dict = etf_share_list[code]
         is_valid,close_list = is_asc_share(code,etf_share_dict)
         if is_valid:
-            output_png(code,etf_share_dict,close_list)
+            output_png(code,etf_share_dict,close_list,cachedir+'买入观察/')
+        elif close_list:
+            output_png(code,etf_share_dict,close_list,cachedir)
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
     cd /Users/wj/czsc

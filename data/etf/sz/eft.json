@@ -1,5 +1,5 @@
 {
-    "today": "2025-07-04",
+    "today": "2025-07-11",
     "list": [
         {
             "code": "159001",
@@ -146,6 +146,10 @@
             "name": "\u81ea\u7531\u73b0\u91d1\u6d41ETF\u5de5\u94f6"
         },
         {
+            "code": "159237",
+            "name": "\u6e2f\u80a1\u6c7d\u8f66ETF\u57fa\u91d1"
+        },
+        {
             "code": "159238",
             "name": "300ETF\u589e\u5f3a"
         },
@@ -166,12 +170,32 @@
             "name": "\u6e2f\u80a1\u901a\u6d88\u8d39ETF"
         },
         {
+            "code": "159246",
+            "name": "\u4eba\u5de5\u667a\u80fdETF\u5bcc\u56fd"
+        },
+        {
             "code": "159249",
             "name": "A500\u589e\u5f3aETF\u5de5\u94f6"
         },
         {
+            "code": "159261",
+            "name": "\u521b\u4e1a\u677f\u65b0\u80fd\u6e90ETF\u9e4f\u534e"
+        },
+        {
+            "code": "159262",
+            "name": "\u6e2f\u80a1\u901a\u79d1\u6280ETF"
+        },
+        {
+            "code": "159263",
+            "name": "\u4ef7\u503cETF"
+        },
+        {
             "code": "159265",
             "name": "\u6e2f\u80a1\u6d88\u8d3950ETF"
+        },
+        {
+            "code": "159269",
+            "name": "\u6e2f\u80a1\u901a\u79d1\u6280ETF\u5357\u65b9"
         },
         {
             "code": "159300",
@@ -2242,6 +2266,10 @@
             "name": "\u9ad8\u94c1LOF"
         },
         {
+            "code": "160641",
+            "name": "\u9e4f\u534e\u4e30\u9510LOF"
+        },
+        {
             "code": "160642",
             "name": "\u9e4f\u534e\u589e\u745eLOF"
         },
@@ -3232,10 +3260,6 @@
         {
             "code": "180801",
             "name": "\u4e2d\u822a\u9996\u94a2\u7eff\u80fdREIT"
-        },
-        {
-            "code": "184801",
-            "name": "\u9e4f\u534e\u524d\u6d77REIT"
         }
     ]
 }
