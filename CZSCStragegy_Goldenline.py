@@ -38,6 +38,9 @@ def print_console(title, arr):
     print(f"    50% 的百分位数：{lower_bound}")
     print(f"    95% 的百分位数：{upper_bound}")
 
+'''
+    黄金分割买点
+'''
 def get_buy_point(df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=20):
     sdt = fx_a.dt.strftime("%Y-%m-%d")
     edt = fx_b.dt.strftime("%Y-%m-%d")

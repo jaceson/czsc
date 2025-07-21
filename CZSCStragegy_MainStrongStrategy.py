@@ -14,23 +14,45 @@ for x in range(1,hold_days+1):
     ratio_map[x] = []
 
 '''
-    月线反转指标逻辑
+    主力进场指标
 '''
-def get_month_turn_buy_point(symbol,df):
+def get_main_strong_join_buy_point(symbol,df):
     ndf = get_rps_data(df)
-    buy_con = (
-        (ndf['RPS50']>85) &
-        (ndf['close']>MA(ndf['close'],250)) &
-        (COUNT(IF(ndf['high']>=HHV(ndf['high'],50),1,0), 30)>0) &
-        (COUNT(IF(ndf['close']>MA(ndf['close'],250),1,0), 30)>2) &
-        (COUNT(IF(ndf['close']>MA(ndf['close'],250),1,0), 30)<30) &
-        (ndf['high']/HHV(ndf['high'],120)>0.9)
-    )
+
+    YHCSXPXGTJ1 = (MA(ndf['close'], 5))
+    YHCSXPXGTJ2 = (MA(ndf['close'], 10))
+    YHCSXPXGTJ3 = (MA(ndf['close'], 20))
+    YHCSXPXGTJ4 = (MA(ndf['close'], 60))
+
+    YHCSXPXGTJ5 = (SLOPE(YHCSXPXGTJ1, 5))
+    YHCSXPXGTJ6 = (SLOPE(YHCSXPXGTJ2, 5))
+    YHCSXPXGTJ7 = (SLOPE(YHCSXPXGTJ3, 5))
+    YHCSXPXGTJ8 = (SLOPE(YHCSXPXGTJ4, 5))
+    YHCSXPXGTJ9 = ((YHCSXPXGTJ5 > 0) & (YHCSXPXGTJ6 > 0) & (YHCSXPXGTJ7 > 0) & (YHCSXPXGTJ8 > 0))
+
+    YHCSXPXGTJ10 = (EMA(ndf['close'], 12) - EMA(ndf['close'], 26))
+    YHCSXPXGTJ11 = (EMA(YHCSXPXGTJ10, 9))
+    YHCSXPXGTJ12 = ((YHCSXPXGTJ10 - YHCSXPXGTJ11) * 2)
+    YHCSXPXGTJ13 = ((YHCSXPXGTJ10 > YHCSXPXGTJ11) & (YHCSXPXGTJ12 > REF(YHCSXPXGTJ12, 1)))
+
+    YHCSXPXGTJ14 = ((ndf['close'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 > 8)
+    YHCSXPXGTJ15 = ((ndf['open'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 < 3)
+
+    YHCSXPXGTJ16 = (ndf['close'] > ndf['open'])
+    YHCSXPXGTJ17 = (NOT(REF(ndf['close'], 1) / REF(ndf['close'], 2) > 1.05))
+
+    YHCSXPXGTJ18 = (REF(ndf['close'], 1))
+    YHCSXPXGTJ19 = (SMA(MAX(ndf['close'] - YHCSXPXGTJ18, 0), 14, 1) / SMA(ABS(ndf['close'] - YHCSXPXGTJ18), 14, 1) * 90)
+
+    YHCSXPXGTJ20 = (YHCSXPXGTJ19 < 80)
+    YHCSXPXGTJ21 = (ndf['volume'] > MA(ndf['volume'], 5))
+
+    buy_con = (YHCSXPXGTJ9 & YHCSXPXGTJ13 & YHCSXPXGTJ14 & YHCSXPXGTJ15  & YHCSXPXGTJ16  & YHCSXPXGTJ17  & YHCSXPXGTJ20  & YHCSXPXGTJ21)
     if not df[buy_con].empty:
         selected_indexs = ndf[buy_con].index
         for idx in selected_indexs:
             buy_date = ndf['date'][idx]
-            print(symbol+" 月线反转日期："+buy_date)
+            print(symbol+" 主力进场日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             buy_price = df['close'].iloc[start_index]
             max_val = -1000
@@ -99,7 +121,7 @@ if __name__ == '__main__':
         # if symbol != "sz.300264":
         #     continue
         df = get_stock_pd(symbol, start_date, current_date_str, 'd')
-        get_month_turn_buy_point(symbol,df)
+        get_main_strong_join_buy_point(symbol,df)
 
     print_console(plus_list,minus_list,ratio_map)
         

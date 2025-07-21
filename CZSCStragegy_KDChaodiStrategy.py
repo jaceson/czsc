@@ -13,6 +13,9 @@ ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
 
+'''
+    KD指标抄底逻辑
+'''
 def get_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
     ndf = get_kd_data(df)
     buy_con = (

@@ -13,6 +13,9 @@ ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
 
+'''
+    长线转折指标逻辑
+'''
 def get_longterm_turn_buy_point(symbol,df):
     ndf = get_rps_data(df)
     YIHAOC3 = (ndf['RPS50']>=87)
