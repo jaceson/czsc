@@ -39,7 +39,7 @@ def get_main_strong_join_buy_point(symbol,df):
     YHCSXPXGTJ15 = ((ndf['open'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 < 3)
 
     YHCSXPXGTJ16 = (ndf['close'] > ndf['open'])
-    YHCSXPXGTJ17 = (NOT(REF(ndf['close'], 1) / REF(ndf['close'], 2) > 1.05))
+    YHCSXPXGTJ17 = (REF(ndf['close'], 1) / REF(ndf['close'], 2) <= 1.05)
 
     YHCSXPXGTJ18 = (REF(ndf['close'], 1))
     YHCSXPXGTJ19 = (SMA(MAX(ndf['close'] - YHCSXPXGTJ18, 0), 14, 1) / SMA(ABS(ndf['close'] - YHCSXPXGTJ18), 14, 1) * 90)
