@@ -425,14 +425,25 @@ def test_case(option):
     sys.exit(0)
 
 def main():
-    czsc_logger().info('⚠️警告⚠️：每笔交易金额 3W ！！！，备注：想一想万辰集团' )
-    czsc_logger().info('⚠️警告⚠️：每股总金额最多不超过 5W ！！！，备注：想一想万辰集团' )
+    # 是否重新执行
+    from_index = 0
+    restart_execute = False
+    if len(sys.argv) > 1:
+        from_index = int(sys.argv[1])
+        restart_execute = True
+
+    # 重新执行不打印log
+    if not restart_execute:
+        czsc_logger().info('⚠️警告⚠️：每笔交易金额 3W ！！！，备注：想一想万辰集团' )
+        czsc_logger().info('⚠️警告⚠️：每股总金额最多不超过 5W ！！！，备注：想一想万辰集团' )
     
     lg = bs.login()
     # 登录baostock
-    czsc_logger().info('login respond error_code:' + lg.error_code)
-    czsc_logger().info('login respond  error_msg:' + lg.error_msg)
-    
+    # 重新执行不打印log
+    if not restart_execute:
+        czsc_logger().info('login respond error_code:' + lg.error_code)
+        czsc_logger().info('login respond  error_msg:' + lg.error_msg)
+
     # 计算配置
     daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'buypoint':False,'chan':False}
     # 获取当前日期
@@ -475,8 +486,9 @@ def main():
     by_macd = False
     # by_range = last_trade_date == datetime.now().strftime('%Y-%m-%d')
     by_range = False
-    if not is_stock_updated:
-        czsc_logger().info("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
+    if not is_stock_updated or restart_execute:
+        if not restart_execute:
+            czsc_logger().info("{}日 BaoStock 交易数据还未更新!!!".format(last_trade_date))
         mline_symbols = read_symbols("月线反转.json")
         minion_symbols = read_symbols("小黄人三线红.json")
         golden_symbols = read_symbols("黄金分割线抄底.json")
@@ -492,26 +504,32 @@ def main():
         second_s_chan_buypoint_symbols = read_symbols("chan中枢T2S买点.json")
         third_a_chan_buypoint_symbols = read_symbols("chan中枢T3A买点.json")
         third_b_chan_buypoint_symbols = read_symbols("chan中枢T3B买点.json")
-    else:
-        # 清除缓存图标
-        clear_cache(mline_chart_dir())
-        clear_cache(minion_chart_dir())
-        clear_cache(golden_chart_dir())
-        clear_cache(chaodi_chart_dir())
-        clear_cache(strong_chart_dir())
-        clear_cache(buypoint_chart_dir(1))
-        clear_cache(buypoint_chart_dir(2))
-        clear_cache(buypoint_chart_dir(3))
 
-        clear_cache(buypoint_chan_chart_dir('1'))
-        clear_cache(buypoint_chan_chart_dir('2'))
-        clear_cache(buypoint_chan_chart_dir('1p'))
-        clear_cache(buypoint_chan_chart_dir('2s'))
-        clear_cache(buypoint_chan_chart_dir('3a'))
-        clear_cache(buypoint_chan_chart_dir('3b'))
+    if is_stock_updated:
+        # 清除缓存图标
+        if not restart_execute:
+            clear_cache(mline_chart_dir())
+            clear_cache(minion_chart_dir())
+            clear_cache(golden_chart_dir())
+            clear_cache(chaodi_chart_dir())
+            clear_cache(strong_chart_dir())
+            clear_cache(buypoint_chart_dir(1))
+            clear_cache(buypoint_chart_dir(2))
+            clear_cache(buypoint_chart_dir(3))
+
+            clear_cache(buypoint_chan_chart_dir('1'))
+            clear_cache(buypoint_chan_chart_dir('2'))
+            clear_cache(buypoint_chan_chart_dir('1p'))
+            clear_cache(buypoint_chan_chart_dir('2s'))
+            clear_cache(buypoint_chan_chart_dir('3a'))
+            clear_cache(buypoint_chan_chart_dir('3b'))
             
         # 选择月线反转股票
         for symbol in all_symbols:
+            # 从from_index开始
+            if all_symbols.index(symbol) < from_index:
+                continue
+
             # 打印进度
             print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
             
