@@ -5,6 +5,7 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
+from CZSCStragegy_AllStrategy import get_longterm_turn_condition
 
 plus_list = []
 minus_list = []
@@ -17,50 +18,11 @@ for x in range(1,hold_days+1):
     长线转折指标逻辑
 '''
 def get_longterm_turn_buy_point(symbol,df):
-    ndf = get_rps_data(df)
-    YIHAOC3 = (ndf['RPS50']>=87)
-    YIHAOC6 = (ndf['RPS120']>=90)
-    YIHAOC7 = ((ndf['RPS50']>=90) | (ndf['RPS120']>=90))
-    YIHAOC8 = (ndf['close']>=HHV(ndf['close'],70))
-    YIHAOC9 = (YIHAOC7 & YIHAOC8)
-    YIHAOC10 = (YIHAOC3 | YIHAOC6)
-    YIHAOC11 = ((LLV(ndf['low'],50)>LLV(ndf['low'],200)) & YIHAOC9)
-    YIHAOC12 = ((LLV(ndf['low'],30)>LLV(ndf['low'],120)) & YIHAOC9)
-    YIHAOC13 = (LLV(ndf['low'],20)>LLV(ndf['low'],50))
-    YIHAOC14 = (YIHAOC11 | YIHAOC12 | YIHAOC13)
-    YIHAOC16 = (COUNT(IF(ndf['high']<HHV(ndf['high'],80),0,1),10))
-    YIHAOC17 = (((ndf['close']>=HHV(ndf['close'],50)) | (ndf['high']>=HHV(ndf['high'],50))) & YIHAOC7)
-    YIHAOC18 = (YIHAOC16 | YIHAOC17)
-    YIHAOC19 = ((ndf['close']>MA(ndf['close'],20)) & (ndf['close']>MA(ndf['close'],200)) & (MA(ndf['close'],120)/MA(ndf['close'],200)>0.9))
-    YIHAOC21 = (COUNT(IF(ndf['close']>MA(ndf['close'],200),1,0),45))
-    YIHAOC23 = (COUNT(IF(ndf['close']>MA(ndf['close'],250),1,0),45))
-    YIHAOC24 = ((YIHAOC21>=2) & (YIHAOC21<45))
-    YIHAOC26 = (COUNT(IF(ndf['low']<MA(ndf['close'],200),1,0),45))
-    YIHAOC27 = ((YIHAOC26>0) & (YIHAOC21>2))
-    YIHAOC29 = (COUNT(IF(ndf['low']<MA(ndf['close'],250),1,0),45))
-    YIHAOC30 = ((YIHAOC29>0) & (YIHAOC23>2))
-    YIHAOC31 = (YIHAOC24 | YIHAOC27 | YIHAOC30)
-    YIHAOC32 = ((MA(ndf['close'],120)>=REF(MA(ndf['close'],120),10)) | (MA(ndf['close'],200)>=REF(MA(ndf['close'],200),10)))
-    YIHAOC33 = ((MA(ndf['close'],120)>=REF(MA(ndf['close'],120),15)) | (MA(ndf['close'],200)>=REF(MA(ndf['close'],200),15)))
-    YIHAOC34 = (YIHAOC32 | YIHAOC33)
-    YIHAOC35 = ((MA(ndf['close'],120)>=REF(MA(ndf['close'],120),10)) | (MA(ndf['close'],200)>=REF(MA(ndf['close'],200),10)))
-    YIHAOC36 = ((MA(ndf['close'],120)>=REF(MA(ndf['close'],120),15)) & (MA(ndf['close'],200)>=REF(MA(ndf['close'],200),15)))
-    YIHAOC37 = (YIHAOC35 | YIHAOC36)
-    YIHAOC38 = ((MA(ndf['close'],120)>MA(ndf['close'],200)) & YIHAOC34)
-    YIHAOC39 = ((HHV(ndf['high'],30)/LLV(ndf['low'],120)<1.50) & YIHAOC34)
-    YIHAOC40 = ((HHV(ndf['high'],30)/LLV(ndf['low'],120)<1.55) & YIHAOC37)
-    YIHAOC41 = ((HHV(ndf['high'],30)/LLV(ndf['low'],120)<1.65) & YIHAOC38 & YIHAOC9)
-    YIHAOC42 = (YIHAOC39 | YIHAOC40 | YIHAOC41)
-    YIHAOC43 = (HHV(ndf['high'],5)/HHV(ndf['high'],120)>0.85)
-    YIHAOC44 = ((HHV(ndf['high'],5)/HHV(ndf['high'],120)>0.8) & YIHAOC9)
-    YIHAOC45 = (ndf['close']/HHV(ndf['high'],10)>0.9)
-    YIHAOC46 = ((YIHAOC43 | YIHAOC44) & YIHAOC45)
-
-    buy_con = (YIHAOC10 & YIHAOC14 & YIHAOC18 & YIHAOC19 & YIHAOC31 & YIHAOC42 & YIHAOC46)
+    buy_con = get_longterm_turn_condition(symbol,df)
     if not df[buy_con].empty:
-        selected_indexs = ndf[buy_con].index
+        selected_indexs = df[buy_con].index
         for idx in selected_indexs:
-            buy_date = ndf['date'][idx]
+            buy_date = df['date'][idx]
             print(symbol+" 长线反转日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             buy_price = df['close'].iloc[start_index]

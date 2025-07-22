@@ -5,6 +5,7 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
+from CZSCStragegy_AllStrategy import get_kd_conditon
 
 plus_list = []
 minus_list = []
@@ -16,28 +17,12 @@ for x in range(1,hold_days+1):
 '''
     KD指标抄底逻辑
 '''
-def get_kd_buy_point(symbol,df,MIN_K=25,MIN_KD=-0.5,MIN_KR=-0.03):
-    ndf = get_kd_data(df)
-    buy_con = (
-        (df['K0'] < MIN_K) & (df['K0'] < REF(df['K0'],1)) &
-        (((df['K0']-REF(df['K0'],1))>=MIN_KD) | ((df['K0']-REF(df['K0'],1))/REF(df['K0'],1) >= MIN_KR)) & 
-        (REF(df['K0'],1)<REF(df['K0'],2)) & 
-        (REF(df['K0'],2)<REF(df['K0'],3)) & 
-        (REF(df['K0'],3)<REF(df['K0'],4)) & 
-        (REF(df['K0'],4)<REF(df['K0'],5)) & 
-        (REF(df['K0'],5)<REF(df['K0'],6)) & 
-        (REF(df['K0'],6)<REF(df['K0'],7)) & 
-        (REF(df['K0'],7)<REF(df['K0'],8)) &
-        (df['low'] <= REF(df['low'], 1)) &
-        (df['high'] <= REF(df['high'], 1)) &
-        (REF(df['low'], 1) <= REF(df['low'], 2)) &
-        (REF(df['high'], 1) <= REF(df['high'], 2)) 
-    )
-
+def get_kd_buy_point(symbol,df,MIN_K=20,MIN_KD=-0.5,MIN_KR=-0.03):
+    buy_con = get_kd_condition(symbol,df,MIN_K,MIN_KD,MIN_KR)
     if not df[buy_con].empty:
-        selected_indexs = ndf[buy_con].index
+        selected_indexs = df[buy_con].index
         for idx in selected_indexs:
-            buy_date = ndf['date'][idx]
+            buy_date = df['date'][idx]
             print(symbol+" 抄底日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             buy_price = df['close'].iloc[start_index]

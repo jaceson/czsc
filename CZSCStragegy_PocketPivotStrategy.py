@@ -5,6 +5,7 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
+from CZSCStragegy_AllStrategy import get_pocket_pivot_condition
 
 plus_list = []
 minus_list = []
@@ -15,80 +16,13 @@ for x in range(1,hold_days+1):
 
 '''
     口袋支点指标
-'''
-# BARSLAST 实现：从当前行往前找最近一次 True 的位置间隔
-def bars_last(s):
-    """返回每行的 BARSLAST 值"""
-    out = np.empty(len(s))
-    out[:] = np.nan
-    idx = np.where(s)[0]
-    for i in range(len(s)):
-        if len(idx) == 0:
-            out[i] = np.nan
-        else:
-            # 最后一个 <= i 的 True 的索引
-            pos = idx[idx <= i].max() if len(idx[idx <= i]) else np.nan
-            out[i] = i - pos if not np.isnan(pos) else np.nan
-    return out.astype('int64') 
-    
+''' 
 def get_pocket_pivot_buy_point(symbol,df):
-    ndf = get_rps_data(df)
-
-    YIHAOCA36 = 20
-    YIHAOCA37 = (MA(ndf['close'],YIHAOCA36))
-    YIHAOCA38 = (STD(ndf['close'],YIHAOCA36))
-    YIHAOCA39 = (YIHAOCA37+2*YIHAOCA38)
-    YIHAOCA40 = (YIHAOCA37-2*YIHAOCA38)
-    YIHAOCA41 = (LLV(ndf['low'],250))
-    YIHAOCA42 = (HHV(ndf['high'],250))
-    YIHAOCA43 = ((ndf['close']-YIHAOCA41)/YIHAOCA41*100)
-    YIHAOCA44 = ((YIHAOCA42-ndf['close'])/(YIHAOCA42-YIHAOCA41)*100)
-    YIHAOCA45 = (YIHAOCA43>85)
-    YIHAOCA46 = (YIHAOCA44<=60)
-
-    # 假设 cross_today 是布尔 Series，索引为连续整数 0..n-1
-    cond1 = (YIHAOCA45 & YIHAOCA46).astype(int)
-    cross_today = (cond1.diff() == 1) & (cond1 == 1)   # 当前发生金叉
-
-    cond = cross_today.values          # 转成 bool ndarray
-    idx  = np.arange(len(cond))
-
-    # 计算 BARSLAST（每行往前找最近一次 True 的间隔）
-    bars = np.empty(len(cond))
-    bars[:] = -1
-    true_pos = np.where(cond)[0]
-    for i in range(len(cond)):
-        if len(true_pos[true_pos <= i]):
-            bars[i] = i - true_pos[true_pos <= i][-1]
-
-    # 构造 ref_cross：把 bars 作为 shift 步数，逐行取值
-    # 当 bars[i] = k 时，取 cond[i-k]，若 k 越界则置 False
-    ref_cross = np.full(len(cond), False, dtype=bool)
-    mask = bars >= 0
-    ref_cross[mask] = cond[idx[mask] - bars[mask].astype(int)]
-
-    # 转成 Series 方便后续使用
-    ref_cross = pd.Series(ref_cross, index=cross_today.index)
-
-    # 最终信号
-    YIHAOCA47 = (bars < 60) & ref_cross
-
-    # YIHAOCA47 = (BARSLAST((CROSS(YIHAOCA45 & YIHAOCA46,0.5))<60) & (REF(CROSS(YIHAOCA45 & YIHAOCA46,0.5),BARSLAST(CROSS(YIHAOCA45 & YIHAOCA46,0.5)))==1)
-    YIHAOCA48 = (MA(ndf['close'],10))
-    YIHAOCA49 = (MA(ndf['close'],30))
-    YIHAOCA50 = (MA(ndf['close'],60))
-    YIHAOCA51 = (MA(ndf['close'],120))
-    YIHAOCA52 = (SLOPE(YIHAOCA48,5))
-    YIHAOCA53 = (SLOPE(YIHAOCA49,5))
-    YIHAOCA54 = (SLOPE(YIHAOCA50,5))
-    YIHAOCA55 = (SLOPE(YIHAOCA51,5))
-    YIHAOCA56 = ((YIHAOCA52>0) & (YIHAOCA53>0) & (YIHAOCA54>0) & (YIHAOCA55>0))
-
-    buy_con = (YIHAOCA45 & YIHAOCA46 & YIHAOCA47 & YIHAOCA56)
+    buy_con = get_pocket_pivot_condition(symbol,df)
     if not df[buy_con].empty:
-        selected_indexs = ndf[buy_con].index
+        selected_indexs = df[buy_con].index
         for idx in selected_indexs:
-            buy_date = ndf['date'][idx]
+            buy_date = df['date'][idx]
             print(symbol+" 口袋支点日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             buy_price = df['close'].iloc[start_index]

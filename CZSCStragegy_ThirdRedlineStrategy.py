@@ -5,6 +5,7 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
+from CZSCStragegy_AllStrategy import get_third_redline_condition
 
 plus_list = []
 minus_list = []
@@ -14,16 +15,11 @@ for x in range(1,hold_days+1):
     ratio_map[x] = []
 
 def get_third_redline_buy_point(symbol,df):
-    ndf = get_rps_data(df)
-    buy_con = (
-        (ndf['RPS50'] > 90) &
-        (ndf['RPS120'] > 90) &
-        (ndf['RPS250'] > 90)
-    )
+    buy_con = get_third_redline_condition(symbol,df)
     if not df[buy_con].empty:
-        selected_indexs = ndf[buy_con].index
+        selected_indexs = df[buy_con].index
         for idx in selected_indexs:
-            buy_date = ndf['date'][idx]
+            buy_date = df['date'][idx]
             print(symbol+" 小黄人三线红日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             buy_price = df['close'].iloc[start_index]
