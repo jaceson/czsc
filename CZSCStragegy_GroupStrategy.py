@@ -63,7 +63,7 @@ def get_group_category_same_buy_point(symbol,df):
     不同指标不同买点
 '''
 def get_group_category_after_buy_point(symbol,df):
-    buy_con1 = get_main_strong_join_condition(symbol,df)
+    buy_con1 = get_pocket_pivot_condition(symbol,df)
     buy_con2_1,buy_con2_2,buy_con2_3 = get_swing_king_condition(symbol,df)
 
     # 见底
@@ -75,6 +75,7 @@ def get_group_category_after_buy_point(symbol,df):
             for j,idx2 in enumerate(selected_indexs2):
                 if idx2<idx1:
                     continue
+                # if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1] and (idx2-idx1)<10):
                 if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1]):
                     buy_date = df['date'][idx2]
                     print(symbol+" 转折日期："+df['date'][idx1]+"； 见底买入日期："+buy_date)
@@ -95,7 +96,7 @@ def get_group_category_after_buy_point(symbol,df):
                     else:
                         minus_list.append(max_val)
                         minus_list_1.append(max_val)
-                    break
+                break
     # 买进
     if not df[buy_con1].empty and not df[buy_con2_2].empty:
         selected_indexs1 = df[buy_con1].index
@@ -105,6 +106,7 @@ def get_group_category_after_buy_point(symbol,df):
             for j,idx2 in enumerate(selected_indexs2):
                 if idx2<idx1:
                     continue
+                # if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1] and (idx2-idx1)<10):
                 if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1]):
                     buy_date = df['date'][idx2]
                     print(symbol+" 转折日期："+df['date'][idx1]+"； 买进买入日期："+buy_date)
@@ -125,7 +127,7 @@ def get_group_category_after_buy_point(symbol,df):
                     else:
                         minus_list.append(max_val)
                         minus_list_2.append(max_val)
-                    break
+                break
 
     # 加仓
     if not df[buy_con1].empty and not df[buy_con2_3].empty:
@@ -136,6 +138,7 @@ def get_group_category_after_buy_point(symbol,df):
             for j,idx2 in enumerate(selected_indexs2):
                 if idx2<idx1:
                     continue
+                # if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1] and (idx2-idx1)<10):
                 if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1]):
                     buy_date = df['date'][idx2]
                     print(symbol+" 转折日期："+df['date'][idx1]+"； 加仓买入日期："+buy_date)
@@ -156,7 +159,7 @@ def get_group_category_after_buy_point(symbol,df):
                     else:
                         minus_list.append(max_val)
                         minus_list_3.append(max_val)
-                    break
+                break
 
 def print_console(s_plus_list,s_minus_list,s_ratio_map):
     print("正收益次数："+str(len(s_plus_list)))
