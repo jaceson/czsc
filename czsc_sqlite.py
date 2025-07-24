@@ -14,7 +14,7 @@ def sqlite3_connect():
     if sql_connect:
         return
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    sql_connect = sqlite3.connect(current_dir+'/sqlite3.db')
+    sql_connect = sqlite3.connect(current_dir+'/data/sqlite3.db')
     sql_connect_cursor = sql_connect.cursor()
 
     sql_connect_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ETF_DAILY'")
