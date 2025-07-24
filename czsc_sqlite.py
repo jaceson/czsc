@@ -34,6 +34,30 @@ def sqlite3_connect():
     else:
         print("表 ETF_DAILY 已存在。")
 
+    sql_connect_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='STOCK_DAILY'")
+    table_exists = sql_connect_cursor.fetchone()
+
+    if not table_exists:
+        sql_connect_cursor.execute('''
+        CREATE TABLE STOCK_DAILY (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            code TEXT NOT NULL,
+            open REAL,
+            close REAL,
+            high REAL,
+            low REAL,
+            volume REAL,
+            amount REAL,
+            turn REAL,
+            frequency TEXT
+        )
+        ''')
+        print("表 STOCK_DAILY 创建成功！")
+    else:
+        print("表 STOCK_DAILY 已存在。")
+    
+
 def get_etf_share(dt=""):
     # 获取当前日期
     current_date = datetime.now()
@@ -97,10 +121,50 @@ def sync_db(file_path):
     if is_has_update:
         sql_connect.commit()
 
+def fetch_all_symbols_kline():
+    lg = bs.login()
+    all_symbols = get_daily_symbols()
+    for symbol in all_symbols:
+        if all_symbols.index(symbol) < 1777:
+            continue
+        print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
+        rs = bs.query_history_k_data_plus(
+            code=symbol,
+            fields="date,open,high,low,close,volume,amount,turn",
+            start_date='2001-01-01',
+            end_date='2025-01-01',
+            frequency='d',
+            adjustflag="2",
+        )
+
+        while (rs.error_code == '0') & rs.next():
+            row_data = rs.get_row_data()
+            try:
+                stock_date = row_data[0]
+                stock_open = float(row_data[1])
+                stock_high = float(row_data[2])
+                stock_low = float(row_data[3])
+                stock_close = float(row_data[4])
+                stock_volume = float(row_data[5])
+                stock_amount = float(row_data[6])
+                stock_turn = float(row_data[7])
+                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+                    continue
+                sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, turn, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_turn, 'd'))
+            except Exception as e:
+                print(e)
+                continue
+        # 提交数据
+        sql_connect.commit()
+
+    bs.logout()
 def main():
     global sql_connect,sql_connect_cursor
     # 连接数据库
     sqlite3_connect()
+
+    # fetch_all_symbols_kline()
+    # return
 
     # 查询已有数据，避免重复添加
     sql_connect_cursor.execute("SELECT dt,code FROM ETF_DAILY")

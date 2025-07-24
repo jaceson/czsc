@@ -14,10 +14,27 @@ ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
 
+plus_list_1 = []
+minus_list_1 = []
+ratio_map_1 = {}
+for x in range(1,hold_days+1):
+    ratio_map_1[x] = []
+
+plus_list_2 = []
+minus_list_2 = []
+ratio_map_2 = {}
+for x in range(1,hold_days+1):
+    ratio_map_2[x] = []
+
+plus_list_3 = []
+minus_list_3 = []
+ratio_map_3 = {}
+for x in range(1,hold_days+1):
+    ratio_map_3[x] = []
 '''
-    主力进场指标
+    多个指标相同买点
 '''
-def get_group_category_buy_point(symbol,df):
+def get_group_category_same_buy_point(symbol,df):
     buy_con1 = get_main_strong_join_condition(symbol,df)
     buy_con2 = get_longterm_turn_condition(symbol,df)
     if not df[buy_con1].empty and not df[buy_con2].empty:
@@ -42,8 +59,104 @@ def get_group_category_buy_point(symbol,df):
             else:
                 minus_list.append(max_val)
 
-def get_group_buy_point_with_conditions(symbol,df,conditions,groupname):
-    
+'''
+    不同指标不同买点
+'''
+def get_group_category_after_buy_point(symbol,df):
+    buy_con1 = get_main_strong_join_condition(symbol,df)
+    buy_con2_1,buy_con2_2,buy_con2_3 = get_swing_king_condition(symbol,df)
+
+    # 见底
+    if not df[buy_con1].empty and not df[buy_con2_1].empty:
+        selected_indexs1 = df[buy_con1].index
+        selected_indexs2 = df[buy_con2_1].index
+
+        for i,idx1 in enumerate(selected_indexs1):
+            for j,idx2 in enumerate(selected_indexs2):
+                if idx2<idx1:
+                    continue
+                if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1]):
+                    buy_date = df['date'][idx2]
+                    print(symbol+" 转折日期："+df['date'][idx1]+"； 见底买入日期："+buy_date)
+                    start_index = df.iloc[df['date'].values == buy_date].index[0]
+                    buy_price = df['close'].iloc[start_index]
+                    max_val = -1000
+                    for idx in range(start_index+1,start_index+hold_days+1):
+                        if idx<len(df['date']):
+                            stock_close = df['close'].iloc[idx]
+                        ratio = round(100*(stock_close-buy_price)/buy_price,2)
+                        ratio_map[idx-start_index].append(ratio)
+                        ratio_map_1[idx-start_index].append(ratio)
+                        max_val = max(max_val,ratio)
+
+                    if max_val>0:
+                        plus_list.append(max_val)
+                        plus_list_1.append(max_val)
+                    else:
+                        minus_list.append(max_val)
+                        minus_list_1.append(max_val)
+                    break
+    # 买进
+    if not df[buy_con1].empty and not df[buy_con2_2].empty:
+        selected_indexs1 = df[buy_con1].index
+        selected_indexs2 = df[buy_con2_2].index
+
+        for i,idx1 in enumerate(selected_indexs1):
+            for j,idx2 in enumerate(selected_indexs2):
+                if idx2<idx1:
+                    continue
+                if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1]):
+                    buy_date = df['date'][idx2]
+                    print(symbol+" 转折日期："+df['date'][idx1]+"； 买进买入日期："+buy_date)
+                    start_index = df.iloc[df['date'].values == buy_date].index[0]
+                    buy_price = df['close'].iloc[start_index]
+                    max_val = -1000
+                    for idx in range(start_index+1,start_index+hold_days+1):
+                        if idx<len(df['date']):
+                            stock_close = df['close'].iloc[idx]
+                        ratio = round(100*(stock_close-buy_price)/buy_price,2)
+                        ratio_map[idx-start_index].append(ratio)
+                        ratio_map_2[idx-start_index].append(ratio)
+                        max_val = max(max_val,ratio)
+
+                    if max_val>0:
+                        plus_list.append(max_val)
+                        plus_list_2.append(max_val)
+                    else:
+                        minus_list.append(max_val)
+                        minus_list_2.append(max_val)
+                    break
+
+    # 加仓
+    if not df[buy_con1].empty and not df[buy_con2_3].empty:
+        selected_indexs1 = df[buy_con1].index
+        selected_indexs2 = df[buy_con2_3].index
+
+        for i,idx1 in enumerate(selected_indexs1):
+            for j,idx2 in enumerate(selected_indexs2):
+                if idx2<idx1:
+                    continue
+                if idx2 == idx1 or (i < (len(selected_indexs1)-1) and idx2 < selected_indexs1[i+1]):
+                    buy_date = df['date'][idx2]
+                    print(symbol+" 转折日期："+df['date'][idx1]+"； 加仓买入日期："+buy_date)
+                    start_index = df.iloc[df['date'].values == buy_date].index[0]
+                    buy_price = df['close'].iloc[start_index]
+                    max_val = -1000
+                    for idx in range(start_index+1,start_index+hold_days+1):
+                        if idx<len(df['date']):
+                            stock_close = df['close'].iloc[idx]
+                        ratio = round(100*(stock_close-buy_price)/buy_price,2)
+                        ratio_map[idx-start_index].append(ratio)
+                        ratio_map_3[idx-start_index].append(ratio)
+                        max_val = max(max_val,ratio)
+
+                    if max_val>0:
+                        plus_list.append(max_val)
+                        plus_list_3.append(max_val)
+                    else:
+                        minus_list.append(max_val)
+                        minus_list_3.append(max_val)
+                    break
 
 def print_console(s_plus_list,s_minus_list,s_ratio_map):
     print("正收益次数："+str(len(s_plus_list)))
@@ -98,8 +211,18 @@ if __name__ == '__main__':
         # if symbol != "sz.300264":
         #     continue
         df = get_stock_pd(symbol, start_date, current_date_str, 'd')
-        get_group_join_buy_point(symbol,df)
+        get_group_category_after_buy_point(symbol,df)
 
+    print("======================== 整体 ========================")
     print_console(plus_list,minus_list,ratio_map)
-        
+    
+    print("======================== 见底买入 ========================")
+    print_console(plus_list_1,minus_list_1,ratio_map_1)
+
+    print("======================== 买进买入 ========================")
+    print_console(plus_list_2,minus_list_2,ratio_map_2)
+
+    print("======================== 加仓买入 ========================")
+    print_console(plus_list_3,minus_list_3,ratio_map_3)
+    
     bs.logout()
