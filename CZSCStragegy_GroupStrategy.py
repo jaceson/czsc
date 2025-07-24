@@ -4,8 +4,8 @@ import sys
 from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
-import baostock as bs
 from CZSCStragegy_AllStrategy import *
+from czsc_sqlite import get_local_stock_data
 
 plus_list = []
 minus_list = []
@@ -195,14 +195,6 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
         print("     总的负收益："+str(minus_val))
 
 if __name__ == '__main__':
-    lg = bs.login()
-
-    start_date = "2020-01-01"
-    current_date = datetime.now()
-    current_date_str = current_date.strftime('%Y-%m-%d')    
-    df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
-    end_date = df['date'].iloc[-1]
-    
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
         # 打印进度
@@ -210,7 +202,8 @@ if __name__ == '__main__':
             
         # if symbol != "sz.300264":
         #     continue
-        df = get_stock_pd(symbol, start_date, current_date_str, 'd')
+        # df = get_stock_pd(symbol, start_date, current_date_str, 'd')
+        df = get_local_stock_data(symbol,'2020-01-01')
         get_group_category_after_buy_point(symbol,df)
 
     print("======================== 整体 ========================")
@@ -224,5 +217,3 @@ if __name__ == '__main__':
 
     print("======================== 加仓买入 ========================")
     print_console(plus_list_3,minus_list_3,ratio_map_3)
-    
-    bs.logout()

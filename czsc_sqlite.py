@@ -2,6 +2,7 @@
 import os
 import sys
 import sqlite3
+import baostock as bs
 from czsc_daily_util import *
 from dateutil.relativedelta import relativedelta
 
@@ -121,6 +122,25 @@ def sync_db(file_path):
     if is_has_update:
         sql_connect.commit()
 
+def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
+    # 连接数据库
+    sqlite3_connect()
+    # stock data
+    sql_connect_cursor.execute("SELECT date,open,high,low,close,volume,amount,turn FROM STOCK_DAILY WHERE code = ? AND frequency = ? AND date >= ? ORDER BY date ASC",(symbol,frequency,start_date))
+    res_list = []
+    rows = sql_connect_cursor.fetchall()
+    # 转换成pandas
+    df = pd.DataFrame(rows, columns=['date','open','high','low','close','volume','amount','turn'])
+    df['low'] = df['low'].astype(float)
+    df['high'] = df['high'].astype(float)
+    df['open'] = df['open'].astype(float)
+    df['close'] = df['close'].astype(float)
+    df['volume'] = df['volume'].astype(float)
+    df['amount'] = df['amount'].astype(float)
+    df['turn'] = df['turn'].astype(float)
+    df['datetime'] = pd.to_datetime(df['date'])
+    return df
+
 def fetch_all_symbols_kline():
     lg = bs.login()
     all_symbols = get_daily_symbols()
@@ -158,6 +178,7 @@ def fetch_all_symbols_kline():
         sql_connect.commit()
 
     bs.logout()
+
 def main():
     global sql_connect,sql_connect_cursor
     # 连接数据库
