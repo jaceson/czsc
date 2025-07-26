@@ -6,6 +6,7 @@ from lib.MyTT import *
 import pandas as pd
 import baostock as bs
 import numpy as np
+from czsc_sqlite import get_local_stock_data
 
 plus_list = []
 minus_list = []
@@ -101,21 +102,10 @@ def get_buy_point(df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=20):
                 break
 
 if __name__ == '__main__':
-    lg = bs.login()
-
     start_date = "2020-01-01"
-    end_date = get_latest_trade_date()
-    
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
-        df = get_stock_pd(symbol,start_date,end_date,"d")
-        while len(df) <= 0:
-            lg = bs.login()
-            print('login respond error_code:' + lg.error_code)
-            print('login respond  error_msg:' + lg.error_msg)
-            # 重新获取
-            df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
-
+        df = get_local_stock_data(symbol,start_date)
         bars = get_stock_bars(symbol=symbol,df=df)
         c = CZSC(bars, get_signals=None)
         idx = 0
@@ -191,6 +181,3 @@ if __name__ == '__main__':
     print_console('负收益：', minus_list)
     for x in range(1,hold_days+1):
         print_console("第 {} 天：".format(x), ratio_map[x])
-        
-    bs.logout()
-

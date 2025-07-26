@@ -5,11 +5,12 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
-from CZSCStragegy_AllStrategy import get_kd_conditon
+from CZSCStragegy_AllStrategy import get_kd_condition
+from czsc_sqlite import get_local_stock_data
 
 plus_list = []
 minus_list = []
-hold_days = 5
+hold_days = 15
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
@@ -76,14 +77,7 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
         print("     总的负收益："+str(minus_val))
 
 if __name__ == '__main__':
-    lg = bs.login()
-
     start_date = "2020-01-01"
-    current_date = datetime.now()
-    current_date_str = current_date.strftime('%Y-%m-%d')    
-    df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
-    end_date = df['date'].iloc[-1]
-    
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
         # 打印进度
@@ -91,11 +85,9 @@ if __name__ == '__main__':
             
         # if symbol != "sz.300264":
         #     continue
-        df = get_stock_pd(symbol, start_date, current_date_str, 'd')
+        df = get_local_stock_data(symbol,start_date)
         get_kd_buy_point(symbol,df)
 
     print_console(plus_list,minus_list,ratio_map)
-        
-    bs.logout()
 
 

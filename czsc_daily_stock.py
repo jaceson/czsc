@@ -670,7 +670,7 @@ def main():
     python czsc_daily_stock.py | tee -a ./data/log.json
 """
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and int(sys.argv[1])<100:
         test_case(int(sys.argv[1]))
     else:
         main()

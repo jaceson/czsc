@@ -51,7 +51,6 @@ def czsc_logger():
 """
 def get_mline_turn(df):
     ndf = get_rps_data(df)
-    ndf = df.copy()
     pos = (
         (ndf['RPS50']>85) &
         (ndf['close']>MA(ndf['close'],250)) &
@@ -77,7 +76,6 @@ def get_mline_turn(df):
 """
 def get_minion_trend(df):
     ndf = get_rps_data(df)
-    ndf = df.copy()
     pos = (
         (ndf['RPS50'] > 90) &
         (ndf['RPS120'] > 90) &
@@ -296,7 +294,6 @@ def bi_day_ratio(df,fx_a,fx_b):
 """
 def is_kd_buy_point(symbol,df,MIN_K=20,MIN_KD=-0.5,MIN_KR=-0.03):
     ndf = get_kd_data(df)
-    ndf = df.copy()
     # buy_con = (
     #     (ndf['K0'] <= REF(df['K0'],1)) &
     #     (((ndf['K0']-REF(ndf['K0'],1))>=MIN_KD) | ((ndf['K0']-REF(ndf['K0'],1))/REF(ndf['K0'],1) >= MIN_KR)) & 
@@ -329,7 +326,7 @@ def is_kd_buy_point(symbol,df,MIN_K=20,MIN_KD=-0.5,MIN_KR=-0.03):
         (REF(ndf['K0'],4)<REF(ndf['K0'],5)) & 
         (REF(ndf['K0'],5)<REF(ndf['K0'],6)) & 
         (REF(ndf['K0'],6)<REF(ndf['K0'],7)) & 
-        (REF(ndf['K0'],7)<REF(dndff['K0'],8)) &
+        (REF(ndf['K0'],7)<REF(ndf['K0'],8)) &
         (ndf['low'] <= REF(ndf['low'], 1)) &
         (ndf['high'] <= REF(ndf['high'], 1)) &
         (REF(ndf['low'], 1) <= REF(ndf['low'], 2)) &
