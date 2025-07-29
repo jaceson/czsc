@@ -9,7 +9,7 @@ from czsc_sqlite import get_local_stock_data
 
 plus_list = []
 minus_list = []
-hold_days = 15
+hold_days = 5
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
