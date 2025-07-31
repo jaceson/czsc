@@ -1,4 +1,4 @@
-akshare==1.16.13
+akshare
 alembic==1.14.0
 aliyun-python-sdk-core==2.16.0
 aliyun-python-sdk-kms==2.16.5

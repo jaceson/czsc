@@ -48,6 +48,8 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
                     if bsp_list[is_buy][-1].bi.get_end_klu().idx <= self.last_sure_pos:
                         break
                     del self.bsp_store_flat_dict[bsp_list[is_buy][-1].bi.idx]
+                    # 同时把失效买卖点从Bi删除
+                    bsp_list[is_buy][-1].bi.bsp = None
                     bsp_list[is_buy].pop()
 
     def clear_bsp1_end(self):
@@ -61,6 +63,36 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
         for bsp_list in self.bsp_store_dict.values():
             yield from bsp_list[True]
             yield from bsp_list[False]
+
+    def bsp_iter_v2(self) -> Iterable[CBS_Point[LINE_TYPE]]:
+        list_indices = []
+        for bsp_type, bsp_list in self.bsp_store_dict.items():
+            if bsp_list[True]:
+                list_indices.append([bsp_type, True, len(bsp_list[True]) - 1])
+            if bsp_list[False]:
+                list_indices.append([bsp_type, False, len(bsp_list[False]) - 1])
+
+        while list_indices:
+            max_idx = -1
+            max_bi_idx = -1
+            max_bsp = None
+
+            for i, (bsp_type, is_buy, idx) in enumerate(list_indices):
+                if idx >= 0:
+                    bsp = self.bsp_store_dict[bsp_type][is_buy][idx]
+                    if bsp.bi.idx > max_bi_idx:
+                        max_bi_idx = bsp.bi.idx
+                        max_idx = i
+                        max_bsp = bsp
+
+            if max_bsp is None:
+                break
+
+            yield max_bsp
+
+            list_indices[max_idx][2] -= 1
+            if list_indices[max_idx][2] < 0:
+                list_indices.pop(max_idx)
 
     def __len__(self):
         return len(self.bsp_store_flat_dict)
@@ -117,6 +149,8 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
             return
         if is_target_bsp:
             self.store_add_bsp(bs_type, bsp)
+        else:
+            bsp.bi.bsp = None
         if bs_type in [BSP_TYPE.T1, BSP_TYPE.T1P]:
             self.add_bsp1(bsp)
 
@@ -335,6 +369,14 @@ class CBSPointList(Generic[LINE_TYPE, LINE_LIST_TYPE]):
 
     def getSortedBspList(self) -> List[CBS_Point[LINE_TYPE]]:
         return sorted(self.bsp_iter(), key=lambda bsp: bsp.bi.idx)
+
+    def get_latest_bsp(self, number: int) -> List[CBS_Point[LINE_TYPE]]:
+        res = []
+        for bsp in self.bsp_iter_v2():
+            res.append(bsp)
+            if number != 0 and len(res) >= number:
+                break
+        return res
 
 
 def bsp2s_break_bsp1(bsp2s_bi: LINE_TYPE, bsp2_break_bi: LINE_TYPE) -> bool:
