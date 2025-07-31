@@ -145,8 +145,8 @@ def fetch_all_symbols_kline():
     lg = bs.login()
     all_symbols = get_daily_symbols()
     for symbol in all_symbols:
-        if all_symbols.index(symbol) < 1777:
-            continue
+        # if all_symbols.index(symbol) < 1777:
+        #     continue
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
         rs = bs.query_history_k_data_plus(
             code=symbol,
