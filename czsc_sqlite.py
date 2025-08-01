@@ -143,20 +143,26 @@ def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
 
 def fetch_all_symbols_kline():
     lg = bs.login()
+    frequency = '30'
+    start_date = '2020-01-01'
+    end_date = '2025-01-01'
     all_symbols = get_daily_symbols()
     for symbol in all_symbols:
-        # if all_symbols.index(symbol) < 1777:
+        fields="date,open,high,low,close,volume,amount,time"
+        if frequency == 'd':
+            start_date = '2000-01-01'
+            fields="date,open,high,low,close,volume,amount,turn",
+        # if all_symbols.index(symbol) < 1140:
         #     continue
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
         rs = bs.query_history_k_data_plus(
             code=symbol,
-            fields="date,open,high,low,close,volume,amount,turn",
-            start_date='2001-01-01',
-            end_date='2025-01-01',
-            frequency='d',
+            fields=fields,
+            start_date=start_date,
+            end_date=end_date,
+            frequency=frequency,
             adjustflag="2",
         )
-
         while (rs.error_code == '0') & rs.next():
             row_data = rs.get_row_data()
             try:
@@ -167,10 +173,16 @@ def fetch_all_symbols_kline():
                 stock_close = float(row_data[4])
                 stock_volume = float(row_data[5])
                 stock_amount = float(row_data[6])
-                stock_turn = float(row_data[7])
-                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
                     continue
-                sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, turn, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_turn, 'd'))
+                if frequency == 'd':
+                    stock_turn = float(row_data[7])
+                    sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, turn, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_turn, frequency))
+                else:
+                    stock_time = row_data[7]
+                    if len(stock_time)<0:
+                        continue
+                    sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, time, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_time, frequency))    
             except Exception as e:
                 print(e)
                 continue
