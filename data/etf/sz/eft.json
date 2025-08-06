@@ -1,5 +1,5 @@
 {
-    "today": "2025-08-01",
+    "today": "2025-08-06",
     "list": [
         {
             "code": "159001",
@@ -194,6 +194,14 @@
             "name": "\u6e2f\u80a1\u79d1\u6280ETF\u57fa\u91d1"
         },
         {
+            "code": "159255",
+            "name": "\u901a\u7528\u822a\u7a7aETF\u6613\u65b9\u8fbe"
+        },
+        {
+            "code": "159256",
+            "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u534e\u590f"
+        },
+        {
             "code": "159257",
             "name": "\u822a\u7a7aETF\u57fa\u91d1"
         },
@@ -236,6 +244,10 @@
         {
             "code": "159270",
             "name": "\u521b\u4e1a\u677f200ETF\u5357\u65b9"
+        },
+        {
+            "code": "159273",
+            "name": "\u4e91\u8ba1\u7b97ETF\u6c47\u6dfb\u5bcc"
         },
         {
             "code": "159276",
