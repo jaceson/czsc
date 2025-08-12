@@ -1,5 +1,5 @@
 {
-    "today": "2025-08-08",
+    "today": "2025-08-12",
     "list": [
         {
             "code": "159001",
@@ -246,12 +246,20 @@
             "name": "\u521b\u4e1a\u677f200ETF\u5357\u65b9"
         },
         {
+            "code": "159271",
+            "name": "\u6052\u751f\u6307\u6570ETF"
+        },
+        {
             "code": "159273",
             "name": "\u4e91\u8ba1\u7b97ETF\u6c47\u6dfb\u5bcc"
         },
         {
             "code": "159276",
             "name": "\u73b0\u91d1\u6d41ETF\u6c47\u6dfb\u5bcc"
+        },
+        {
+            "code": "159278",
+            "name": "\u673a\u5668\u4ebaETF\u9e4f\u534e"
         },
         {
             "code": "159300",
@@ -579,7 +587,7 @@
         },
         {
             "code": "159507",
-            "name": "\u7535\u4fe1ETF"
+            "name": "\u901a\u4fe1ETF\u5e7f\u53d1"
         },
         {
             "code": "159508",
@@ -647,7 +655,7 @@
         },
         {
             "code": "159527",
-            "name": "\u4e91\u8ba1\u7b9750ETF"
+            "name": "\u4e91\u8ba1\u7b97ETF\u5e7f\u53d1"
         },
         {
             "code": "159528",
@@ -1083,7 +1091,7 @@
         },
         {
             "code": "159657",
-            "name": "\u751f\u7269\u75ab\u82d7ETF"
+            "name": "\u75ab\u82d7ETF\u9e4f\u534e"
         },
         {
             "code": "159658",
