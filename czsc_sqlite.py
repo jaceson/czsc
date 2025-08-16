@@ -141,6 +141,30 @@ def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
     df['datetime'] = pd.to_datetime(df['date'])
     return df
 
+"""
+    本地股票数据转换为NewBar
+"""
+def get_stock_bars(symbol, start_date=None, frequency='d', df=None):
+    if df is None:
+        df = get_local_stock_data(symbol, start_date, frequency)
+    if frequency.lower() == 'w':
+        freq = Freq.W
+    elif frequency.lower() == 'm':
+        freq = Freq.M
+    elif frequency.lower() == '5':
+        freq = Freq.F5
+    elif frequency.lower() == '15':
+        freq = Freq.F15
+    elif frequency.lower() == '30':
+        freq = Freq.F30
+    elif frequency.lower() == '60':
+        freq = Freq.F60
+    else:
+        freq = Freq.D
+    return [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
+                    close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=row['amount'])
+                for i, row in df.iterrows()]
+
 def fetch_all_symbols_kline():
     lg = bs.login()
     frequency = '30'

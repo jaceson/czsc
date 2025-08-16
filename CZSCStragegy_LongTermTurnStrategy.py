@@ -5,11 +5,12 @@ from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
+from czsc_sqlite import get_local_stock_data
 from CZSCStragegy_AllStrategy import get_longterm_turn_condition
 
 plus_list = []
 minus_list = []
-hold_days = 15
+hold_days = 5
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
@@ -18,15 +19,19 @@ for x in range(1,hold_days+1):
     长线转折指标逻辑
 '''
 def get_longterm_turn_buy_point(symbol,df):
+    last_start_index = -1
     buy_con = get_longterm_turn_condition(symbol,df)
     if not df[buy_con].empty:
         selected_indexs = df[buy_con].index
         for idx in selected_indexs:
             buy_date = df['date'][idx]
-            print(symbol+" 长线反转日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
+            if last_start_index>0 and (start_index-last_start_index)<=hold_days:
+                continue
+            print(symbol+" 长线反转日期："+buy_date)
             buy_price = df['close'].iloc[start_index]
             max_val = -1000
+            last_start_index = start_index
             for idx in range(start_index+1,start_index+hold_days+1):
                 if idx<len(df['date']):
                     stock_close = df['close'].iloc[idx]
@@ -76,14 +81,6 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
         print("     总的负收益："+str(minus_val))
 
 if __name__ == '__main__':
-    lg = bs.login()
-
-    start_date = "2020-01-01"
-    current_date = datetime.now()
-    current_date_str = current_date.strftime('%Y-%m-%d')    
-    df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
-    end_date = df['date'].iloc[-1]
-    
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
         # 打印进度
@@ -91,9 +88,7 @@ if __name__ == '__main__':
             
         # if symbol != "sz.300264":
         #     continue
-        df = get_stock_pd(symbol, start_date, current_date_str, 'd')
+        df = get_local_stock_data(symbol,'2020-01-01')
         get_longterm_turn_buy_point(symbol,df)
 
     print_console(plus_list,minus_list,ratio_map)
-        
-    bs.logout()
