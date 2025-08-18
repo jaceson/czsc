@@ -531,7 +531,7 @@ def main():
                 continue
 
             # 打印进度
-            print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
+            print("{}进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),all_symbols.index(symbol),len(all_symbols)))
             
             # 股票数据
             df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
