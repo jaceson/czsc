@@ -302,7 +302,7 @@ def automatic_click():
     out_driver = create_sz_share_webdriver()
     for item in etf_code_list:
         print("{}进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),etf_code_list.index(item),len(etf_code_list)))
-        
+
         retry_num = 1
         while True:
             if fetch_sz_etf(out_driver,item['code'],today,retry_num):
@@ -328,7 +328,7 @@ if __name__ == '__main__':
     weekday = today.weekday()
     # etf晚上10点再更新
     now = datetime.now()
-    while now.hour < 22 and now.minute < 30 and weekday<=5:
+    while (now.hour < 22 or now.minute < 30) and weekday<=5:
         print("当前时间：", now.strftime("%Y-%m-%d %H:%M:%S"))
         time.sleep(60*5)
         now = datetime.now()
