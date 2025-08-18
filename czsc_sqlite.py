@@ -138,13 +138,14 @@ def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
     df['volume'] = df['volume'].astype(float)
     df['amount'] = df['amount'].astype(float)
     df['turn'] = df['turn'].astype(float)
+    df['date'] = df['date'].astype(str)
     df['datetime'] = pd.to_datetime(df['date'])
     return df
 
 """
     本地股票数据转换为NewBar
 """
-def get_stock_bars(symbol, start_date=None, frequency='d', df=None):
+def get_local_stock_bars(symbol, start_date=None, frequency='d', df=None):
     if df is None:
         df = get_local_stock_data(symbol, start_date, frequency)
     if frequency.lower() == 'w':
@@ -161,7 +162,7 @@ def get_stock_bars(symbol, start_date=None, frequency='d', df=None):
         freq = Freq.F60
     else:
         freq = Freq.D
-    return [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
+    return [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['date'],
                     close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=row['amount'])
                 for i, row in df.iterrows()]
 
