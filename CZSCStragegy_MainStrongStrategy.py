@@ -145,22 +145,28 @@ def get_zs_and_bi_info(buy_date, bi_list, df):
     获取buy_date所在的中枢和笔信息
     
     Args:
-        buy_date: 买入日期
-        zs_list: 中枢列表
-        df: 股票数据DataFrame
+        buy_date: 买入日期（字符串格式）
+        bi_list: 笔列表
+        df: 股票数据DataFrame（date列为字符串）
     
     Returns:
-        tuple: (中枢对象, 笔对象, 是否找到)
+        tuple: (笔对象, 是否找到)
     """
     if not bi_list:
         return None, False
     
-    date_idx = df[df['date'] == buy_date].index[0]
+    try:
+        date_idx = df[df['date'] == buy_date].index[0]
+    except IndexError:
+        return None, False
 
     for bi in bi_list:
-        date_a_idx = df[df['date'] == bi.fx_a.dt].index[0]
-        date_b_idx = df[df['date'] == bi.fx_b.dt].index[0]
-        if date_a_idx <= date_idx and date_idx <= date_b_idx:
+        # 将bi.fx_a.dt和bi.fx_b.dt转换为字符串格式进行比较
+        bi_start_date = bi.fx_a.dt.strftime("%Y-%m-%d") if hasattr(bi.fx_a.dt, 'strftime') else str(bi.fx_a.dt)
+        bi_end_date = bi.fx_b.dt.strftime("%Y-%m-%d") if hasattr(bi.fx_b.dt, 'strftime') else str(bi.fx_b.dt)
+        
+        # 检查buy_date是否在笔的时间范围内
+        if bi_start_date <= buy_date <= bi_end_date:
             return bi, True
     
     return None, False
@@ -170,10 +176,10 @@ def is_same_zs_bi(last_buy_date, current_buy_date, bi_list, df):
     检查两个购买日期是否在同一个中枢的同一笔内
     
     Args:
-        last_buy_date: 上次购买日期
-        current_buy_date: 本次购买日期
-        zs_list: 中枢列表
-        df: 股票数据DataFrame
+        last_buy_date: 上次购买日期（字符串格式）
+        current_buy_date: 本次购买日期（字符串格式）
+        bi_list: 笔列表
+        df: 股票数据DataFrame（date列为字符串）
     
     Returns:
         bool: True表示在同一个中枢的同一笔内，False表示不在
@@ -181,18 +187,24 @@ def is_same_zs_bi(last_buy_date, current_buy_date, bi_list, df):
     if not last_buy_date or not current_buy_date:
         return False
     
-    # 获取上次购买的中枢和笔信息
+    # 获取上次购买的笔信息
     last_bi, last_found = get_zs_and_bi_info(last_buy_date, bi_list, df)
     if not last_found:
         return False
     
-    # 获取本次购买的中枢和笔信息
+    # 获取本次购买的笔信息
     current_bi, current_found = get_zs_and_bi_info(current_buy_date, bi_list, df)
     if not current_found:
         return False
     
     # 检查是否在同一个中枢的同一笔内
-    if (last_bi.fx_a.dt == current_bi.fx_a.dt and last_bi.fx_b.dt == current_bi.fx_b.dt):
+    # 将datetime转换为字符串进行比较
+    last_start_date = last_bi.fx_a.dt.strftime("%Y-%m-%d") if hasattr(last_bi.fx_a.dt, 'strftime') else str(last_bi.fx_a.dt)
+    last_end_date = last_bi.fx_b.dt.strftime("%Y-%m-%d") if hasattr(last_bi.fx_b.dt, 'strftime') else str(last_bi.fx_b.dt)
+    curr_start_date = current_bi.fx_a.dt.strftime("%Y-%m-%d") if hasattr(current_bi.fx_a.dt, 'strftime') else str(current_bi.fx_a.dt)
+    curr_end_date = current_bi.fx_b.dt.strftime("%Y-%m-%d") if hasattr(current_bi.fx_b.dt, 'strftime') else str(current_bi.fx_b.dt)
+    
+    if (last_start_date == curr_start_date and last_end_date == curr_end_date):
         return True
     
     return False
