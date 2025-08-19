@@ -32,8 +32,6 @@ def sqlite3_connect():
         )
         ''')
         print("表 ETF_DAILY 创建成功！")
-    else:
-        print("表 ETF_DAILY 已存在。")
 
     sql_connect_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='STOCK_DAILY'")
     table_exists = sql_connect_cursor.fetchone()
@@ -55,8 +53,6 @@ def sqlite3_connect():
         )
         ''')
         print("表 STOCK_DAILY 创建成功！")
-    else:
-        print("表 STOCK_DAILY 已存在。")
     
 
 def get_etf_share(dt=""):
