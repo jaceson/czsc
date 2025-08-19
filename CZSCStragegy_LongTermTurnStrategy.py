@@ -37,6 +37,11 @@ def is_date_in_zs_interval(buy_date, zs_list, df):
     """
     判断buy_date相对于中枢的位置，进一步细化分类
     
+    优化逻辑：
+    1. buy_date必须在中枢开始时间(sdt)和结束时间(edt)之后
+    2. 选择最靠近buy_date的中枢
+    3. 如果找不到满足条件的中枢，返回'no_zs'
+    
     Args:
         buy_date: 买入日期
         zs_list: 中枢列表
@@ -64,79 +69,108 @@ def is_date_in_zs_interval(buy_date, zs_list, df):
     # 获取该日期的收盘价
     close_price = df.loc[date_idx, 'close']
     
-    # 遍历所有中枢，检查价格相对于中枢的位置
+    # 过滤出满足时间条件的中枢：buy_date必须在中枢结束时间之后
+    valid_zs_list = []
     for zs in zs_list:
-        if zs.is_valid:  # 只检查有效的中枢
-            # 检查价格是否在中枢的上下沿之间
-            if zs.zd <= close_price <= zs.zg:
-                return 'in_zs', {
-                    'zs': zs,
-                    'close_price': close_price,
-                    'zs_zd': zs.zd,
-                    'zs_zg': zs.zg,
-                    'zs_zz': zs.zz,
-                    'zs_sdt': zs.sdt,
-                    'zs_edt': zs.edt,
-                    'position': 'in_zs'
-                }
-            elif close_price > zs.zg:
-                # 计算距离中枢上沿的百分比
-                distance_pct = (close_price - zs.zg) / zs.zg * 100
-                if distance_pct <= 10:
-                    return 'above_zs_within_10pct', {
-                        'zs': zs,
-                        'close_price': close_price,
-                        'zs_zd': zs.zd,
-                        'zs_zg': zs.zg,
-                        'zs_zz': zs.zz,
-                        'zs_sdt': zs.sdt,
-                        'zs_edt': zs.edt,
-                        'position': 'above_zs_within_10pct',
-                        'distance_from_zs': close_price - zs.zg,
-                        'distance_pct': distance_pct
-                    }
-                else:
-                    return 'above_zs_beyond_10pct', {
-                        'zs': zs,
-                        'close_price': close_price,
-                        'zs_zd': zs.zd,
-                        'zs_zg': zs.zg,
-                        'zs_zz': zs.zz,
-                        'zs_sdt': zs.sdt,
-                        'zs_edt': zs.edt,
-                        'position': 'above_zs_beyond_10pct',
-                        'distance_from_zs': close_price - zs.zg,
-                        'distance_pct': distance_pct
-                    }
-            elif close_price <= zs.zd:
-                # 计算距离中枢下沿的百分比
-                distance_pct = (zs.zd - close_price) / zs.zd * 100
-                if distance_pct <= 20:
-                    return 'below_zs_within_20pct', {
-                        'zs': zs,
-                        'close_price': close_price,
-                        'zs_zd': zs.zd,
-                        'zs_zg': zs.zg,
-                        'zs_zz': zs.zz,
-                        'zs_sdt': zs.sdt,
-                        'zs_edt': zs.edt,
-                        'position': 'below_zs_within_20pct',
-                        'distance_from_zs': zs.zd - close_price,
-                        'distance_pct': distance_pct
-                    }
-                else:
-                    return 'below_zs_beyond_20pct', {
-                        'zs': zs,
-                        'close_price': close_price,
-                        'zs_zd': zs.zd,
-                        'zs_zg': zs.zg,
-                        'zs_zz': zs.zz,
-                        'zs_sdt': zs.sdt,
-                        'zs_edt': zs.edt,
-                        'position': 'below_zs_beyond_20pct',
-                        'distance_from_zs': zs.zd - close_price,
-                        'distance_pct': distance_pct
-                    }
+        if not zs.is_valid:
+            continue
+            
+        # 将中枢的结束时间转换为字符串格式进行比较
+        zs_end_date = zs.edt.strftime("%Y-%m-%d") if hasattr(zs.edt, 'strftime') else str(zs.edt)
+        
+        # 检查buy_date是否在中枢结束时间之后
+        if buy_date > zs_end_date:
+            valid_zs_list.append(zs)
+    
+    if not valid_zs_list:
+        return 'no_zs', None
+    
+    # 找到最靠近buy_date的中枢（按时间距离排序）
+    def get_date_distance(zs):
+        """计算中枢结束时间与buy_date的时间距离"""
+        zs_end_date = zs.edt.strftime("%Y-%m-%d") if hasattr(zs.edt, 'strftime') else str(zs.edt)
+        # 将日期转换为datetime对象计算距离
+        try:
+            zs_end_dt = datetime.strptime(zs_end_date, "%Y-%m-%d")
+            buy_dt = datetime.strptime(buy_date, "%Y-%m-%d")
+            return abs((buy_dt - zs_end_dt).days)
+        except:
+            return float('inf')
+    
+    # 按时间距离排序，选择最靠近的中枢
+    valid_zs_list.sort(key=get_date_distance)
+    closest_zs = valid_zs_list[0]
+    
+    # 检查价格相对于最靠近中枢的位置
+    if closest_zs.zd <= close_price <= closest_zs.zg:
+        return 'in_zs', {
+            'zs': closest_zs,
+            'close_price': close_price,
+            'zs_zd': closest_zs.zd,
+            'zs_zg': closest_zs.zg,
+            'zs_zz': closest_zs.zz,
+            'zs_sdt': closest_zs.sdt,
+            'zs_edt': closest_zs.edt,
+            'position': 'in_zs'
+        }
+    elif close_price > closest_zs.zg:
+        # 计算距离中枢上沿的百分比
+        distance_pct = (close_price - closest_zs.zg) / closest_zs.zg * 100
+        if distance_pct <= 10:
+            return 'above_zs_within_10pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'above_zs_within_10pct',
+                'distance_from_zs': close_price - closest_zs.zg,
+                'distance_pct': distance_pct
+            }
+        else:
+            return 'above_zs_beyond_10pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'above_zs_beyond_10pct',
+                'distance_from_zs': close_price - closest_zs.zg,
+                'distance_pct': distance_pct
+            }
+    elif close_price <= closest_zs.zd:
+        # 计算距离中枢下沿的百分比
+        distance_pct = (closest_zs.zd - close_price) / closest_zs.zd * 100
+        if distance_pct <= 20:
+            return 'below_zs_within_20pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'below_zs_within_20pct',
+                'distance_from_zs': closest_zs.zd - close_price,
+                'distance_pct': distance_pct
+            }
+        else:
+            return 'below_zs_beyond_20pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'below_zs_beyond_20pct',
+                'distance_from_zs': closest_zs.zd - close_price,
+                'distance_pct': distance_pct
+            }
     
     return 'no_zs', None
 
