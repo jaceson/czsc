@@ -266,7 +266,7 @@ def get_third_redline_join_buy_point(symbol,df):
             
             # 检查是否在同一个中枢的同一笔内
             if last_buy_date and is_same_zs_bi(last_buy_date, buy_date, bi_list, df):
-                print(f"{symbol} 跳过购买 - 与上次购买日期 {last_buy_date} 在同一个中枢的同一笔内")
+                print(f"{symbol} 跳过购买 - {buy_date} 与上次购买日期 {last_buy_date} 在同一个中枢的同一笔内")
                 continue
             
             # 判断buy_date是否在中枢区间内
