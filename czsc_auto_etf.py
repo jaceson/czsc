@@ -301,7 +301,7 @@ def automatic_click():
     etf_code_list = fetch_sz_day(today)
     out_driver = create_sz_share_webdriver()
     for item in etf_code_list:
-        print("{}进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),etf_code_list.index(item),len(etf_code_list)))
+        print("{} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),etf_code_list.index(item),len(etf_code_list)))
 
         retry_num = 1
         while True:
