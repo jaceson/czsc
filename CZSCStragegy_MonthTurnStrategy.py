@@ -272,7 +272,7 @@ def get_month_turn_join_buy_point(symbol,df):
             # 判断buy_date是否在中枢区间内
             position_type, zs_info = is_date_in_zs_interval(buy_date, zs_list, df)
             
-            print(symbol+" 主力进场日期："+buy_date)
+            print(symbol+" 月线反转日期："+buy_date)
             if position_type == 'in_zs':
                 print(f"  ✓ 在中枢区间内 - 中枢区间[{zs_info['zs_zd']:.2f}, {zs_info['zs_zg']:.2f}], 收盘价:{zs_info['close_price']:.2f}")
                 print(f"     中枢时间范围: {zs_info['zs_sdt']} 到 {zs_info['zs_edt']}")
