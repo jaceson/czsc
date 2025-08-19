@@ -504,12 +504,13 @@ if __name__ == '__main__':
     for symbol in all_symbols:
         # 打印进度
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
-            
-        # if symbol != "sz.300264":
-        #     continue
-        # df = get_stock_pd(symbol, start_date, current_date_str, 'd')
         df = get_local_stock_data(symbol,'2020-01-01')
         get_pocket_pivot_join_buy_point(symbol,df)
+
+        # 分阶段打印统计结果
+        if all_symbols.index(symbol)==1000 or all_symbols.index(symbol)==2000 or all_symbols.index(symbol)==3000:
+            print_console(plus_list,minus_list,ratio_map)
+            print_zs_analysis()
 
     print_console(plus_list,minus_list,ratio_map)
     print_zs_analysis()
