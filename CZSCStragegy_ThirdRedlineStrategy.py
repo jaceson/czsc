@@ -502,8 +502,6 @@ def print_zs_analysis():
 if __name__ == '__main__':
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
-        if all_symbols.index(symbol)>1000:
-            break
         # 打印进度
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
             
