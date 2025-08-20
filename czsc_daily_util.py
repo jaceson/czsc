@@ -94,8 +94,7 @@ def get_minion_trend(df):
 """
 def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20,close_ratio=1.1):
     # 股票czsc结构
-    bars = get_stock_bars(symbol=symbol,df=df)
-    c = CZSC(bars, get_signals=None)
+    c = get_stock_czsc(symbol,df)
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return False
@@ -165,6 +164,20 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
 
+'''
+    返回中枢
+'''
+stock_czsc_cache = {}
+def get_stock_czsc(symbol,df,frequency='d'):
+    cache_key = symbol+'_'+frequency
+    if cache_key in stock_czsc_cache:
+        return stock_czsc_cache[cache_key]
+
+    bars = get_stock_bars(symbol=symbol,df=df,frequency=frequency)
+    c = CZSC(bars, get_signals=None)
+    stock_czsc_cache[cache_key] = c
+    return c
+
 """
     是否底背驰
     1）low地点是一段时间内的最低端
@@ -177,8 +190,7 @@ def is_macd_bottom_divergence(symbol,df):
 """
 def get_reach_support_lines(symbol,df,max_ratio=0.01,days_num=365*2):
     # 股票czsc结构
-    bars = get_stock_bars(symbol=symbol,df=df)
-    c = CZSC(bars, get_signals=None)
+    c = get_stock_czsc(symbol,df)
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return 0,0
@@ -429,8 +441,7 @@ def has_close_ma(df,N=5,diff=0.02):
 """
 def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,macd_ratio=0.05):
     # 股票czsc结构
-    bars = get_stock_bars(symbol=symbol,df=df)
-    c = CZSC(bars, get_signals=None)
+    c = get_stock_czsc(symbol,df)
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return 0
@@ -867,7 +878,12 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
 """
     股票数据转换为NewBar
 """
+stock_bars_cache = {}
 def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=None):
+    cache_key = symbol+'_'+frequency
+    if cache_key in stock_bars_cache:
+        return stock_bars_cache[cache_key]
+
     if df is None or len(df.columns.tolist()) <= 0:
         if start_date and end_date and frequency:
             df = get_stock_pd(symbol, start_date, end_date, frequency)
@@ -890,9 +906,11 @@ def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=Non
         freq = Freq.F60
     else:
         freq = Freq.D
-    return [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
+    bars = [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
                     close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=row['amount'])
                 for i, row in df.iterrows()]
+    stock_bars_cache[cache_key] = bars
+    return bars
 
 """
     获取最后一天交易日日期
