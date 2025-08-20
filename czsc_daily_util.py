@@ -176,8 +176,10 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
         return False
     last_bi = c.bi_list[-1]
     # 最后一个中枢
-    last_zs = c.zs_list[-1]
-    zs_list = get_zs_seq(c.zs_list)
+    zs_list = get_zs_seq(c.bi_list)
+    if len(zs_list) <= 0:
+        return False
+    last_zs = zs_list[-1]   
     for zs in reversed(zs_list):
         if zs.is_valid:
             last_zs = zs
