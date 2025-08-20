@@ -18,6 +18,7 @@ from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
 from czsc.enum import *
 from collections import *
+from CZSCStragegy_AllStrategy import *
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -162,6 +163,77 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 return True
             else:
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
+    return False
+
+'''
+    最佳策略
+'''
+def is_best_strategy_point(symbol,df,max_ratio=0.2):
+    close_price = df['close'].iloc[-1]
+    c = get_stock_czsc(symbol,df)
+    # 最后一笔
+    if len(c.bi_list) <= 0:
+        return False
+    last_bi = c.bi_list[-1]
+    # 最后一个中枢
+    last_zs = c.zs_list[-1]
+    zs_list = get_zs_seq(c.zs_list)
+    for zs in reversed(zs_list):
+        if zs.is_valid:
+            last_zs = zs
+            break
+    if not last_zs.is_valid or last_zs.zd <= close_price:
+        return False
+    # 今天收盘价是否低于中低max_ratio
+    distance_pct = (last_zs.zd - close_price) / last_zs.zd * 100
+    if distance_pct <= max_ratio*100:
+        return False
+    # 长线转折
+    last_trading_day = df['date'].iloc[-1]
+    longterm_con = get_longterm_turn_condition(symbol,df)
+    if not df[longterm_con].empty:
+        selected_indexs = df[longterm_con].index
+        # 距离上次出现信号不超过5天
+        if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
+            return False
+        last_selected_date = df['date'].iloc[selected_indexs[-1]]
+        if last_trading_day == last_selected_date:
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+            czsc_logger().info("     1）长线转折日期："+str(last_trading_day))
+            czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
+            czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
+            czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
+            return True
+    # 口袋支点
+    pocket_pivot_con = get_pocket_pivot_condition(symbol,df)
+    if not df[pocket_pivot_con].empty:
+        selected_indexs = df[pocket_pivot_con].index
+        # 距离上次出现信号不超过5天
+        if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
+            return False
+        last_selected_date = df['date'].iloc[selected_indexs[-1]]
+        if last_trading_day == last_selected_date:
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+            czsc_logger().info("     1）口袋支点日期："+str(last_trading_day))
+            czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
+            czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
+            czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
+            return True
+    # 主力进场
+    main_force_con = get_main_strong_join_condition(symbol,df)
+    if not df[main_force_con].empty:
+        selected_indexs = df[main_force_con].index
+        # 距离上次出现信号不超过5天
+        if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
+            return False
+        last_selected_date = df['date'].iloc[selected_indexs[-1]]
+        if last_trading_day == last_selected_date:
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+            czsc_logger().info("     1）主力进场日期："+str(last_trading_day))
+            czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
+            czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
+            czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
+            return True
     return False
 
 '''
