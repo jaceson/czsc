@@ -332,15 +332,13 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
     if not df[longterm_con].empty:
         selected_indexs = df[longterm_con].index
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
+        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+        czsc_logger().info("     1）长线转折日期："+str(last_selected_date))
         if last_trading_day == last_selected_date:
             # 距离上次出现信号不超过5天
             if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-                czsc_logger().info("     1）长线转折日期："+str(last_trading_day))
                 czsc_logger().info("     2）长线转折前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
             else:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-                czsc_logger().info("     1）长线转折日期："+str(last_trading_day))
                 czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
                 czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
                 czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
@@ -350,15 +348,13 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
     if not df[pocket_pivot_con].empty:
         selected_indexs = df[pocket_pivot_con].index
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
+        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+        czsc_logger().info("     1）口袋支点日期："+str(last_selected_date))
         if last_trading_day == last_selected_date:
             # 距离上次出现信号不超过5天
             if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-                czsc_logger().info("     1）口袋支点日期："+str(last_trading_day))
                 czsc_logger().info("     2）口袋支点前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
             else:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-                czsc_logger().info("     1）口袋支点日期："+str(last_trading_day))
                 czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
                 czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
                 czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
@@ -368,15 +364,14 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
     if not df[main_force_con].empty:
         selected_indexs = df[main_force_con].index
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
+        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+        czsc_logger().info("     1）主力进场日期："+str(last_selected_date))
         if last_trading_day == last_selected_date:
             # 距离上次出现信号不超过5天
             if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-                czsc_logger().info("     1）主力进场日期："+str(last_trading_day))
                 czsc_logger().info("     2）主力进场前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
             else:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-                czsc_logger().info("     1）主力进场日期："+str(last_trading_day))
                 czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
                 czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
                 czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
