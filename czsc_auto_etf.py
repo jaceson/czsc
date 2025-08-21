@@ -284,6 +284,28 @@ def fetch_sz_day(today):
     finally:
         driver.quit()
 
+    # 优化：合并新旧数据，保留原有数据，只添加新的数据
+    if os.path.isfile(filepath):
+        existing_data_dict = read_json(filepath)
+        if existing_data_dict and 'list' in existing_data_dict:
+            existing_list = existing_data_dict['list']
+            # 创建现有数据的code集合，用于快速查找
+            existing_codes = {item['code'] for item in existing_list}
+            
+            # 添加新数据中不存在的项目
+            for new_item in data_list:
+                if new_item['code'] not in existing_codes:
+                    existing_list.append(new_item)
+                    print(f"添加新的ETF: {new_item['code']} - {new_item['name']}")
+            
+            # 使用合并后的数据
+            data_list = existing_list
+            print(f"合并后总共有 {len(data_list)} 个ETF")
+        else:
+            print("现有文件格式不正确或为空，使用新抓取的数据")
+    else:
+        print("首次创建eft.json文件")
+
     # 缓存
     etf_data_dict = {'today':today,'list':data_list}
     write_json(etf_data_dict,filepath)

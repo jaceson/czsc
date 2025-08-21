@@ -227,12 +227,24 @@ def main():
         all_rows_data.append(row[0]+row[1])
 
     # 本地数据
+    sh_file = get_data_dir()+'/etf/sh/sh_etf_stock.json'
+    sh_dict = read_json(sh_file)
     etf_dir = get_data_dir()+'/etf/'
     for root, dirs, files in os.walk(etf_dir):
         for file in files:
+            if file in sh_dict.keys():
+                continue
             file_path = os.path.join(root, file)
             if file_path.endswith('.json') and not file_path.endswith('eft.json'):
-                sync_db(file_path)
+                try:
+                    sync_db(file_path)
+                except Exception as e:
+                    write_json(sh_dict,sh_file)
+                    print(e)
+                    sys.exit(-1)
+                if '/sh/' in file_path:
+                    sh_dict[file] = True
+    write_json(sh_dict,sh_file)
 
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
