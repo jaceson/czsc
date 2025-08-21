@@ -1,43 +1,472 @@
 # coding: utf-8
 import os
 import sys
+import time
+from datetime import datetime, timedelta
 from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
 import baostock as bs
-from CZSCStragegy_AllStrategy import get_longterm_turn_condition
+from czsc.utils.sig import get_zs_seq
+from czsc.analyze import *
+from czsc.enum import *
+from czsc_sqlite import get_local_stock_data,get_local_stock_bars
+from CZSCStragegy_AllStrategy import get_swing_king_condition
 
 plus_list = []
 minus_list = []
-hold_days = 15
+hold_days = 5
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
 
+# 添加中枢相关的统计变量
+zs_in_stats = {'count': 0, 'plus_list': [], 'minus_list': []}
+zs_out_stats = {
+    'above_zs': {
+        'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},  # 高于中枢10%以内
+        'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}   # 高于中枢10%以外
+    },
+    'below_zs': {
+        'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},  # 低于中枢20%以内
+        'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}   # 低于中枢20%以外
+    }
+}
+
+def is_date_in_zs_interval(buy_date, zs_list, df):
+    """
+    判断buy_date相对于中枢的位置，进一步细化分类
+    
+    优化逻辑：
+    1. buy_date必须在中枢开始时间(sdt)和结束时间(edt)之后
+    2. 选择最靠近buy_date的中枢
+    3. 如果找不到满足条件的中枢，返回'no_zs'
+    
+    Args:
+        buy_date: 买入日期
+        zs_list: 中枢列表
+        df: 股票数据DataFrame
+    
+    Returns:
+        tuple: (位置类型, 位置信息)
+        位置类型: 
+        - 'in_zs' - 在中枢内
+        - 'above_zs_within_10pct' - 高于中枢10%以内
+        - 'above_zs_beyond_10pct' - 高于中枢10%以外
+        - 'below_zs_within_20pct' - 低于中枢20%以内
+        - 'below_zs_beyond_20pct' - 低于中枢20%以外
+        - 'no_zs' - 无有效中枢
+    """
+    if not zs_list:
+        return 'no_zs', None
+    
+    # 找到buy_date在df中的索引
+    try:
+        date_idx = df[df['date'] == buy_date].index[0]
+    except IndexError:
+        return 'no_zs', None
+    
+    # 获取该日期的收盘价
+    close_price = df.loc[date_idx, 'close']
+    
+    # 过滤出满足时间条件的中枢：buy_date必须在中枢结束时间之后
+    valid_zs_list = []
+    for zs in zs_list:
+        if not zs.is_valid:
+            continue
+            
+        # 将中枢的结束时间转换为字符串格式进行比较
+        zs_end_date = zs.edt.strftime("%Y-%m-%d") if hasattr(zs.edt, 'strftime') else str(zs.edt)
+        
+        # 检查buy_date是否在中枢结束时间之后
+        if buy_date > zs_end_date:
+            valid_zs_list.append(zs)
+    
+    if not valid_zs_list:
+        return 'no_zs', None
+    
+    # 找到最靠近buy_date的中枢（按时间距离排序）
+    def get_date_distance(zs):
+        """计算中枢结束时间与buy_date的时间距离"""
+        zs_end_date = zs.edt.strftime("%Y-%m-%d") if hasattr(zs.edt, 'strftime') else str(zs.edt)
+        # 将日期转换为datetime对象计算距离
+        try:
+            zs_end_dt = datetime.strptime(zs_end_date, "%Y-%m-%d")
+            buy_dt = datetime.strptime(buy_date, "%Y-%m-%d")
+            return abs((buy_dt - zs_end_dt).days)
+        except:
+            return float('inf')
+    
+    # 按时间距离排序，选择最靠近的中枢
+    valid_zs_list.sort(key=get_date_distance)
+    closest_zs = valid_zs_list[0]
+    
+    # 检查价格相对于最靠近中枢的位置
+    if closest_zs.zd <= close_price <= closest_zs.zg:
+        return 'in_zs', {
+            'zs': closest_zs,
+            'close_price': close_price,
+            'zs_zd': closest_zs.zd,
+            'zs_zg': closest_zs.zg,
+            'zs_zz': closest_zs.zz,
+            'zs_sdt': closest_zs.sdt,
+            'zs_edt': closest_zs.edt,
+            'position': 'in_zs'
+        }
+    elif close_price > closest_zs.zg:
+        # 计算距离中枢上沿的百分比
+        distance_pct = (close_price - closest_zs.zg) / closest_zs.zg * 100
+        if distance_pct <= 10:
+            return 'above_zs_within_10pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'above_zs_within_10pct',
+                'distance_from_zs': close_price - closest_zs.zg,
+                'distance_pct': distance_pct
+            }
+        else:
+            return 'above_zs_beyond_10pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'above_zs_beyond_10pct',
+                'distance_from_zs': close_price - closest_zs.zg,
+                'distance_pct': distance_pct
+            }
+    elif close_price <= closest_zs.zd:
+        # 计算距离中枢下沿的百分比
+        distance_pct = (closest_zs.zd - close_price) / closest_zs.zd * 100
+        if distance_pct <= 20:
+            return 'below_zs_within_20pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'below_zs_within_20pct',
+                'distance_from_zs': closest_zs.zd - close_price,
+                'distance_pct': distance_pct
+            }
+        else:
+            return 'below_zs_beyond_20pct', {
+                'zs': closest_zs,
+                'close_price': close_price,
+                'zs_zd': closest_zs.zd,
+                'zs_zg': closest_zs.zg,
+                'zs_zz': closest_zs.zz,
+                'zs_sdt': closest_zs.sdt,
+                'zs_edt': closest_zs.edt,
+                'position': 'below_zs_beyond_20pct',
+                'distance_from_zs': closest_zs.zd - close_price,
+                'distance_pct': distance_pct
+            }
+    
+    return 'no_zs', None
+
+def get_zs_and_bi_info(buy_date, bi_list, df):
+    """
+    获取buy_date所在的中枢和笔信息
+    
+    Args:
+        buy_date: 买入日期（字符串格式）
+        bi_list: 笔列表
+        df: 股票数据DataFrame（date列为字符串）
+    
+    Returns:
+        tuple: (笔对象, 是否找到)
+    """
+    if not bi_list:
+        return None, False
+    
+    try:
+        date_idx = df[df['date'] == buy_date].index[0]
+    except IndexError:
+        return None, False
+
+    for bi in bi_list:
+        # 将bi.fx_a.dt和bi.fx_b.dt转换为字符串格式进行比较
+        bi_start_date = bi.fx_a.dt.strftime("%Y-%m-%d") if hasattr(bi.fx_a.dt, 'strftime') else str(bi.fx_a.dt)
+        bi_end_date = bi.fx_b.dt.strftime("%Y-%m-%d") if hasattr(bi.fx_b.dt, 'strftime') else str(bi.fx_b.dt)
+        
+        # 检查buy_date是否在笔的时间范围内
+        if bi_start_date <= buy_date <= bi_end_date:
+            return bi, True
+    
+    return None, False
+
+def is_same_zs_bi(last_buy_date, current_buy_date, bi_list, df):
+    """
+    检查两个购买日期是否在同一个中枢的同一笔内
+    
+    Args:
+        last_buy_date: 上次购买日期（字符串格式）
+        current_buy_date: 本次购买日期（字符串格式）
+        bi_list: 笔列表
+        df: 股票数据DataFrame（date列为字符串）
+    
+    Returns:
+        bool: True表示在同一个中枢的同一笔内，False表示不在
+    """
+    if not last_buy_date or not current_buy_date:
+        return False
+    
+    # 获取上次购买的笔信息
+    last_bi, last_found = get_zs_and_bi_info(last_buy_date, bi_list, df)
+    if not last_found:
+        return False
+    
+    # 获取本次购买的笔信息
+    current_bi, current_found = get_zs_and_bi_info(current_buy_date, bi_list, df)
+    if not current_found:
+        return False
+    
+    # 检查是否在同一个中枢的同一笔内
+    # 将datetime转换为字符串进行比较
+    last_start_date = last_bi.fx_a.dt.strftime("%Y-%m-%d") if hasattr(last_bi.fx_a.dt, 'strftime') else str(last_bi.fx_a.dt)
+    last_end_date = last_bi.fx_b.dt.strftime("%Y-%m-%d") if hasattr(last_bi.fx_b.dt, 'strftime') else str(last_bi.fx_b.dt)
+    curr_start_date = current_bi.fx_a.dt.strftime("%Y-%m-%d") if hasattr(current_bi.fx_a.dt, 'strftime') else str(current_bi.fx_a.dt)
+    curr_end_date = current_bi.fx_b.dt.strftime("%Y-%m-%d") if hasattr(current_bi.fx_b.dt, 'strftime') else str(current_bi.fx_b.dt)
+    
+    if (last_start_date == curr_start_date and last_end_date == curr_end_date):
+        return True
+    
+    return False
+
 '''
     波段之王指标
 '''
-def get_longterm_turn_buy_point(symbol,df):
-    buy_con_1,buy_con_2,buy_con = get_longterm_turn_condition(symbol,df)
-    if not df[buy_con].empty:
+def get_swing_king_join_buy_point(symbol,df):
+    # buy_con_1表示见底条件，buy_con_2表示买进条件，buy_con_3表示加仓条件
+    buy_con_1,buy_con_2,buy_con_3 = get_swing_king_condition(symbol,df)
+    bars = get_local_stock_bars(symbol=symbol,df=df)
+    c = CZSC(bars, get_signals=None)
+    bi_list = c.bi_list
+    if len(bi_list) <= 0:
+        return
+    
+    zs_list = get_zs_seq(bi_list)
+    
+    # 为每个条件创建独立的统计变量
+    condition_stats = {
+        'buy_con_1': {
+            'name': '见底条件',
+            'plus_list': [],
+            'minus_list': [],
+            'ratio_map': {x: [] for x in range(1, hold_days+1)},
+            'zs_in_stats': {'count': 0, 'plus_list': [], 'minus_list': []},
+            'zs_out_stats': {
+                'above_zs': {
+                    'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                },
+                'below_zs': {
+                    'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                }
+            }
+        },
+        'buy_con_2': {
+            'name': '买进条件',
+            'plus_list': [],
+            'minus_list': [],
+            'ratio_map': {x: [] for x in range(1, hold_days+1)},
+            'zs_in_stats': {'count': 0, 'plus_list': [], 'minus_list': []},
+            'zs_out_stats': {
+                'above_zs': {
+                    'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                },
+                'below_zs': {
+                    'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                }
+            }
+        },
+        'buy_con_3': {
+            'name': '加仓条件',
+            'plus_list': [],
+            'minus_list': [],
+            'ratio_map': {x: [] for x in range(1, hold_days+1)},
+            'zs_in_stats': {'count': 0, 'plus_list': [], 'minus_list': []},
+            'zs_out_stats': {
+                'above_zs': {
+                    'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                },
+                'below_zs': {
+                    'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                }
+            }
+        }
+    }
+    
+    # 处理每个条件
+    for condition_name, condition_data in condition_stats.items():
+        print(f"\n=== 处理{condition_data['name']} ===")
+        
+        if condition_name == 'buy_con_1':
+            buy_con = buy_con_1
+        elif condition_name == 'buy_con_2':
+            buy_con = buy_con_2
+        else:
+            buy_con = buy_con_3
+            
+        if df[buy_con].empty:
+            print(f"{condition_data['name']} 没有满足条件的数据")
+            continue
+            
+        last_start_index = -1
+        last_buy_date = None
+        
         selected_indexs = df[buy_con].index
         for idx in selected_indexs:
             buy_date = df['date'][idx]
-            print(symbol+" 见底日期："+buy_date)
             start_index = df.iloc[df['date'].values == buy_date].index[0]
+            if last_start_index>0 and (start_index-last_start_index)<=hold_days:
+                continue
+            
+            # 检查是否在同一个中枢的同一笔内
+            if last_buy_date and is_same_zs_bi(last_buy_date, buy_date, bi_list, df):
+                print(f"{symbol} 跳过购买 - {buy_date} 与上次购买日期 {last_buy_date} 在同一个中枢的同一笔内")
+                continue
+            
+            # 判断buy_date是否在中枢区间内
+            position_type, zs_info = is_date_in_zs_interval(buy_date, zs_list, df)
+            
+            print(symbol+f" {condition_data['name']}日期："+buy_date)
+            if position_type == 'in_zs':
+                print(f"  ✓ 在中枢区间内 - 中枢区间[{zs_info['zs_zd']:.2f}, {zs_info['zs_zg']:.2f}], 收盘价:{zs_info['close_price']:.2f}")
+                print(f"     中枢时间范围: {zs_info['zs_sdt']} 到 {zs_info['zs_edt']}")
+                condition_data['zs_in_stats']['count'] += 1
+            elif position_type == 'above_zs_within_10pct':
+                print(f"  ✓ 高于中枢10%以内 - 中枢区间[{zs_info['zs_zd']:.2f}, {zs_info['zs_zg']:.2f}], 收盘价:{zs_info['close_price']:.2f}, 距离上沿:{zs_info['distance_from_zs']:.2f}")
+                condition_data['zs_out_stats']['above_zs']['within_10pct']['count'] += 1
+            elif position_type == 'above_zs_beyond_10pct':
+                print(f"  ✓ 高于中枢10%以外 - 中枢区间[{zs_info['zs_zd']:.2f}, {zs_info['zs_zg']:.2f}], 收盘价:{zs_info['close_price']:.2f}, 距离上沿:{zs_info['distance_from_zs']:.2f}")
+                condition_data['zs_out_stats']['above_zs']['beyond_10pct']['count'] += 1
+            elif position_type == 'below_zs_within_20pct':
+                print(f"  ✓ 低于中枢20%以内 - 中枢区间[{zs_info['zs_zd']:.2f}, {zs_info['zs_zg']:.2f}], 收盘价:{zs_info['close_price']:.2f}, 距离下沿:{zs_info['distance_from_zs']:.2f}")
+                condition_data['zs_out_stats']['below_zs']['within_20pct']['count'] += 1
+            elif position_type == 'below_zs_beyond_20pct':
+                print(f"  ✓ 低于中枢20%以外 - 中枢区间[{zs_info['zs_zd']:.2f}, {zs_info['zs_zg']:.2f}], 收盘价:{zs_info['close_price']:.2f}, 距离下沿:{zs_info['distance_from_zs']:.2f}")
+                condition_data['zs_out_stats']['below_zs']['beyond_20pct']['count'] += 1
+            else:
+                print(f"  ✗ 无有效中枢信息")
+            
             buy_price = df['close'].iloc[start_index]
             max_val = -1000
+            last_start_index = start_index
+            last_buy_date = buy_date  # 更新上次购买日期
+            
             for idx in range(start_index+1,start_index+hold_days+1):
                 if idx<len(df['date']):
                     stock_close = df['close'].iloc[idx]
                     ratio = round(100*(stock_close-buy_price)/buy_price,2)
-                    ratio_map[idx-start_index].append(ratio)
+                    condition_data['ratio_map'][idx-start_index].append(ratio)
                     max_val = max(max_val,ratio)
 
             if max_val>0:
-                plus_list.append(max_val)
+                condition_data['plus_list'].append(max_val)
+                if position_type == 'in_zs':
+                    condition_data['zs_in_stats']['plus_list'].append(max_val)
+                elif position_type == 'above_zs_within_10pct':
+                    condition_data['zs_out_stats']['above_zs']['within_10pct']['plus_list'].append(max_val)
+                elif position_type == 'above_zs_beyond_10pct':
+                    condition_data['zs_out_stats']['above_zs']['beyond_10pct']['plus_list'].append(max_val)
+                elif position_type == 'below_zs_within_20pct':
+                    condition_data['zs_out_stats']['below_zs']['within_20pct']['plus_list'].append(max_val)
+                elif position_type == 'below_zs_beyond_20pct':
+                    condition_data['zs_out_stats']['below_zs']['beyond_20pct']['plus_list'].append(max_val)
             else:
-                minus_list.append(max_val)
+                condition_data['minus_list'].append(max_val)
+                if position_type == 'in_zs':
+                    condition_data['zs_in_stats']['minus_list'].append(max_val)
+                elif position_type == 'above_zs_within_10pct':
+                    condition_data['zs_out_stats']['above_zs']['within_10pct']['minus_list'].append(max_val)
+                elif position_type == 'above_zs_beyond_10pct':
+                    condition_data['zs_out_stats']['above_zs']['beyond_10pct']['minus_list'].append(max_val)
+                elif position_type == 'below_zs_within_20pct':
+                    condition_data['zs_out_stats']['below_zs']['within_20pct']['minus_list'].append(max_val)
+                elif position_type == 'below_zs_beyond_20pct':
+                    condition_data['zs_out_stats']['below_zs']['beyond_20pct']['minus_list'].append(max_val)
+    
+    return condition_stats
+
+def print_console_condition(s_plus_list,s_minus_list,s_ratio_map,s_zs_in_stats,s_zs_out_stats):
+    print("正收益次数："+str(len(s_plus_list)))
+    if len(s_minus_list)>0 or len(s_plus_list):
+        print("正收益占比："+str(round(100*len(s_plus_list)/(len(s_minus_list)+len(s_plus_list)),2))+"%")
+    total = 0
+    for x in range(0,len(s_plus_list)):
+        total += s_plus_list[x]
+    print("总的正收益："+str(total))
+
+    total = 0
+    for x in range(0,len(s_minus_list)):
+        total += s_minus_list[x]
+    print("总的负收益："+str(total))
+    
+    # 每天
+    for x in range(1,hold_days+1):
+        print("第 {} 天：".format(x))
+        res_list = s_ratio_map[x]
+        if len(res_list) > 0:
+            print("  正收益次数："+str(len([r for r in res_list if r > 0])))
+            print("  负收益次数："+str(len([r for r in res_list if r <= 0])))
+            print("  平均收益："+str(round(sum(res_list)/len(res_list),2))+"%")
+            print("  最大收益："+str(max(res_list))+"%")
+            print("  最小收益："+str(min(res_list))+"%")
+        else:
+            print("  无数据")
+    
+    # 中枢相关统计
+    print("\n中枢相关统计：")
+    print("  在中枢内：")
+    print(f"    次数：{s_zs_in_stats['count']}")
+    if s_zs_in_stats['count'] > 0:
+        print(f"    正收益：{len(s_zs_in_stats['plus_list'])}次，占比{round(100*len(s_zs_in_stats['plus_list'])/s_zs_in_stats['count'],2)}%")
+        if s_zs_in_stats['plus_list']:
+            print(f"    平均正收益：{round(sum(s_zs_in_stats['plus_list'])/len(s_zs_in_stats['plus_list']),2)}%")
+    
+    print("  高于中枢10%以内：")
+    print(f"    次数：{s_zs_out_stats['above_zs']['within_10pct']['count']}")
+    if s_zs_out_stats['above_zs']['within_10pct']['count'] > 0:
+        print(f"    正收益：{len(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])/s_zs_out_stats['above_zs']['within_10pct']['count'],2)}%")
+        if s_zs_out_stats['above_zs']['within_10pct']['plus_list']:
+            print(f"    平均正收益：{round(sum(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])/len(s_zs_out_stats['above_zs']['within_10pct']['plus_list']),2)}%")
+    
+    print("  高于中枢10%以外：")
+    print(f"    次数：{s_zs_out_stats['above_zs']['beyond_10pct']['count']}")
+    if s_zs_out_stats['above_zs']['beyond_10pct']['count'] > 0:
+        print(f"    正收益：{len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])/s_zs_out_stats['above_zs']['beyond_10pct']['count'],2)}%")
+        if s_zs_out_stats['above_zs']['beyond_10pct']['plus_list']:
+            print(f"    平均正收益：{round(sum(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])/len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list']),2)}%")
+    
+    print("  低于中枢20%以内：")
+    print(f"    次数：{s_zs_out_stats['below_zs']['within_20pct']['count']}")
+    if s_zs_out_stats['below_zs']['within_20pct']['count'] > 0:
+        print(f"    正收益：{len(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])/s_zs_out_stats['below_zs']['within_20pct']['count'],2)}%")
+        if s_zs_out_stats['below_zs']['within_20pct']['plus_list']:
+            print(f"    平均正收益：{round(sum(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])/len(s_zs_out_stats['below_zs']['within_20pct']['plus_list']),2)}%")
+    
+    print("  低于中枢20%以外：")
+    print(f"    次数：{s_zs_out_stats['below_zs']['beyond_20pct']['count']}")
+    if s_zs_out_stats['below_zs']['beyond_20pct']['count'] > 0:
+        print(f"    正收益：{len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])/s_zs_out_stats['below_zs']['beyond_20pct']['count'],2)}%")
+        if s_zs_out_stats['below_zs']['beyond_20pct']['plus_list']:
+            print(f"    平均正收益：{round(sum(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])/len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list']),2)}%")
 
 def print_console(s_plus_list,s_minus_list,s_ratio_map):
     print("正收益次数："+str(len(s_plus_list)))
@@ -75,25 +504,251 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
         print("     总的正收益："+str(plus_val))
         print("     总的负收益："+str(minus_val))
 
-if __name__ == '__main__':
-    lg = bs.login()
-
-    start_date = "2020-01-01"
-    current_date = datetime.now()
-    current_date_str = current_date.strftime('%Y-%m-%d')    
-    df = get_stock_pd("sh.000001", start_date, current_date_str, 'd')
-    end_date = df['date'].iloc[-1]
+def print_zs_analysis():
+    """打印中枢分析结果"""
+    print("\n" + "="*60)
+    print("中枢区间分析结果（细化版）")
+    print("="*60)
     
+    # 中枢内统计
+    print(f"中枢内买入次数: {zs_in_stats['count']}")
+    if zs_in_stats['count'] > 0:
+        zs_in_plus = len(zs_in_stats['plus_list'])
+        zs_in_minus = len(zs_in_stats['minus_list'])
+        zs_in_total = zs_in_plus + zs_in_minus
+        if zs_in_total > 0:
+            print(f"中枢内正收益次数: {zs_in_plus}")
+            print(f"中枢内负收益次数: {zs_in_minus}")
+            print(f"中枢内正收益占比: {round(100*zs_in_plus/zs_in_total, 2)}%")
+            
+            if zs_in_plus > 0:
+                zs_in_plus_avg = sum(zs_in_stats['plus_list']) / zs_in_plus
+                print(f"中枢内平均正收益: {zs_in_plus_avg:.2f}%")
+            if zs_in_minus > 0:
+                zs_in_minus_avg = sum(zs_in_stats['minus_list']) / zs_in_minus
+                print(f"中枢内平均负收益: {zs_in_minus_avg:.2f}%")
+    
+    # 高于中枢统计 - 10%以内
+    print(f"\n高于中枢10%以内买入次数: {zs_out_stats['above_zs']['within_10pct']['count']}")
+    if zs_out_stats['above_zs']['within_10pct']['count'] > 0:
+        zs_above_within_plus = len(zs_out_stats['above_zs']['within_10pct']['plus_list'])
+        zs_above_within_minus = len(zs_out_stats['above_zs']['within_10pct']['minus_list'])
+        zs_above_within_total = zs_above_within_plus + zs_above_within_minus
+        if zs_above_within_total > 0:
+            print(f"高于中枢10%以内正收益次数: {zs_above_within_plus}")
+            print(f"高于中枢10%以内负收益次数: {zs_above_within_minus}")
+            print(f"高于中枢10%以内正收益占比: {round(100*zs_above_within_plus/zs_above_within_total, 2)}%")
+            
+            if zs_above_within_plus > 0:
+                zs_above_within_plus_avg = sum(zs_out_stats['above_zs']['within_10pct']['plus_list']) / zs_above_within_plus
+                print(f"高于中枢10%以内平均正收益: {zs_above_within_plus_avg:.2f}%")
+            if zs_above_within_minus > 0:
+                zs_above_within_minus_avg = sum(zs_out_stats['above_zs']['within_10pct']['minus_list']) / zs_above_within_minus
+                print(f"高于中枢10%以内平均负收益: {zs_above_within_minus_avg:.2f}%")
+    
+    # 高于中枢统计 - 10%以外
+    print(f"\n高于中枢10%以外买入次数: {zs_out_stats['above_zs']['beyond_10pct']['count']}")
+    if zs_out_stats['above_zs']['beyond_10pct']['count'] > 0:
+        zs_above_beyond_plus = len(zs_out_stats['above_zs']['beyond_10pct']['plus_list'])
+        zs_above_beyond_minus = len(zs_out_stats['above_zs']['beyond_10pct']['minus_list'])
+        zs_above_beyond_total = zs_above_beyond_plus + zs_above_beyond_minus
+        if zs_above_beyond_total > 0:
+            print(f"高于中枢10%以外正收益次数: {zs_above_beyond_plus}")
+            print(f"高于中枢10%以外负收益次数: {zs_above_beyond_minus}")
+            print(f"高于中枢10%以外正收益占比: {round(100*zs_above_beyond_plus/zs_above_beyond_total, 2)}%")
+            
+            if zs_above_beyond_plus > 0:
+                zs_above_beyond_plus_avg = sum(zs_out_stats['above_zs']['beyond_10pct']['plus_list']) / zs_above_beyond_plus
+                print(f"高于中枢10%以外平均正收益: {zs_above_beyond_plus_avg:.2f}%")
+            if zs_above_beyond_minus > 0:
+                zs_above_beyond_minus_avg = sum(zs_out_stats['above_zs']['beyond_10pct']['minus_list']) / zs_above_beyond_minus
+                print(f"高于中枢10%以外平均负收益: {zs_above_beyond_minus_avg:.2f}%")
+    
+    # 低于中枢统计 - 20%以内
+    print(f"\n低于中枢20%以内买入次数: {zs_out_stats['below_zs']['within_20pct']['count']}")
+    if zs_out_stats['below_zs']['within_20pct']['count'] > 0:
+        zs_below_within_plus = len(zs_out_stats['below_zs']['within_20pct']['plus_list'])
+        zs_below_within_minus = len(zs_out_stats['below_zs']['within_20pct']['minus_list'])
+        zs_below_within_total = zs_below_within_plus + zs_below_within_minus
+        if zs_below_within_total > 0:
+            print(f"低于中枢20%以内正收益次数: {zs_below_within_plus}")
+            print(f"低于中枢20%以内负收益次数: {zs_below_within_minus}")
+            print(f"低于中枢20%以内正收益占比: {round(100*zs_below_within_plus/zs_below_within_total, 2)}%")
+            
+            if zs_below_within_plus > 0:
+                zs_below_within_plus_avg = sum(zs_out_stats['below_zs']['within_20pct']['plus_list']) / zs_below_within_plus
+                print(f"低于中枢20%以内平均正收益: {zs_below_within_plus_avg:.2f}%")
+            if zs_below_within_minus > 0:
+                zs_below_within_minus_avg = sum(zs_out_stats['below_zs']['within_20pct']['minus_list']) / zs_below_within_minus
+                print(f"低于中枢20%以内平均负收益: {zs_below_within_minus_avg:.2f}%")
+    
+    # 低于中枢统计 - 20%以外
+    print(f"\n低于中枢20%以外买入次数: {zs_out_stats['below_zs']['beyond_20pct']['count']}")
+    if zs_out_stats['below_zs']['beyond_20pct']['count'] > 0:
+        zs_below_beyond_plus = len(zs_out_stats['below_zs']['beyond_20pct']['plus_list'])
+        zs_below_beyond_minus = len(zs_out_stats['below_zs']['beyond_20pct']['minus_list'])
+        zs_below_beyond_total = zs_below_beyond_plus + zs_below_beyond_minus
+        if zs_below_beyond_total > 0:
+            print(f"低于中枢20%以外正收益次数: {zs_below_beyond_plus}")
+            print(f"低于中枢20%以外负收益次数: {zs_below_beyond_minus}")
+            print(f"低于中枢20%以外正收益占比: {round(100*zs_below_beyond_plus/zs_below_beyond_total, 2)}%")
+            
+            if zs_below_beyond_plus > 0:
+                zs_below_beyond_plus_avg = sum(zs_out_stats['below_zs']['beyond_20pct']['plus_list']) / zs_below_beyond_plus
+                print(f"低于中枢20%以外平均正收益: {zs_below_beyond_plus_avg:.2f}%")
+            if zs_below_beyond_minus > 0:
+                zs_below_beyond_minus_avg = sum(zs_out_stats['below_zs']['beyond_20pct']['minus_list']) / zs_below_beyond_minus
+                print(f"低于中枢20%以外平均负收益: {zs_below_beyond_minus_avg:.2f}%")
+    
+    # 总体对比
+    total_in = zs_in_stats['count']
+    total_above_within = zs_out_stats['above_zs']['within_10pct']['count']
+    total_above_beyond = zs_out_stats['above_zs']['beyond_10pct']['count']
+    total_below_within = zs_out_stats['below_zs']['within_20pct']['count']
+    total_below_beyond = zs_out_stats['below_zs']['beyond_20pct']['count']
+    total_all = total_in + total_above_within + total_above_beyond + total_below_within + total_below_beyond
+    
+    if total_all > 0:
+        print(f"\n总体对比:")
+        print(f"中枢内买入占比: {round(100*total_in/total_all, 2)}%")
+        print(f"高于中枢10%以内买入占比: {round(100*total_above_within/total_all, 2)}%")
+        print(f"高于中枢10%以外买入占比: {round(100*total_above_beyond/total_all, 2)}%")
+        print(f"低于中枢20%以内买入占比: {round(100*total_below_within/total_all, 2)}%")
+        print(f"低于中枢20%以外买入占比: {round(100*total_below_beyond/total_all, 2)}%")
+        
+        # 收益表现对比
+        print(f"\n收益表现对比:")
+        if total_in > 0:
+            zs_in_ratio = len([x for x in zs_in_stats['plus_list'] + zs_in_stats['minus_list'] if x > 0]) / (len(zs_in_stats['plus_list']) + len(zs_in_stats['minus_list'])) * 100
+            print(f"中枢内正收益占比: {round(zs_in_ratio, 2)}%")
+        
+        if total_above_within > 0:
+            zs_above_within_ratio = len([x for x in zs_out_stats['above_zs']['within_10pct']['plus_list'] + zs_out_stats['above_zs']['within_10pct']['minus_list'] if x > 0]) / (len(zs_out_stats['above_zs']['within_10pct']['plus_list']) + len(zs_out_stats['above_zs']['within_10pct']['minus_list'])) * 100
+            print(f"高于中枢10%以内正收益占比: {round(zs_above_within_ratio, 2)}%")
+        
+        if total_above_beyond > 0:
+            zs_above_beyond_ratio = len([x for x in zs_out_stats['above_zs']['beyond_10pct']['plus_list'] + zs_out_stats['above_zs']['beyond_10pct']['minus_list'] if x > 0]) / (len(zs_out_stats['above_zs']['beyond_10pct']['plus_list']) + len(zs_out_stats['above_zs']['beyond_10pct']['minus_list'])) * 100
+            print(f"高于中枢10%以外正收益占比: {round(zs_above_beyond_ratio, 2)}%")
+        
+        if total_below_within > 0:
+            zs_below_within_ratio = len([x for x in zs_out_stats['below_zs']['within_20pct']['plus_list'] + zs_out_stats['below_zs']['within_20pct']['minus_list'] if x > 0]) / (len(zs_out_stats['below_zs']['within_20pct']['plus_list']) + len(zs_out_stats['below_zs']['within_20pct']['minus_list'])) * 100
+            print(f"低于中枢20%以内正收益占比: {round(zs_below_within_ratio, 2)}%")
+        
+        if total_below_beyond > 0:
+            zs_below_beyond_ratio = len([x for x in zs_out_stats['below_zs']['beyond_20pct']['plus_list'] + zs_out_stats['below_zs']['beyond_20pct']['minus_list'] if x > 0]) / (len(zs_out_stats['below_zs']['beyond_20pct']['plus_list']) + len(zs_out_stats['below_zs']['beyond_20pct']['minus_list'])) * 100
+            print(f"低于中枢20%以外正收益占比: {round(zs_below_beyond_ratio, 2)}%")
+
+if __name__ == '__main__':
     all_symbols  = get_daily_symbols()
+    
+    # 创建总体统计变量
+    total_condition_stats = {
+        'buy_con_1': {
+            'name': '见底条件',
+            'plus_list': [],
+            'minus_list': [],
+            'ratio_map': {x: [] for x in range(1, hold_days+1)},
+            'zs_in_stats': {'count': 0, 'plus_list': [], 'minus_list': []},
+            'zs_out_stats': {
+                'above_zs': {
+                    'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                },
+                'below_zs': {
+                    'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                }
+            }
+        },
+        'buy_con_2': {
+            'name': '买进条件',
+            'plus_list': [],
+            'minus_list': [],
+            'ratio_map': {x: [] for x in range(1, hold_days+1)},
+            'zs_in_stats': {'count': 0, 'plus_list': [], 'minus_list': []},
+            'zs_out_stats': {
+                'above_zs': {
+                    'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                },
+                'below_zs': {
+                    'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                }
+            }
+        },
+        'buy_con_3': {
+            'name': '加仓条件',
+            'plus_list': [],
+            'minus_list': [],
+            'ratio_map': {x: [] for x in range(1, hold_days+1)},
+            'zs_in_stats': {'count': 0, 'plus_list': [], 'minus_list': []},
+            'zs_out_stats': {
+                'above_zs': {
+                    'within_10pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_10pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                },
+                'below_zs': {
+                    'within_20pct': {'count': 0, 'plus_list': [], 'minus_list': []},
+                    'beyond_20pct': {'count': 0, 'plus_list': [], 'minus_list': []}
+                }
+            }
+        }
+    }
+    
     for symbol in all_symbols:
         # 打印进度
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
-            
-        # if symbol != "sz.300264":
-        #     continue
-        df = get_stock_pd(symbol, start_date, current_date_str, 'd')
-        get_longterm_turn_buy_point(symbol,df)
-
-    print_console(plus_list,minus_list,ratio_map)
+        df = get_local_stock_data(symbol,'2020-01-01')
+        condition_stats = get_swing_king_join_buy_point(symbol,df)
         
-    bs.logout()
+        if condition_stats:
+            # 合并统计结果到总体统计
+            for condition_name in total_condition_stats:
+                if condition_name in condition_stats:
+                    # 合并收益列表
+                    total_condition_stats[condition_name]['plus_list'].extend(condition_stats[condition_name]['plus_list'])
+                    total_condition_stats[condition_name]['minus_list'].extend(condition_stats[condition_name]['minus_list'])
+                    
+                    # 合并每日收益映射
+                    for day in range(1, hold_days+1):
+                        total_condition_stats[condition_name]['ratio_map'][day].extend(condition_stats[condition_name]['ratio_map'][day])
+                    
+                    # 合并中枢统计
+                    total_condition_stats[condition_name]['zs_in_stats']['count'] += condition_stats[condition_name]['zs_in_stats']['count']
+                    total_condition_stats[condition_name]['zs_in_stats']['plus_list'].extend(condition_stats[condition_name]['zs_in_stats']['plus_list'])
+                    total_condition_stats[condition_name]['zs_in_stats']['minus_list'].extend(condition_stats[condition_name]['zs_in_stats']['minus_list'])
+                    
+                    # 合并中枢外统计
+                    for above_type in ['within_10pct', 'beyond_10pct']:
+                        total_condition_stats[condition_name]['zs_out_stats']['above_zs'][above_type]['count'] += condition_stats[condition_name]['zs_out_stats']['above_zs'][above_type]['count']
+                        total_condition_stats[condition_name]['zs_out_stats']['above_zs'][above_type]['plus_list'].extend(condition_stats[condition_name]['zs_out_stats']['above_zs'][above_type]['plus_list'])
+                        total_condition_stats[condition_name]['zs_out_stats']['above_zs'][above_type]['minus_list'].extend(condition_stats[condition_name]['zs_out_stats']['above_zs'][above_type]['minus_list'])
+                    
+                    for below_type in ['within_20pct', 'beyond_20pct']:
+                        total_condition_stats[condition_name]['zs_out_stats']['below_zs'][below_type]['count'] += condition_stats[condition_name]['zs_out_stats']['below_zs'][below_type]['count']
+                        total_condition_stats[condition_name]['zs_out_stats']['below_zs'][below_type]['plus_list'].extend(condition_stats[condition_name]['zs_out_stats']['below_zs'][below_type]['plus_list'])
+                        total_condition_stats[condition_name]['zs_out_stats']['below_zs'][below_type]['minus_list'].extend(condition_stats[condition_name]['zs_out_stats']['below_zs'][below_type]['minus_list'])
+
+        # 分阶段打印统计结果
+        if all_symbols.index(symbol)==1000 or all_symbols.index(symbol)==2000 or all_symbols.index(symbol)==3000:
+            print("\n" + "="*80)
+            print(f"阶段性统计结果（处理到第{all_symbols.index(symbol)}个股票）")
+            print("="*80)
+            
+            for condition_name, condition_data in total_condition_stats.items():
+                print(f"\n--- {condition_data['name']} ({condition_name}) 阶段性统计 ---")
+                print_console_condition(condition_data['plus_list'], condition_data['minus_list'], 
+                                      condition_data['ratio_map'], condition_data['zs_in_stats'], 
+                                      condition_data['zs_out_stats'])
+
+    # 最终统计结果
+    print("\n" + "="*80)
+    print("最终统计结果（所有股票）")
+    print("="*80)
+    
+    for condition_name, condition_data in total_condition_stats.items():
+        print(f"\n--- {condition_data['name']} ({condition_name}) 最终统计 ---")
+        print_console_condition(condition_data['plus_list'], condition_data['minus_list'], 
+                              condition_data['ratio_map'], condition_data['zs_in_stats'], 
+                              condition_data['zs_out_stats'])
