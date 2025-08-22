@@ -11,7 +11,7 @@ from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
 from czsc.enum import *
 from czsc_sqlite import get_local_stock_data,get_local_stock_bars
-from CZSCStragegy_AllStrategy import get_pocket_pivot_condition
+from CZSCStragegy_AllStrategy import get_kd_condition
 
 plus_list = []
 minus_list = []
