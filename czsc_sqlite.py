@@ -229,6 +229,8 @@ def main():
     # 本地数据
     sh_file = get_data_dir()+'/etf/sh/sh_etf_stock.json'
     sh_dict = read_json(sh_file)
+    if sh_dict is None:
+        sh_dict = {}
     etf_dir = get_data_dir()+'/etf/'
     for root, dirs, files in os.walk(etf_dir):
         for file in files:

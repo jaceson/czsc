@@ -423,8 +423,11 @@ def print_console_condition(s_plus_list,s_minus_list,s_ratio_map,s_zs_in_stats,s
         print("第 {} 天：".format(x))
         res_list = s_ratio_map[x]
         if len(res_list) > 0:
-            print("  正收益次数："+str(len([r for r in res_list if r > 0])))
-            print("  负收益次数："+str(len([r for r in res_list if r <= 0])))
+            plus_count = len([r for r in res_list if r > 0])
+            minus_count = len([r for r in res_list if r <= 0])
+            print("  正收益次数："+str(plus_count))
+            print("  负收益次数："+str(minus_count))
+            print("  正收益占比："+str(round(100*plus_count/(plus_count+minus_count),2))+"%")
             print("  平均收益："+str(round(sum(res_list)/len(res_list),2))+"%")
             print("  最大收益："+str(max(res_list))+"%")
             print("  最小收益："+str(min(res_list))+"%")
@@ -436,37 +439,67 @@ def print_console_condition(s_plus_list,s_minus_list,s_ratio_map,s_zs_in_stats,s
     print("  在中枢内：")
     print(f"    次数：{s_zs_in_stats['count']}")
     if s_zs_in_stats['count'] > 0:
-        print(f"    正收益：{len(s_zs_in_stats['plus_list'])}次，占比{round(100*len(s_zs_in_stats['plus_list'])/s_zs_in_stats['count'],2)}%")
+        plus_count = len(s_zs_in_stats['plus_list'])
+        minus_count = len(s_zs_in_stats['minus_list'])
+        total_count = plus_count + minus_count
+        print(f"    正收益：{plus_count}次，占比{round(100*plus_count/total_count,2)}%")
+        print(f"    负收益：{minus_count}次，占比{round(100*minus_count/total_count,2)}%")
         if s_zs_in_stats['plus_list']:
             print(f"    平均正收益：{round(sum(s_zs_in_stats['plus_list'])/len(s_zs_in_stats['plus_list']),2)}%")
+        if s_zs_in_stats['minus_list']:
+            print(f"    平均负收益：{round(sum(s_zs_in_stats['minus_list'])/len(s_zs_in_stats['minus_list']),2)}%")
     
     print("  高于中枢10%以内：")
     print(f"    次数：{s_zs_out_stats['above_zs']['within_10pct']['count']}")
     if s_zs_out_stats['above_zs']['within_10pct']['count'] > 0:
-        print(f"    正收益：{len(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])/s_zs_out_stats['above_zs']['within_10pct']['count'],2)}%")
+        plus_count = len(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])
+        minus_count = len(s_zs_out_stats['above_zs']['within_10pct']['minus_list'])
+        total_count = plus_count + minus_count
+        print(f"    正收益：{plus_count}次，占比{round(100*plus_count/total_count,2)}%")
+        print(f"    负收益：{minus_count}次，占比{round(100*minus_count/total_count,2)}%")
         if s_zs_out_stats['above_zs']['within_10pct']['plus_list']:
             print(f"    平均正收益：{round(sum(s_zs_out_stats['above_zs']['within_10pct']['plus_list'])/len(s_zs_out_stats['above_zs']['within_10pct']['plus_list']),2)}%")
+        if s_zs_out_stats['above_zs']['within_10pct']['minus_list']:
+            print(f"    平均负收益：{round(sum(s_zs_out_stats['above_zs']['within_10pct']['minus_list'])/len(s_zs_out_stats['above_zs']['within_10pct']['minus_list']),2)}%")
     
     print("  高于中枢10%以外：")
     print(f"    次数：{s_zs_out_stats['above_zs']['beyond_10pct']['count']}")
     if s_zs_out_stats['above_zs']['beyond_10pct']['count'] > 0:
-        print(f"    正收益：{len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])/s_zs_out_stats['above_zs']['beyond_10pct']['count'],2)}%")
+        plus_count = len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])
+        minus_count = len(s_zs_out_stats['above_zs']['beyond_10pct']['minus_list'])
+        total_count = plus_count + minus_count
+        print(f"    正收益：{plus_count}次，占比{round(100*plus_count/total_count,2)}%")
+        print(f"    负收益：{minus_count}次，占比{round(100*minus_count/total_count,2)}%")
         if s_zs_out_stats['above_zs']['beyond_10pct']['plus_list']:
             print(f"    平均正收益：{round(sum(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list'])/len(s_zs_out_stats['above_zs']['beyond_10pct']['plus_list']),2)}%")
+        if s_zs_out_stats['above_zs']['beyond_10pct']['minus_list']:
+            print(f"    平均负收益：{round(sum(s_zs_out_stats['above_zs']['beyond_10pct']['minus_list'])/len(s_zs_out_stats['above_zs']['beyond_10pct']['minus_list']),2)}%")
     
     print("  低于中枢20%以内：")
     print(f"    次数：{s_zs_out_stats['below_zs']['within_20pct']['count']}")
     if s_zs_out_stats['below_zs']['within_20pct']['count'] > 0:
-        print(f"    正收益：{len(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])/s_zs_out_stats['below_zs']['within_20pct']['count'],2)}%")
+        plus_count = len(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])
+        minus_count = len(s_zs_out_stats['below_zs']['within_20pct']['minus_list'])
+        total_count = plus_count + minus_count
+        print(f"    正收益：{plus_count}次，占比{round(100*plus_count/total_count,2)}%")
+        print(f"    负收益：{minus_count}次，占比{round(100*minus_count/total_count,2)}%")
         if s_zs_out_stats['below_zs']['within_20pct']['plus_list']:
             print(f"    平均正收益：{round(sum(s_zs_out_stats['below_zs']['within_20pct']['plus_list'])/len(s_zs_out_stats['below_zs']['within_20pct']['plus_list']),2)}%")
+        if s_zs_out_stats['below_zs']['within_20pct']['minus_list']:
+            print(f"    平均负收益：{round(sum(s_zs_out_stats['below_zs']['within_20pct']['minus_list'])/len(s_zs_out_stats['below_zs']['within_20pct']['minus_list']),2)}%")
     
     print("  低于中枢20%以外：")
     print(f"    次数：{s_zs_out_stats['below_zs']['beyond_20pct']['count']}")
     if s_zs_out_stats['below_zs']['beyond_20pct']['count'] > 0:
-        print(f"    正收益：{len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])}次，占比{round(100*len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])/s_zs_out_stats['below_zs']['beyond_20pct']['count'],2)}%")
+        plus_count = len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])
+        minus_count = len(s_zs_out_stats['below_zs']['beyond_20pct']['minus_list'])
+        total_count = plus_count + minus_count
+        print(f"    正收益：{plus_count}次，占比{round(100*plus_count/total_count,2)}%")
+        print(f"    负收益：{minus_count}次，占比{round(100*minus_count/total_count,2)}%")
         if s_zs_out_stats['below_zs']['beyond_20pct']['plus_list']:
             print(f"    平均正收益：{round(sum(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list'])/len(s_zs_out_stats['below_zs']['beyond_20pct']['plus_list']),2)}%")
+        if s_zs_out_stats['below_zs']['beyond_20pct']['minus_list']:
+            print(f"    平均负收益：{round(sum(s_zs_out_stats['below_zs']['beyond_20pct']['minus_list'])/len(s_zs_out_stats['below_zs']['beyond_20pct']['minus_list']),2)}%")
 
 def print_console(s_plus_list,s_minus_list,s_ratio_map):
     print("正收益次数："+str(len(s_plus_list)))
@@ -499,10 +532,16 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
                 minus_num += 1
                 minus_val += ratio
         print("     正收益次数："+str(plus_num))
+        print("     负收益次数："+str(minus_num))
         if plus_num>0 or minus_num>0:
             print("     正收益占比："+str(round(100*plus_num/(plus_num+minus_num),2))+"%")
+            print("     负收益占比："+str(round(100*minus_num/(plus_num+minus_num),2))+"%")
         print("     总的正收益："+str(plus_val))
         print("     总的负收益："+str(minus_val))
+        if plus_num > 0:
+            print("     平均正收益："+str(round(plus_val/plus_num,2))+"%")
+        if minus_num > 0:
+            print("     平均负收益："+str(round(minus_val/minus_num,2))+"%")
 
 def print_zs_analysis():
     """打印中枢分析结果"""
@@ -752,3 +791,184 @@ if __name__ == '__main__':
         print_console_condition(condition_data['plus_list'], condition_data['minus_list'], 
                               condition_data['ratio_map'], condition_data['zs_in_stats'], 
                               condition_data['zs_out_stats'])
+
+'''
+================================================================================
+最终统计结果（所有股票）
+================================================================================
+
+--- 见底条件 (buy_con_1) 最终统计 ---
+正收益次数：154513
+正收益占比：76.19%
+总的正收益：752911.2900000046
+总的负收益：-89582.8499999996
+第 1 天：
+  正收益次数：103855
+  负收益次数：98916
+  平均收益：0.32%
+  最大收益：20.18%
+  最小收益：-20.01%
+第 2 天：
+  正收益次数：105453
+  负收益次数：97199
+  平均收益：0.49%
+  最大收益：44.09%
+  最小收益：-28.44%
+第 3 天：
+  正收益次数：108005
+  负收益次数：93437
+  平均收益：0.74%
+  最大收益：72.82%
+  最小收益：-29.88%
+第 4 天：
+  正收益次数：107738
+  负收益次数：93514
+  平均收益：0.84%
+  最大收益：107.32%
+  最小收益：-34.63%
+第 5 天：
+  正收益次数：104789
+  负收益次数：96328
+  平均收益：0.86%
+  最大收益：148.77%
+  最小收益：-40.98%
+
+中枢相关统计：
+  在中枢内：
+    次数：5652
+    正收益：3822次，占比67.62%
+    平均正收益：4.39%
+  高于中枢10%以内：
+    次数：10208
+    正收益：7591次，占比74.36%
+    平均正收益：4.17%
+  高于中枢10%以外：
+    次数：11759
+    正收益：8255次，占比70.2%
+    平均正收益：4.91%
+  低于中枢20%以内：
+    次数：37196
+    正收益：28511次，占比76.65%
+    平均正收益：4.24%
+  低于中枢20%以外：
+    次数：15768
+    正收益：13007次，占比82.49%
+    平均正收益：7.76%
+
+--- 买进条件 (buy_con_2) 最终统计 ---
+正收益次数：116913
+正收益占比：72.18%
+总的正收益：640493.3699999963
+总的负收益：-126675.09000000001
+第 1 天：
+  正收益次数：77587
+  负收益次数：84329
+  平均收益：0.23%
+  最大收益：20.12%
+  最小收益：-20.0%
+第 2 天：
+  正收益次数：77520
+  负收益次数：84258
+  平均收益：0.34%
+  最大收益：44.18%
+  最小收益：-30.59%
+第 3 天：
+  正收益次数：76776
+  负收益次数：84880
+  平均收益：0.44%
+  最大收益：72.84%
+  最小收益：-30.2%
+第 4 天：
+  正收益次数：76534
+  负收益次数：85021
+  平均收益：0.52%
+  最大收益：107.36%
+  最小收益：-35.68%
+第 5 天：
+  正收益次数：76945
+  负收益次数：84529
+  平均收益：0.51%
+  最大收益：143.0%
+  最小收益：-40.16%
+
+中枢相关统计：
+  在中枢内：
+    次数：4398
+    正收益：3114次，占比70.8%
+    平均正收益：5.39%
+  高于中枢10%以内：
+    次数：7943
+    正收益：5677次，占比71.47%
+    平均正收益：4.46%
+  高于中枢10%以外：
+    次数：15929
+    正收益：11232次，占比70.51%
+    平均正收益：5.79%
+  低于中枢20%以内：
+    次数：30546
+    正收益：21488次，占比70.35%
+    平均正收益：5.44%
+  低于中枢20%以外：
+    次数：8434
+    正收益：6505次，占比77.13%
+    平均正收益：8.82%
+
+--- 加仓条件 (buy_con_3) 最终统计 ---
+正收益次数：101306
+正收益占比：72.08%
+总的正收益：562091.7400000029
+总的负收益：-106320.99999999964
+第 1 天：
+  正收益次数：66860
+  负收益次数：73646
+  平均收益：0.2%
+  最大收益：20.12%
+  最小收益：-20.0%
+第 2 天：
+  正收益次数：66702
+  负收益次数：73679
+  平均收益：0.35%
+  最大收益：44.14%
+  最小收益：-27.7%
+第 3 天：
+  正收益次数：66545
+  负收益次数：73728
+  平均收益：0.47%
+  最大收益：72.91%
+  最小收益：-30.2%
+第 4 天：
+  正收益次数：66688
+  负收益次数：73497
+  平均收益：0.54%
+  最大收益：107.36%
+  最小收益：-33.51%
+第 5 天：
+  正收益次数：66706
+  负收益次数：73418
+  平均收益：0.5%
+  最大收益：143.0%
+  最小收益：-40.16%
+
+中枢相关统计：
+  在中枢内：
+    次数：3967
+    正收益：2792次，占比70.38%
+    平均正收益：5.51%
+  高于中枢10%以内：
+    次数：6935
+    正收益：4977次，占比71.77%
+    平均正收益：4.47%
+  高于中枢10%以外：
+    次数：13674
+    正收益：9653次，占比70.59%
+    平均正收益：5.77%
+  低于中枢20%以内：
+    次数：26835
+    正收益：18818次，占比70.12%
+    平均正收益：5.73%
+  低于中枢20%以外：
+    次数：7017
+    正收益：5270次，占比75.1%
+    平均正收益：8.98%
+
+'''

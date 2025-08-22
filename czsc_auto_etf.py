@@ -349,11 +349,11 @@ if __name__ == '__main__':
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
     weekday = today.weekday()
     # etf晚上10点再更新
-    now = datetime.now()
-    while (now.hour < 22 or now.minute < 30) and weekday<=5:
-        print("当前时间：", now.strftime("%Y-%m-%d %H:%M:%S"))
-        time.sleep(60*5)
-        now = datetime.now()
+    # now = datetime.now()
+    # while (now.hour < 22 or now.minute < 30) and weekday<=5:
+    #     print("当前时间：", now.strftime("%Y-%m-%d %H:%M:%S"))
+    #     time.sleep(60*5)
+    #     now = datetime.now()
 
     # baostock登录
     lg = bs.login()
