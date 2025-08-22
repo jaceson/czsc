@@ -68,7 +68,9 @@ def fetch_sh_day(today):
     if os.path.isfile(filepath):
         return True
 
-    driver = webdriver.Chrome()
+    options = webdriver.ChromeOptions()
+    options.add_argument('--disable-features=MacAppCodeSignClone')
+    driver = webdriver.Chrome(options)
     url = 'https://www.sse.com.cn/market/funddata/volumn/etfvolumn/'
     print(url)
     driver.get(url)
@@ -117,7 +119,9 @@ def fetch_sz_page(code,driver):
     return data_list
 
 def create_sz_share_webdriver(retry_num=1):
-    driver = webdriver.Chrome()
+    options = webdriver.ChromeOptions()
+    options.add_argument('--disable-features=MacAppCodeSignClone')
+    driver = webdriver.Chrome(options)
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
     driver.get(url)
@@ -242,7 +246,9 @@ def fetch_sz_day(today):
         if etf_data_dict and etf_data_dict['today'] == today:
             return etf_data_dict['list']
 
-    driver = webdriver.Chrome()
+    options = webdriver.ChromeOptions()
+    options.add_argument('--disable-features=MacAppCodeSignClone')
+    driver = webdriver.Chrome(options)
     url = 'https://fund.szse.cn/marketdata/fundslist/index.html'
     print(url)
     driver.get(url)
