@@ -311,9 +311,9 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
     if not df[main_force_con].empty:
         selected_indexs = df[main_force_con].index
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
-        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-        czsc_logger().info("     1）主力进场日期："+str(last_selected_date))
         if last_trading_day == last_selected_date:
+            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+            czsc_logger().info("     1）主力进场日期："+str(last_selected_date))
             # 距离上次出现信号不超过5天
             if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
