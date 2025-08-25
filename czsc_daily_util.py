@@ -319,6 +319,9 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
                 czsc_logger().info("     2）主力进场前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
             else:
+                # czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
+                # czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
+                # czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
                 return True
     close_price = df['close'].iloc[-1]
     c = get_stock_czsc(symbol,df)
