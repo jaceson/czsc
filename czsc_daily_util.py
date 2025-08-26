@@ -322,24 +322,26 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
         if zs.is_valid:
             last_zs = zs
             break
-    # 主力进场
-    main_force_con = get_main_strong_join_condition(symbol,df)
-    if not df[main_force_con].empty and last_zs.zg*1.1>high_price:
-        selected_indexs = df[main_force_con].index
-        last_selected_date = df['date'].iloc[selected_indexs[-1]]
-        if last_trading_day == last_selected_date:
-            czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
-            czsc_logger().info("     1）主力进场日期："+str(last_selected_date))
-            # 距离上次出现信号不超过5天
-            if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
-                czsc_logger().info("     2）❌主力进场前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
-            else:
-                if len(selected_indexs)>1:
-                    czsc_logger().info("     2）✅主力进场前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
-                # czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
-                # czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
-                # czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
-                return True
+    # 中枢中高上涨10%以内
+    if last_zs.zg*1.1>high_price:
+        # 主力进场
+        main_force_con = get_main_strong_join_condition(symbol,df)
+        if not df[main_force_con].empty:
+            selected_indexs = df[main_force_con].index
+            last_selected_date = df['date'].iloc[selected_indexs[-1]]
+            if last_trading_day == last_selected_date:
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
+                czsc_logger().info("     1）主力进场日期："+str(last_selected_date))
+                # 距离上次出现信号不超过5天
+                if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
+                    czsc_logger().info("     2）❌主力进场前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
+                else:
+                    if len(selected_indexs)>1:
+                        czsc_logger().info("     2）✅主力进场前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
+                    # czsc_logger().info("     2）中枢区间："+last_zs.sdt.strftime("%Y-%m-%d")+"到"+last_zs.edt.strftime("%Y-%m-%d"))
+                    # czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
+                    # czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
+                    return True
     if not last_zs.is_valid or last_zs.zd <= close_price:
         return False
     # 今天收盘价是否低于中低max_ratio
