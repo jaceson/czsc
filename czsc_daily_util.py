@@ -306,9 +306,25 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
 '''
 def is_best_strategy_point(symbol,df,max_ratio=0.2):
     last_trading_day = df['date'].iloc[-1]
+    close_price = df['close'].iloc[-1]
+    high_price = df['high'].iloc[-1]
+    c = get_stock_czsc(symbol,df)
+    # 最后一笔
+    if len(c.bi_list) <= 0:
+        return False
+    last_bi = c.bi_list[-1]
+    # 最后一个中枢
+    zs_list = get_zs_seq(c.bi_list)
+    if len(zs_list) <= 0:
+        return False
+    last_zs = zs_list[-1]   
+    for zs in reversed(zs_list):
+        if zs.is_valid:
+            last_zs = zs
+            break
     # 主力进场
     main_force_con = get_main_strong_join_condition(symbol,df)
-    if not df[main_force_con].empty:
+    if not df[main_force_con].empty and last_zs.zg*1.1>high_price:
         selected_indexs = df[main_force_con].index
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
         if last_trading_day == last_selected_date:
@@ -324,21 +340,6 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
                 # czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
                 # czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
                 return True
-    close_price = df['close'].iloc[-1]
-    c = get_stock_czsc(symbol,df)
-    # 最后一笔
-    if len(c.bi_list) <= 0:
-        return False
-    last_bi = c.bi_list[-1]
-    # 最后一个中枢
-    zs_list = get_zs_seq(c.bi_list)
-    if len(zs_list) <= 0:
-        return False
-    last_zs = zs_list[-1]   
-    for zs in reversed(zs_list):
-        if zs.is_valid:
-            last_zs = zs
-            break
     if not last_zs.is_valid or last_zs.zd <= close_price:
         return False
     # 今天收盘价是否低于中低max_ratio
