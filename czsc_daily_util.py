@@ -95,7 +95,7 @@ def get_longterm_turn_condition(symbol,df):
 '''
     主力进场指标
 '''
-def get_main_strong_join_condition(symbol,df):
+def get_main_strong_join_condition(symbol,df,max_ratio=8,min_ratio=3,rsi_limit=80,days_delta=5):
     ndf = get_rps_data(df)
 
     YHCSXPXGTJ1 = (MA(ndf['close'], 5))
@@ -114,8 +114,8 @@ def get_main_strong_join_condition(symbol,df):
     YHCSXPXGTJ12 = ((YHCSXPXGTJ10 - YHCSXPXGTJ11) * 2)
     YHCSXPXGTJ13 = ((YHCSXPXGTJ10 > YHCSXPXGTJ11) & (YHCSXPXGTJ12 > REF(YHCSXPXGTJ12, 1)))
 
-    YHCSXPXGTJ14 = ((ndf['close'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 > 8)
-    YHCSXPXGTJ15 = ((ndf['open'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 < 3)
+    YHCSXPXGTJ14 = ((ndf['close'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 > max_ratio)
+    YHCSXPXGTJ15 = ((ndf['open'] - REF(ndf['close'], 1)) / REF(ndf['close'], 1) * 100 < min_ratio)
 
     YHCSXPXGTJ16 = (ndf['close'] > ndf['open'])
     YHCSXPXGTJ17 = (REF(ndf['close'], 1) / REF(ndf['close'], 2) <= 1.05)
@@ -123,8 +123,8 @@ def get_main_strong_join_condition(symbol,df):
     YHCSXPXGTJ18 = (REF(ndf['close'], 1))
     YHCSXPXGTJ19 = (SMA(MAX(ndf['close'] - YHCSXPXGTJ18, 0), 14, 1) / SMA(ABS(ndf['close'] - YHCSXPXGTJ18), 14, 1) * 90)
 
-    YHCSXPXGTJ20 = (YHCSXPXGTJ19 < 80)
-    YHCSXPXGTJ21 = (ndf['volume'] > MA(ndf['volume'], 5))
+    YHCSXPXGTJ20 = (YHCSXPXGTJ19 < rsi_limit)
+    YHCSXPXGTJ21 = (ndf['volume'] > MA(ndf['volume'], days_delta))
 
     return (YHCSXPXGTJ9 & YHCSXPXGTJ13 & YHCSXPXGTJ14 & YHCSXPXGTJ15  & YHCSXPXGTJ16  & YHCSXPXGTJ17  & YHCSXPXGTJ20  & YHCSXPXGTJ21)
 

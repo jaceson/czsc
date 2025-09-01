@@ -249,7 +249,7 @@ def is_same_zs_bi(last_buy_date, current_buy_date, bi_list, df):
 def get_main_strong_join_buy_point(symbol,df):
     last_start_index = -1
     last_buy_date = None  # 记录上次购买日期
-    buy_con = get_main_strong_join_condition(symbol,df)
+    buy_con = get_main_strong_join_condition(symbol=symbol,df=df,max_ratio=7,min_ratio=3,rsi_limit=70,days_delta=3)
     bars = get_local_stock_bars(symbol=symbol,df=df)
     c = CZSC(bars, get_signals=None)
     bi_list = c.bi_list
