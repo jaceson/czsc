@@ -329,7 +329,7 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
         if not df[main_force_con].empty:
             selected_indexs = df[main_force_con].index
             last_selected_date = df['date'].iloc[selected_indexs[-1]]
-            if last_trading_day == last_selected_date:
+            if is_recent_min_close(df, last_selected_date, last_trading_day):
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
                 czsc_logger().info("     1）主力进场日期："+str(last_selected_date))
                 # 距离上次出现信号不超过5天
@@ -1437,6 +1437,53 @@ def get_min_close(df, start_date):
         else:
             min_close = MIN(min_close,df['close'].iloc[x])
     return min_close
+
+def is_recent_min_close(df, start_date, end_date):
+    """
+    判断从start_date到end_date期间，end_date的收盘价是否是最低价
+    
+    功能：
+    1、从start_date到end_date，end_date收盘价是最低价
+    2、start_date如果和end_date相等，直接返回true
+    3、如果end_date和start_date相差5个交易日，直接返回false
+    
+    Args:
+        df: 包含date和close列的DataFrame
+        start_date: 开始日期
+        end_date: 结束日期
+        
+    Returns:
+        bool: True表示end_date收盘价是最低价，False表示不是
+    """
+    # 如果start_date和end_date相等，直接返回true
+    if start_date == end_date:
+        return True
+    
+    # 计算交易日差
+    trade_days = days_trade_delta(df, start_date, end_date)
+    
+    # 如果相差5个交易日，直接返回false
+    if trade_days >= 5:
+        return False
+    
+    # 获取start_date和end_date的索引
+    start_index = df.index[df['date'] == start_date].tolist()
+    end_index = df.index[df['date'] == end_date].tolist()
+    
+    assert len(start_index) > 0, f"start_date {start_date} not found in df"
+    assert len(end_index) > 0, f"end_date {end_date} not found in df"
+    
+    start_idx = start_index[0]
+    end_idx = end_index[0]
+    
+    # 获取end_date的收盘价
+    end_close = df['close'].iloc[end_idx]
+    
+    # 从start_date到end_date期间找到最低收盘价
+    min_close = df['close'].iloc[start_idx:end_idx+1].min()
+    
+    # 判断end_date收盘价是否等于最低价
+    return end_close == min_close
 
 # baostock查询结果转换成数组
 def query_trade_data_to_pd(rs):
