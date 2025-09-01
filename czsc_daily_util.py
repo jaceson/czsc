@@ -356,7 +356,7 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
         czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
         czsc_logger().info("     1）长线转折日期："+str(last_selected_date))
-        if last_trading_day == last_selected_date:
+        if is_recent_min_close(df, last_selected_date, last_trading_day):
             # 距离上次出现信号不超过5天
             if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
                 czsc_logger().info("     2）长线转折前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
@@ -372,7 +372,7 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
         last_selected_date = df['date'].iloc[selected_indexs[-1]]
         czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol))
         czsc_logger().info("     1）口袋支点日期："+str(last_selected_date))
-        if last_trading_day == last_selected_date:
+        if is_recent_min_close(df, last_selected_date, last_trading_day):
             # 距离上次出现信号不超过5天
             if len(selected_indexs)>1 and (selected_indexs[-1]-selected_indexs[-2])<=5:
                 czsc_logger().info("     2）口袋支点前一个日期："+str(df['date'].iloc[selected_indexs[-2]]))
