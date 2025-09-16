@@ -10,7 +10,7 @@ from CZSCStragegy_AllStrategy import get_main_strong_join_condition
 
 plus_list = []
 minus_list = []
-hold_days = 15
+hold_days = 5
 ratio_map = {}
 for x in range(1,hold_days+1):
     ratio_map[x] = []
@@ -22,11 +22,14 @@ def get_buy_point(symbol,df):
         selected_indexs = df[buy_con].index
         for idx in selected_indexs:
             buy_date = df['date'][idx]
-            print(symbol+" 月线反转日期："+buy_date)
+            print(symbol+" 信号触发日期："+buy_date)
             is_buy = False
             start_index = df.iloc[df['date'].values == buy_date].index[0]
             for idx in range(start_index+1,start_index+4):
                 if idx<len(df['date']):
+                    # 如果当前最高价大于买入时的最高价，则跳过
+                    if df['high'].iloc[idx]>df['high'].iloc[start_index]:
+                        break
                     if df['MA5'].iloc[idx]>=df['close'].iloc[idx]:
                         start_index = idx
                         is_buy = True
@@ -34,6 +37,7 @@ def get_buy_point(symbol,df):
 
             if not is_buy:
                 continue
+            print(symbol+" 买入日期："+buy_date)
             buy_price = df['MA5'].iloc[start_index]
             max_val = -1000
             for idx in range(start_index+1,start_index+hold_days+1):
@@ -91,5 +95,7 @@ if __name__ == '__main__':
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
         df = get_local_stock_data(symbol,'2020-01-01')
         get_buy_point(symbol,df)
+        if all_symbols.index(symbol)%100==0:
+            print_console(plus_list,minus_list,ratio_map)
 
     print_console(plus_list,minus_list,ratio_map)
