@@ -294,6 +294,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             # 今天收盘价是这波调整依赖最低收盘价
             min_close = get_min_close(df, fx_b.dt.strftime("%Y-%m-%d"))
             if stock_close <= min_close*close_ratio:
+                df['MA20'] = MA(df,20) 
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
                 czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
                 czsc_logger().info("     2）黄金分割低点："+str(round(gold_low_val,2)))
@@ -305,7 +306,8 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(fx_a,fx_b)*100,2))+"%")
                 czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
                 czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
-                return True
+                czsc_logger().info("     8）20日均线："+str(round(df['MA20'].iloc[-1],2)))
+                return df['close'].iloc[-1]<df['MA20'].iloc[-1]
             else:
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
