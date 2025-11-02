@@ -1,5 +1,5 @@
 {
-    "today": "2025-10-10",
+    "today": "2025-10-31",
     "list": [
         {
             "code": "159001",
@@ -3464,6 +3464,26 @@
         {
             "code": "159288",
             "name": "\u521b\u4e1a\u677f\u7efcETF\u94f6\u534e"
+        },
+        {
+            "code": "159106",
+            "name": "\u6c11\u4f01300ETF"
+        },
+        {
+            "code": "159109",
+            "name": "\u6052\u751f50ETF"
+        },
+        {
+            "code": "159117",
+            "name": "\u6e2f\u80a1\u901a\u7ea2\u5229\u4f4e\u6ce2ETF"
+        },
+        {
+            "code": "159285",
+            "name": "\u6e2f\u80a1\u901a\u6d88\u8d39ETF\u534e\u5b89"
+        },
+        {
+            "code": "180607",
+            "name": "\u534e\u590f\u4e2d\u6d77\u5546\u4e1aREIT"
         }
     ]
 }
