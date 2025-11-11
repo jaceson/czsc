@@ -122,7 +122,7 @@ def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
     # 连接数据库
     sqlite3_connect()
     # stock data
-    sql_connect_cursor.execute("SELECT date,open,high,low,close,volume,amount,turn FROM STOCK_DAILY WHERE code = ? AND frequency = ? AND date >= ? ORDER BY date ASC",(symbol,frequency,start_date))
+    sql_connect_cursor.execute("SELECT DISTINCT date,open,high,low,close,volume,amount,turn FROM STOCK_DAILY WHERE code = ? AND frequency = ? AND date >= ? ORDER BY date ASC",(symbol,frequency,start_date))
     res_list = []
     rows = sql_connect_cursor.fetchall()
     # 转换成pandas

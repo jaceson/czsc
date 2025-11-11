@@ -192,8 +192,7 @@ def main():
     
     # 遍历所有股票
     for idx, symbol in enumerate(all_symbols):
-        if (idx + 1) % 100 == 0:
-            print(f"[{pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}] 进度：{idx + 1} / {len(all_symbols)}")
+        print(f"[{pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}] 进度：{idx + 1} / {len(all_symbols)}")
         
         # 检查股票是否符合策略
         is_match, info = check_weekly_macd_strategy(symbol)
