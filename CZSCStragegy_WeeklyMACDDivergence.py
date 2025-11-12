@@ -23,10 +23,10 @@ def detect_macd_divergence(df, lookback_period=30):
         lookback_period: 回看周期，用于寻找低点
     
     返回:
-        bool: 是否存在底背离
+        tuple: (是否存在底背离, 背离发生的索引位置)
     """
     if len(df) < lookback_period + 5:
-        return False
+        return False, None
     
     # 获取最近的数据用于分析
     recent_df = df.tail(lookback_period).copy()
@@ -55,13 +55,13 @@ def detect_macd_divergence(df, lookback_period=30):
     
     # 如果找到的局部低点少于2个，返回False
     if len(local_lows_price) < 2:
-        return False
+        return False, None
     
     # 找到最近的两个低点
     # 最后一个低点应该是最新的
     if local_lows_idx[-1] < len(close_prices) - 5:
         # 如果最后一个低点太早，可能没有背离
-        return False
+        return False, None
     
     # 比较最近的两个低点
     last_low_idx = local_lows_idx[-1]
@@ -80,7 +80,8 @@ def detect_macd_divergence(df, lookback_period=30):
     macd_divergence = last_low_dif > prev_low_dif
     
     if price_divergence and macd_divergence:
-        return True
+        divergence_idx = len(df) - lookback_period + last_low_idx
+        return True, divergence_idx
     
     # 如果只有两个低点，检查是否满足条件
     # 也可以检查是否有更早的低点形成背离
@@ -89,9 +90,10 @@ def detect_macd_divergence(df, lookback_period=30):
         for i in range(len(local_lows_price) - 2, -1, -1):
             if local_lows_idx[i] < last_low_idx:
                 if close_prices[local_lows_idx[i]] > last_low_price and dif_values[local_lows_idx[i]] < last_low_dif:
-                    return True
+                    divergence_idx = len(df) - lookback_period + last_low_idx
+                    return True, divergence_idx
     
-    return False
+    return False, None
 
 def detect_macd_golden_cross(df):
     """
@@ -102,10 +104,10 @@ def detect_macd_golden_cross(df):
         df: 包含DIF和DEA的DataFrame
     
     返回:
-        bool: 最后一个交易日是否出现金叉
+        tuple: (最后一个交易日是否出现金叉, 金叉对应的索引位置)
     """
     if len(df) < 2:
-        return False
+        return False, None
     
     # 获取最后两天的数据
     last_dif = df['DIF'].iloc[-1]
@@ -115,8 +117,9 @@ def detect_macd_golden_cross(df):
     
     # 金叉：前一天DIF < DEA，今天DIF > DEA
     golden_cross = (prev_dif < prev_dea) and (last_dif > last_dea)
+    cross_idx = len(df) - 1 if golden_cross else None
     
-    return golden_cross
+    return golden_cross, cross_idx
 
 def check_weekly_macd_strategy(symbol, start_date='2020-01-01'):
     """
@@ -149,13 +152,15 @@ def check_weekly_macd_strategy(symbol, start_date='2020-01-01'):
             return False, None
         
         # 检测MACD底背离
-        has_divergence = detect_macd_divergence(df, lookback_period=20)
+        has_divergence, divergence_idx = detect_macd_divergence(df, lookback_period=20)
         
         # 检测MACD金叉
-        has_golden_cross = detect_macd_golden_cross(df)
+        has_golden_cross, cross_idx = detect_macd_golden_cross(df)
         
         # 两个条件都满足
-        if has_divergence and has_golden_cross:
+        if has_divergence and has_golden_cross and divergence_idx is not None and cross_idx is not None:
+            if divergence_idx >= cross_idx:
+                return False, None
             info = {
                 'symbol': symbol,
                 'last_date': df['date'].iloc[-1],
@@ -163,6 +168,7 @@ def check_weekly_macd_strategy(symbol, start_date='2020-01-01'):
                 'last_dif': df['DIF'].iloc[-1],
                 'last_dea': df['DEA'].iloc[-1],
                 'last_macd': df['MACD'].iloc[-1],
+                'divergence_date': df['date'].iloc[divergence_idx],
             }
             return True, info
         

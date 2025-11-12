@@ -1474,7 +1474,7 @@ def is_recent_min_close(df, start_date, end_date):
     trade_days = days_trade_delta(df, start_date, end_date)
     
     # 如果相差5个交易日，直接返回false
-    if trade_days >= 5:
+    if trade_days >= 10:
         return False
     
     # 获取start_date和end_date的索引
