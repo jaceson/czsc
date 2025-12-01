@@ -1,5 +1,5 @@
 {
-    "today": "2025-11-18",
+    "today": "2025-11-28",
     "list": [
         {
             "code": "159001",
@@ -3532,6 +3532,34 @@
         {
             "code": "159129",
             "name": "\u5316\u5de5ETF\u5609\u5b9e"
+        },
+        {
+            "code": "159127",
+            "name": "\u6e2f\u80a1\u901a\u7ea2\u5229ETF\u5357\u65b9"
+        },
+        {
+            "code": "159108",
+            "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF"
+        },
+        {
+            "code": "159121",
+            "name": "\u6052\u751f\u6c7d\u8f66ETF"
+        },
+        {
+            "code": "159133",
+            "name": "\u5316\u5de5ETF\u5929\u5f18"
+        },
+        {
+            "code": "159118",
+            "name": "\u6e2f\u80a1\u901a\u7ea2\u5229\u4f4e\u6ce2ETF\u57fa\u91d1"
+        },
+        {
+            "code": "159123",
+            "name": "\u5149\u4f0fETF\u5609\u5b9e"
+        },
+        {
+            "code": "159130",
+            "name": "\u6052\u751f\u751f\u7269\u79d1\u6280ETF\u9e4f\u534e"
         }
     ]
 }

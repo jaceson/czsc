@@ -13,7 +13,7 @@ from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
 from Plot.AnimatePlotDriver import CAnimateDriver
 from Plot.PlotDriver import CPlotDriver
 
-START_TRADE_DATE = "2022-01-01"
+START_TRADE_DATE = "2023-01-01"
 def output_chart(symbol, df, cachedir):
     if is_rz_rq_symobl(symbol):
         cachedir = cachedir+"/rzrq"
