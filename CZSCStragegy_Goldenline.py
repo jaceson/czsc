@@ -100,6 +100,8 @@ def get_buy_point(df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=20):
                 else:
                     minus_list.append(max_val)
                 break
+        return True
+    return False
 
 # 上涨线段，从start_index开始一笔，上涨线段
 def find_up_seg(bi_list, start_index):
@@ -109,6 +111,15 @@ def find_up_seg(bi_list, start_index):
         cur_bi = bi_list[index]
         # 过滤下降笔
         if cur_bi.fx_a.fx > cur_bi.fx_b.fx:
+            # 前一个上涨一笔的最低点高于接下来一笔的最
+            if start_bi and start_bi.fx_a.fx >= cur_bi.fx_b.fx:
+                if start_bi.fx_b.dt == cur_bi.fx_a.dt:
+                    start_bi = None
+                else:
+                    if last_bi:
+                        return start_bi.fx_a,last_bi.fx_b,last_bi
+                    else:
+                        return start_bi.fx_a,start_bi.fx_b,start_bi
             continue
         # 开始一笔
         if not start_bi:
@@ -128,7 +139,7 @@ def find_up_seg(bi_list, start_index):
         if last_bi:
             return start_bi.fx_a,last_bi.fx_b,last_bi
         else:
-            return start_bi.fx_a,start_bi.fx_b,None
+            return start_bi.fx_a,start_bi.fx_b,start_bi
     else:
         return None,None,None
 
@@ -323,8 +334,11 @@ def evolution_goldenline(df,c):
             if last_bi:
                 end_index = c.bi_list.index(last_bi)
                 min_angle = max(10, min_angle-2*(end_index-start_index)%2)
-            start_index += 1
-            get_buy_point(df,fx_a,fx_b,None,threshold,10,min_angle)
+            start_index = end_index+1
+            next_up_bi = None
+            if (end_index+2)<len(c.bi_list):
+                next_up_bi = c.bi_list[end_index+2]
+            get_buy_point(df,fx_a,fx_b,next_up_bi,threshold,10,min_angle)
         else:
             break
 
@@ -353,6 +367,7 @@ if __name__ == '__main__':
     type_goldenline = 0
     if len(sys.argv)>1:
         type_goldenline = int(sys.argv[1])
+    print('黄金分割策略类型：'+str(type_goldenline))
     start_date = "2020-01-01"
     all_symbols  = get_daily_symbols()
     for symbol in all_symbols:
@@ -732,4 +747,90 @@ if __name__ == '__main__':
     最小值：-34.12
     50% 的百分位数：1.44
     95% 的百分位数：18.59
+
+正收益次数：525
+正收益占比：86.35%
+正收益次数：552
+正收益占比：88.46%
+总的正收益：4637.600000000002
+总的负收益：-175.27000000000007
+第 1 天：
+     正收益次数：478
+     正收益占比：76.6%
+     总的正收益：2201.6900000000005
+     总的负收益：-349.3999999999999
+第 2 天：
+     正收益次数：433
+     正收益占比：69.39%
+     总的正收益：2781.8899999999994
+     总的负收益：-578.9200000000002
+第 3 天：
+     正收益次数：434
+     正收益占比：69.55%
+     总的正收益：2969.9300000000003
+     总的负收益：-639.2600000000001
+第 4 天：
+     正收益次数：396
+     正收益占比：63.46%
+     总的正收益：2694.7099999999996
+     总的负收益：-937.2000000000002
+第 5 天：
+     正收益次数：387
+     正收益占比：62.02%
+     总的正收益：2996.9800000000014
+     总的负收益：-1172.5300000000007
+总收益：
+    平均值：17.21296052631579
+    最大值：121.98
+    最小值：-29.32
+    50% 的百分位数：16.479999999999997
+    95% 的百分位数：44.05049999999999
+总持有天数：
+    平均值：17.1875
+    最大值：107
+    最小值：4
+    50% 的百分位数：14.0
+    95% 的百分位数：36.0
+正收益：
+    平均值：8.40144927536232
+    最大值：48.46
+    最小值：0.03
+    50% 的百分位数：6.505
+    95% 的百分位数：24.435999999999833
+负收益：
+    平均值：-2.4343055555555555
+    最大值：-0.01
+    最小值：-15.11
+    50% 的百分位数：-1.795
+    95% 的百分位数：-0.14099999999999993
+第 1 天：
+    平均值：2.9684134615384616
+    最大值：20.94
+    最小值：-16.56
+    50% 的百分位数：2.565
+    95% 的百分位数：10.7055
+第 2 天：
+    平均值：3.530400641025641
+    最大值：32.68
+    最小值：-23.6
+    50% 的百分位数：2.91
+    95% 的百分位数：15.075000000000003
+第 3 天：
+    平均值：3.735048076923077
+    最大值：42.92
+    最小值：-23.6
+    50% 的百分位数：2.79
+    95% 的百分位数：16.989000000000004
+第 4 天：
+    平均值：2.816522435897436
+    最大值：48.46
+    最小值：-23.55
+    50% 的百分位数：1.68
+    95% 的百分位数：17.497
+第 5 天：
+    平均值：2.923798076923077
+    最大值：44.21
+    最小值：-25.38
+    50% 的百分位数：2.145
+    95% 的百分位数：18.659000000000002
 '''

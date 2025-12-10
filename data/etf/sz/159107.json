@@ -268,5 +268,47 @@
         "code": "169106",
         "name": "\u4e1c\u65b9\u7ea2\u521b\u4f18\u5b9a\u5f00",
         "share": "5,379.28"
+    },
+    {
+        "dt": "2025-12-01",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "27,782.30"
+    },
+    {
+        "dt": "2025-12-02",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "27,782.30"
+    },
+    {
+        "dt": "2025-12-03",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "28,582.30"
+    },
+    {
+        "dt": "2025-12-04",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "28,682.30"
+    },
+    {
+        "dt": "2025-12-09",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "27,882.30"
+    },
+    {
+        "dt": "2025-12-08",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "28,082.30"
+    },
+    {
+        "dt": "2025-12-05",
+        "code": "159107",
+        "name": "\u521b\u4e1a\u677f\u8f6f\u4ef6ETF\u5bcc\u56fd",
+        "share": "28,582.30"
     }
 ]

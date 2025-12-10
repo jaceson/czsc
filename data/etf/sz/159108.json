@@ -88,5 +88,47 @@
         "code": "169106",
         "name": "\u4e1c\u65b9\u7ea2\u521b\u4f18\u5b9a\u5f00",
         "share": "5,379.28"
+    },
+    {
+        "dt": "2025-12-01",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "55,473.85"
+    },
+    {
+        "dt": "2025-12-02",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "55,373.85"
+    },
+    {
+        "dt": "2025-12-03",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "55,573.85"
+    },
+    {
+        "dt": "2025-12-04",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "55,173.85"
+    },
+    {
+        "dt": "2025-12-09",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "50,273.85"
+    },
+    {
+        "dt": "2025-12-08",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "50,673.85"
+    },
+    {
+        "dt": "2025-12-05",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "54,173.85"
     }
 ]
