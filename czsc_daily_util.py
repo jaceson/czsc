@@ -247,18 +247,33 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
         end_index = idx
         fx_a = last_bi.fx_a
         fx_b = last_bi.fx_b
-        while fx_a.fx*threshold > fx_b.fx:
-            if len(bi_list)>=(abs(idx)+2):
-                next_up_bi = bi_list[idx]
-                pre_up_bi = bi_list[idx-2]
-                if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx and pre_up_bi.fx_b.fx < next_up_bi.fx_b.fx:
-                    fx_a = pre_up_bi.fx_a
-                    end_index = idx-2
-                    idx = idx-2
+
+        if False: #最早黄金分割算法
+            while fx_a.fx*threshold > fx_b.fx:
+                if len(bi_list)>=(abs(idx)+2):
+                    next_up_bi = bi_list[idx]
+                    pre_up_bi = bi_list[idx-2]
+                    if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx and pre_up_bi.fx_b.fx < next_up_bi.fx_b.fx:
+                        fx_a = pre_up_bi.fx_a
+                        end_index = idx-2
+                        idx = idx-2
+                    else:
+                        break
                 else:
                     break
-            else:
-                break
+        else:
+            while True:
+                if len(bi_list)>=(abs(idx)+2):
+                    next_up_bi = bi_list[idx]
+                    pre_up_bi = bi_list[idx-2]
+                    if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx:
+                        fx_a = pre_up_bi.fx_a
+                        end_index = idx-2
+                        idx = idx-2
+                    else:
+                        break
+                else:
+                    break
         min_angle = max(10, min_angle-(end_index-start_index))
         # 当前一笔从最低点到最高点，涨幅已经超过50%
         # if fx_a.fx*threshold < fx_b.fx and fx_equal(last_fx, fx_b):

@@ -329,7 +329,7 @@ def evolution_goldenline(df,c):
     while start_index<len(c.bi_list):
         fx_a,fx_b,last_bi = find_up_seg(c.bi_list,start_index)
         if fx_a and fx_b:
-            min_angle = 20
+            min_angle = 15
             end_index = start_index
             if last_bi:
                 end_index = c.bi_list.index(last_bi)
