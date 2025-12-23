@@ -104,10 +104,14 @@ def main():
     for code in etf_share_list.keys():
         etf_share_dict = etf_share_list[code]
         is_valid,close_list = is_asc_share(code,etf_share_dict)
-        if is_valid:
-            output_png(code,etf_share_dict,close_list,cachedir+'买入观察/')
-        elif close_list:
-            output_png(code,etf_share_dict,close_list,cachedir)
+        try:
+            if is_valid:
+                output_png(code,etf_share_dict,close_list,cachedir+'买入观察/')
+            elif close_list:
+                output_png(code,etf_share_dict,close_list,cachedir)
+        except Exception as e:
+            print(e)
+        
 """
     source /Users/wj/workspace/czsc/czsc_env/bin/activate
     cd /Users/wj/czsc

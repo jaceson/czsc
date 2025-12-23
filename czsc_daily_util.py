@@ -274,7 +274,15 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                         break
                 else:
                     break
-        min_angle = max(10, min_angle-(end_index-start_index))
+        new_min_angle = max(10, min_angle-(end_index-start_index))
+        if bi_angle(df,fx_a,fx_b)<new_min_angle: # 时间跨度太长导致角度太小取
+            fx_a = last_bi.fx_a
+            fx_b = last_bi.fx_b
+            new_min_angle = min_angle
+            if fx_a.fx*threshold > fx_b.fx and abs(start_index-2)<=len(bi_list):
+                pre_up_bi = bi_list[start_index-2]
+                if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx:
+                    fx_a = pre_up_bi.fx_a
         # 当前一笔从最低点到最高点，涨幅已经超过50%
         # if fx_a.fx*threshold < fx_b.fx and fx_equal(last_fx, fx_b):
         if fx_a.fx*threshold <= fx_b.fx:
@@ -299,7 +307,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             #     czsc_logger().info("【"+symbol+"】"+" 下跌K线数量 "+str(down_kline_num)+"大于上涨K线数量 "+str(up_kline_num))
             #     return False
             # 笔的角度
-            if bi_angle(df,fx_a,fx_b)<min_angle:
+            if bi_angle(df,fx_a,fx_b)<new_min_angle:
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
                 return False
             # 距离黄金分割点还差5%以下
@@ -324,6 +332,21 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("     8）20日均线："+str(round(df['MA20'].iloc[-1],2)))
                 return df['close'].iloc[-1]<df['MA20'].iloc[-1]
             else:
+                _,_,df['MACD'] = MACD(df['close'], 10, 20, 7)
+                if abs(df['MACD'][-1]) < 0.1:
+                    czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
+                    czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
+                    czsc_logger().info("     2）黄金分割低点："+str(round(gold_low_val,2)))
+                    if stock_close<max_val:
+                        czsc_logger().info("     3）可以考虑直接买入！！！")
+                    else:
+                        czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
+                    czsc_logger().info("     4）笔的角度："+str(round(bi_angle(df,fx_a,fx_b),2)))
+                    czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(fx_a,fx_b)*100,2))+"%")
+                    czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
+                    czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
+                    czsc_logger().info("     8）MACD线："+str(round(df['MACD'].iloc[-1],2)))
+                    return True
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
 
@@ -369,6 +392,7 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
                     # czsc_logger().info("     3）中枢中低："+str(last_zs.zd))
                     # czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
                     return True
+
     if not last_zs.is_valid or last_zs.zd <= close_price:
         return False
     # 今天收盘价是否低于中低max_ratio
@@ -392,6 +416,7 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
                 czsc_logger().info("     4）距离中枢中低："+str(distance_pct)+"%")
                 return True
     # 口袋支点
+    return False
     pocket_pivot_con = get_pocket_pivot_condition(symbol,df)
     if not df[pocket_pivot_con].empty:
         selected_indexs = df[pocket_pivot_con].index
