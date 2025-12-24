@@ -333,7 +333,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 return df['close'].iloc[-1]<df['MA20'].iloc[-1]
             else:
                 _,_,df['MACD'] = MACD(df['close'], 10, 20, 7)
-                if abs(df['MACD'][-1]) < 0.1:
+                if abs(df['MACD'].iloc[-1]) < 0.1:
                     czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"股票当前价："+str(stock_close)+"，最低价："+str(fx_a.fx)+"，最高价："+str(fx_b.fx))
                     czsc_logger().info("     1）平   方  根："+str(round(sqr_val,2)))
                     czsc_logger().info("     2）黄金分割低点："+str(round(gold_low_val,2)))
