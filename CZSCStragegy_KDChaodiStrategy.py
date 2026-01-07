@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from czsc_daily_util import *
 from lib.MyTT import *
 import pandas as pd
+import numpy as np
 import baostock as bs
 from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
@@ -329,24 +330,77 @@ def get_kd_join_buy_point(symbol,df):
                 elif position_type == 'below_zs_beyond_20pct':
                     zs_out_stats['below_zs']['beyond_20pct']['minus_list'].append(max_val)
 
+def print_statistics(title, arr):
+    """
+    打印统计信息：平均值、最大值、最小值、50%和95%的百分位数
+    参考 CZSCStragegy_Goldenline.py 的实现
+    
+    参数:
+        title: 统计标题
+        arr: 数据数组
+    """
+    if len(arr) == 0:
+        print(f"{title}: 无数据")
+        return
+    
+    # 计算平均值
+    average = np.mean(arr)
+    
+    # 计算最大值
+    max_value = np.max(arr)
+    
+    # 计算最小值
+    min_value = np.min(arr)
+    
+    # 计算 50% 和 95% 的百分位数
+    percentile_50 = np.percentile(arr, 50)
+    percentile_95 = np.percentile(arr, 95)
+    
+    # 输出结果
+    print(title)
+    print(f"    平均值：{average:.2f}")
+    print(f"    最大值：{max_value:.2f}")
+    print(f"    最小值：{min_value:.2f}")
+    print(f"    50% 的百分位数：{percentile_50:.2f}")
+    print(f"    95% 的百分位数：{percentile_95:.2f}")
+
 def print_console(s_plus_list,s_minus_list,s_ratio_map):
+    """
+    打印统计结果（优化版，参考 CZSCStragegy_Goldenline.py）
+    """
+    print("=" * 80)
+    print("KD抄底策略统计结果")
+    print("=" * 80)
     print("正收益次数："+str(len(s_plus_list)))
     if len(s_minus_list)>0 or len(s_plus_list):
         print("正收益占比："+str(round(100*len(s_plus_list)/(len(s_minus_list)+len(s_plus_list)),2))+"%")
     total = 0
     for x in range(0,len(s_plus_list)):
         total += s_plus_list[x]
-    print("总的正收益："+str(total))
+    print("总的正收益："+str(round(total, 2)))
 
     total = 0
     for x in range(0,len(s_minus_list)):
         total += s_minus_list[x]
-    print("总的负收益："+str(total))
+    print("总的负收益："+str(round(total, 2)))
     
-    # 每天
+    # 打印总体统计（参考 Goldenline 的格式）
+    all_returns = s_plus_list + s_minus_list
+    if len(all_returns) > 0:
+        print_statistics('总收益：', all_returns)
+    if len(s_plus_list) > 0:
+        print_statistics('正收益：', s_plus_list)
+    if len(s_minus_list) > 0:
+        print_statistics('负收益：', s_minus_list)
+    
+    # 每天统计
     for x in range(1,hold_days+1):
         print("第 {} 天：".format(x))
         res_list = s_ratio_map[x]
+        if len(res_list) == 0:
+            print("    无数据")
+            continue
+            
         plus_num = 0
         plus_val = 0
         minus_num = 0
@@ -362,8 +416,12 @@ def print_console(s_plus_list,s_minus_list,s_ratio_map):
         print("     正收益次数："+str(plus_num))
         if plus_num>0 or minus_num>0:
             print("     正收益占比："+str(round(100*plus_num/(plus_num+minus_num),2))+"%")
-        print("     总的正收益："+str(plus_val))
-        print("     总的负收益："+str(minus_val))
+        print("     总的正收益："+str(round(plus_val, 2)))
+        print("     总的负收益："+str(round(minus_val, 2)))
+        
+        # 使用辅助函数打印详细统计信息
+        if len(res_list) > 0:
+            print_statistics("第 {} 天：".format(x), res_list)
 
 def print_zs_analysis():
     """打印中枢分析结果"""
@@ -501,14 +559,14 @@ def print_zs_analysis():
 
 if __name__ == '__main__':
     all_symbols  = get_daily_symbols()
-    for symbol in all_symbols:
+    for idx, symbol in enumerate(all_symbols):
         # 打印进度
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
         df = get_local_stock_data(symbol,'2020-01-01')
         get_kd_join_buy_point(symbol,df)
 
         # 分阶段打印统计结果
-        if all_symbols.index(symbol)==1000 or all_symbols.index(symbol)==2000 or all_symbols.index(symbol)==3000:
+        if (idx + 1) % 100 == 0:
             print_console(plus_list,minus_list,ratio_map)
             print_zs_analysis()
 
