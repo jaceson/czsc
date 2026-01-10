@@ -478,8 +478,9 @@ def get_bigfish_eat_smallfish_condition(symbol, df, debug_output='大鱼吃小�
         output_condition = 大鱼吃小鱼形态
     
     # 处理NaN值（将NaN视为False），并确保索引与原始df一致
-    output_condition = pd.Series(output_condition.fillna(False).values, index=df.index)
-    
+    # output_condition = pd.Series(output_condition.fillna(False).values, index=df.index)
+    output_condition = pd.Series(output_condition, index=df.index).fillna(False)
+
     return output_condition
 
 def get_bigfish_eat_smallfish_buy_point(symbol, df, debug_output='大鱼吃小鱼形态'):
@@ -648,8 +649,10 @@ def main():
     #   '测试成交量' - 成交量确认
     #   '测试市场' - 市场过滤
     #   '大鱼吃小鱼形态' - 综合选股条件（默认）
-    debug_output = '测试买入信号'  # 默认输出完整选股条件
-    
+    debug_output_list = ['测试买入信号','测试大鱼嘴','测试小鱼形态','测试条件1','测试条件2','测试条件3','测试条件4','测试成交额','测试成交量','测试市场','大鱼吃小鱼形态']
+    debug_output = '大鱼吃小鱼形态'  # 默认输出完整选股条件
+    if len(sys.argv) > 1 and int(sys.argv[1])<len(debug_output_list):
+        debug_output = debug_output_list[int(sys.argv[1])]
     print("=" * 80)
     print("大鱼吃小鱼形态选股策略 - 调试版")
     print("=" * 80)
