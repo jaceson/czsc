@@ -1,0 +1,156 @@
+{吃鱼行情指标 - 优化版}
+{优化内容：1.成交额动态过滤 2.均线系统简化 3.市场环境判断 4.信号质量分级 5.成交量确认增强 6.参数可调化}
+
+{========== 参数设置区 ==========}
+N1:=10;          {EMA周期}
+N2:=14;          {威廉指标周期}
+N3:=9;           {RSI周期}
+成交额阈值1:=2000;  {成交额下限（万元）}
+成交额阈值2:=8000;  {成交额上限（万元）}
+涨幅阈值1:=2.9;    {涨幅阈值1（%）}
+涨幅阈值2:=4.0;    {涨幅阈值2（%）}
+涨幅阈值3:=5.0;    {涨幅阈值3（%）}
+
+{========== 基础指标计算 ==========}
+ABC1:=EMA(CLOSE,N1);
+ABC2:=(ABC1/LLV(ABC1,10)-1)*100;
+ABC3:=(-1)*ABC2;
+ABC4:=100*(HHV(HIGH,N2)-CLOSE)/(HHV(HIGH,N2)-LLV(LOW,N2));
+ABC5:=REF(CLOSE,1);
+ABC6:=SMA(MAX(CLOSE-ABC5,0),N3,1)/SMA(ABS(CLOSE-ABC5),N3,1)*100;
+ABC7:=(CLOSE-LLV(LOW,9))/(HHV(HIGH,9)-LLV(LOW,9))*100;
+ABC8:=SMA(ABC7,3,1);
+ABC9:=SMA(ABC8,3,1);
+ABC10:=3*ABC8-2*ABC9;
+ABC11:=ABC6 >=76 OR ABC10 > 95;
+ABC12:=ABC4 < 25;
+ABC13:=ABC11 OR ABC12;
+
+{========== 市场环境判断 ==========}
+{判断大盘趋势，提高信号质量}
+大盘指数:=INDEXC;
+大盘趋势:=MA(大盘指数,20) > MA(大盘指数,60);
+市场强度:=(大盘指数-MA(大盘指数,20))/MA(大盘指数,20)*100;
+市场过滤:=大盘趋势 AND 市场强度 > -3;
+
+{========== 简化均线系统 ==========}
+ABC14:=EMA(CLOSE,20);
+ABC15:=EMA(CLOSE,30);
+ABC16:=EMA(CLOSE,60);
+ABC17:=EMA(CLOSE,120);
+ABC18:=EMA(CLOSE,250);
+
+{计算均线粘合度}
+ABC27:=MAX(MAX(ABC15,ABC16),ABC17);
+ABC28:=MIN(MIN(ABC15,ABC16),ABC17);
+ABC29:=MAX(ABC27,ABC18);
+ABC30:=MIN(ABC28,ABC18);
+ABC33:=ABC29;
+ABC34:=ABC30;
+ABC35:=ABC33/ABC34;
+ABC36:=LOW/ABC27;
+
+{========== 成交额动态过滤 ==========}
+ABC38:=AMOUNT/10000;
+{根据流通市值动态调整成交额阈值（可选，如果数据支持）}
+{流通市值:=FINANCE(40);
+成交额阈值1_动态:=IF(流通市值<500000,成交额阈值1,IF(流通市值<2000000,成交额阈值1*2,成交额阈值1*3));
+成交额阈值2_动态:=IF(流通市值<500000,成交额阈值2,IF(流通市值<2000000,成交额阈值2*2,成交额阈值2*3));
+ABC39:=LLV(ABC38,2) > 成交额阈值1_动态 AND ABC38 > 成交额阈值2_动态;}
+{简化版本：使用固定阈值}
+ABC39:=LLV(ABC38,2) > 成交额阈值1 AND ABC38 > 成交额阈值2;
+
+{========== 趋势过滤条件 ==========}
+ABC37:=ABC35 < 1.3 AND REF(ABC36,1) < 1.05 AND CLOSE > ABC14 AND CLOSE > ABC33 AND ABC36 < 1.08;
+
+{========== 成交量确认增强 ==========}
+量能放大1:=VOL > REF(VOL,1)*1.5;
+量能放大2:=VOL > MA(VOL,5)*1.2;
+量能放大3:=VOL > MA(VOL,20)*1.1;
+量能确认:=量能放大1 AND (量能放大2 OR 量能放大3);
+
+{========== 涨跌幅计算 ==========}
+ABC40:=CLOSE/REF(CLOSE,1);
+
+{========== 买入信号1：均线突破 ==========}
+ABC41:=EMA(CLOSE,5);
+ABC42:=EMA(CLOSE,10);
+ABC43:=EMA(CLOSE,20);
+ABC44:=MAX(MAX(ABC41,ABC42),ABC43);
+ABC45:=MIN(MIN(ABC41,ABC42),ABC43);
+ABC46:=LOW < ABC45 AND CLOSE > ABC44 AND 量能确认 AND ABC39 AND ABC40 > (1+涨幅阈值1/100) AND ABC37;
+
+{========== 买入信号2：典型价格突破 ==========}
+ABC47:=(HIGH+LOW+CLOSE)/3;
+ABC48:=(ABC47-MA(ABC47,81))*1000/(15*AVEDEV(ABC47,81));
+ABC49:=CROSS(ABC48,100) AND 量能确认 AND ABC39 AND ABC40 > (1+涨幅阈值1/100) AND ABC37;
+
+{========== 买入信号3：均线粘合突破 ==========}
+ABC50:=MA(CLOSE,30);
+ABC51:=MA(CLOSE,60);
+ABC52:=MA(CLOSE,90);
+ABC53:=MA(CLOSE,240);
+ABC54:=ABS(ABC50/ABC51-1);
+ABC55:=ABS(ABC51/ABC52-1);
+ABC56:=ABS(ABC50/ABC52-1);
+ABC57:=CLOSE/REF(CLOSE,1);
+ABC58:=ABC57-1;
+ABC59:=(ABC50+ABC51+ABC52)/3;
+ABC60:=IF(CLOSE > ABC59*1.04 AND CLOSE < ABC59*1.15,1,0);
+ABC61:=ABC53/REF(ABC53,20);
+ABC62:=ABS(ABC61-1);
+ABC63:=IF(ABC62 < 0.04,1,0);
+ABC64:=IF(ABC54 < 0.04 AND ABC55 < 0.04 AND ABC56 < 0.04 AND ABC58 > 0.04 AND ABC60=1 AND ABC63=1 AND ABC59 > ABC53,1,0);
+ABC65:=ABC64 AND 量能确认 AND ABC39 AND ABC37;
+
+{========== 买入信号4：强势突破 ==========}
+ABC66:=ABC35 < 1.15 AND REF(ABC36,1) < 1.04 AND CLOSE > ABC14 AND CLOSE > ABC33 AND ABC36 < 1.08 AND ABC40 > (1+涨幅阈值2/100) AND 量能确认 AND ABC39 AND ABC37;
+
+{========== 买入信号5：低位反弹 ==========}
+ABC67:=LOW < ABC34 AND CLOSE > ABC33 AND ABC40 > (1+涨幅阈值3/100) AND 量能确认;
+
+{========== 综合买入信号 ==========}
+ABC68:=ABC46 OR ABC49 OR ABC65 OR ABC66 OR ABC67;
+{应用市场环境过滤}
+ABC68_优化:=ABC68 AND 市场过滤;
+
+{========== 信号质量分级 ==========}
+强信号:=ABC66 OR ABC67;
+中信号:=ABC46 OR ABC49;
+弱信号:=ABC65;
+信号强度:=IF(强信号,3,IF(中信号,2,1));
+
+{========== 输出计算 ==========}
+ABC69:=(ABC1/LLV(ABC1,10)-1)*200;
+ABC70:=(ABC1/LLV(ABC1,10)-1)*400;
+ABC71:=IF(ABC68_优化,ABC2,0);
+ABC72:=C>MA(C,10);
+
+{========== 绘制部分 ==========}
+{主信号线}
+开始吃鱼:IF(ABC68_优化,ABC70*信号强度,ABC69),NODRAW;
+
+{背景柱状图}
+STICKLINE(1,ABC2*2,ABC3*2,2,0),COLORGRAY;
+STICKLINE(ABC2*2 > REF(ABC2*2,1),ABC2*2,ABC3*2,2,0),COLOR4080FF;
+STICKLINE(ABC2*2 > 20 AND ABC2*2 > REF(ABC2*2,1),ABC2*2,ABC3*2,2,0),COLORFF0080;
+
+{信号柱状图}
+STICKLINE(ABC13,ABC2,ABC3,2,0),COLORRED;
+STICKLINE(NOT(ABC13) AND ABC2 > 0,ABC2,ABC3,2,1),COLORGREEN;
+
+{鱼头、鱼身、鱼尾区分}
+鱼头信号:=ABC68_优化 AND ABC2*2 < 20;
+鱼身信号:=ABC68_优化 AND ABC2*2 >= 20 AND ABC2*2 < 50;
+鱼尾信号:=ABC68_优化 AND ABC2*2 >= 50;
+
+STICKLINE(鱼头信号,ABC2*2,ABC3*2,3,0),COLOR00FFFF;  {青色-鱼头}
+STICKLINE(鱼身信号,ABC2*2,ABC3*2,3,0),COLOR00FF00;  {绿色-鱼身}
+STICKLINE(鱼尾信号,ABC2*2,ABC3*2,3,0),COLORFF0000;  {红色-鱼尾}
+
+{平台线和好股网线}
+公式平台:IF(ABC68_优化,ABC71*6,ABC71*4),COLORYELLOW,LINETHICK2;
+好股网:IF(ABC68_优化,(-1)*ABC71*6,(-1)*ABC71*4),COLORMAGENTA,LINETHICK2;
+
+{========== 选股输出（用于条件选股） ==========}
+OUT:ABC68_优化 AND (ABC71*6>20);

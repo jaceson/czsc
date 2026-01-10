@@ -232,5 +232,29 @@
         "code": "159108",
         "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
         "share": "49,973.85"
+    },
+    {
+        "dt": "2026-01-09",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "25,473.85"
+    },
+    {
+        "dt": "2026-01-08",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "26,973.85"
+    },
+    {
+        "dt": "2026-01-07",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "29,973.85"
+    },
+    {
+        "dt": "2026-01-06",
+        "code": "159108",
+        "name": "\u5de5\u4e1a\u8f6f\u4ef6ETF",
+        "share": "34,473.85"
     }
 ]
