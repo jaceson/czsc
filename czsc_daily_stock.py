@@ -460,7 +460,7 @@ def main():
     # 是否重新执行
     from_index = 0
     restart_execute = False
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 && int(sys.argv[1])>0:
         from_index = int(sys.argv[1])
         restart_execute = True
 
