@@ -351,6 +351,304 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
     return False
 
 '''
+    吃大鱼
+'''
+def to_series(data, index):
+    """
+    将数据转换为与 DataFrame 索引对齐的 pandas Series
+    """
+    import pandas as pd
+    import numpy as np
+    if isinstance(data, pd.Series):
+        return data.reindex(index, fill_value=np.nan)
+    else:
+        # numpy 数组或其他类型
+        arr = np.array(data)
+        if len(arr) == len(index):
+            return pd.Series(arr, index=index)
+        elif len(arr) > len(index):
+            # 如果数组长度大于索引长度，取最后 len(index) 个元素
+            return pd.Series(arr[-len(index):], index=index)
+        else:
+            # 如果数组长度小于索引长度，前面填充 NaN
+            result = pd.Series([np.nan] * (len(index) - len(arr)) + list(arr), index=index)
+            return result
+
+def get_big_fish_strategy_point(symbol,df,threshold=40):
+    """
+    吃鱼行情选股策略
+    参考is_golden_point的结构实现选股逻辑
+    """
+    # ========== 参数设置 ==========
+    N1 = 10          # EMA周期
+    N2 = 14          # 威廉指标周期
+    N3 = 9           # RSI周期
+    成交额阈值1 = 2000   # 成交额下限（万元）
+    成交额阈值2 = 8000   # 成交额上限（万元）
+    涨幅阈值1 = 2.9     # 涨幅阈值1（%）
+    涨幅阈值2 = 4.0     # 涨幅阈值2（%）
+    涨幅阈值3 = 5.0     # 涨幅阈值3（%）
+    
+    # 确保所有计算结果都与 df.index 对齐
+    idx = df.index
+    
+    # ========== 基础指标计算 ==========
+    # ABC1:=EMA(CLOSE,N1);
+    ABC1 = to_series(EMA(df['close'], N1), idx)
+    
+    # ABC2:=(ABC1/LLV(ABC1,10)-1)*100;
+    ABC2 = to_series((ABC1 / to_series(LLV(ABC1.values, 10), idx) - 1) * 100, idx)
+    
+    # ABC3:=(-1)*ABC2;
+    ABC3 = (-1) * ABC2
+    
+    # ABC4:=100*(HHV(HIGH,N2)-CLOSE)/(HHV(HIGH,N2)-LLV(LOW,N2));
+    HHV_high = to_series(HHV(df['high'], N2), idx)
+    LLV_low = to_series(LLV(df['low'], N2), idx)
+    ABC4 = to_series(100 * (HHV_high - df['close']) / (HHV_high - LLV_low + 1e-10), idx)
+    
+    # ABC5:=REF(CLOSE,1);
+    ABC5 = to_series(REF(df['close'], 1), idx)
+    
+    # ABC6:=SMA(MAX(CLOSE-ABC5,0),N3,1)/SMA(ABS(CLOSE-ABC5),N3,1)*100;
+    close_minus_abc5 = df['close'] - ABC5
+    ABC6 = to_series(SMA(MAX(close_minus_abc5.values, 0), N3, 1), idx) / (to_series(SMA(ABS(close_minus_abc5.values), N3, 1), idx) + 1e-10) * 100
+    
+    # ABC7:=(CLOSE-LLV(LOW,9))/(HHV(HIGH,9)-LLV(LOW,9))*100;
+    LLV_low9 = to_series(LLV(df['low'], 9), idx)
+    HHV_high9 = to_series(HHV(df['high'], 9), idx)
+    ABC7 = to_series((df['close'] - LLV_low9) / (HHV_high9 - LLV_low9 + 1e-10) * 100, idx)
+    
+    # ABC8:=SMA(ABC7,3,1);
+    ABC8 = to_series(SMA(ABC7.values, 3, 1), idx)
+    
+    # ABC9:=SMA(ABC8,3,1);
+    ABC9 = to_series(SMA(ABC8.values, 3, 1), idx)
+    
+    # ABC10:=3*ABC8-2*ABC9;
+    ABC10 = 3 * ABC8 - 2 * ABC9
+    
+    # ABC11:=ABC6 >=76 OR ABC10 > 95;
+    ABC11 = (ABC6 >= 76) | (ABC10 > 95)
+    
+    # ABC12:=ABC4 < 25;
+    ABC12 = ABC4 < 25
+    
+    # ABC13:=ABC11 OR ABC12;
+    ABC13 = ABC11 | ABC12
+    
+    # ========== 简化均线系统 ==========
+    # ABC14:=EMA(CLOSE,20);
+    ABC14 = to_series(EMA(df['close'], 20), idx)
+    
+    # ABC15:=EMA(CLOSE,30);
+    ABC15 = to_series(EMA(df['close'], 30), idx)
+    
+    # ABC16:=EMA(CLOSE,60);
+    ABC16 = to_series(EMA(df['close'], 60), idx)
+    
+    # ABC17:=EMA(CLOSE,120);
+    ABC17 = to_series(EMA(df['close'], 120), idx)
+    
+    # ABC18:=EMA(CLOSE,250);
+    ABC18 = to_series(EMA(df['close'], 250), idx)
+    
+    # 计算均线粘合度
+    # ABC27:=MAX(MAX(ABC15,ABC16),ABC17);
+    ABC27 = pd.Series([max(max(ABC15.iloc[i], ABC16.iloc[i]), ABC17.iloc[i]) for i in range(len(idx))], index=idx)
+    
+    # ABC28:=MIN(MIN(ABC15,ABC16),ABC17);
+    ABC28 = pd.Series([min(min(ABC15.iloc[i], ABC16.iloc[i]), ABC17.iloc[i]) for i in range(len(idx))], index=idx)
+    
+    # ABC29:=MAX(ABC27,ABC18);
+    ABC29 = pd.Series([max(ABC27.iloc[i], ABC18.iloc[i]) for i in range(len(idx))], index=idx)
+    
+    # ABC30:=MIN(ABC28,ABC18);
+    ABC30 = pd.Series([min(ABC28.iloc[i], ABC18.iloc[i]) for i in range(len(idx))], index=idx)
+    
+    # ABC33:=ABC29;
+    ABC33 = ABC29
+    
+    # ABC34:=ABC30;
+    ABC34 = ABC30
+    
+    # ABC35:=ABC33/ABC34;
+    ABC35 = ABC33 / (ABC34 + 1e-10)
+    
+    # ABC36:=LOW/ABC27;
+    ABC36 = df['low'] / (ABC27 + 1e-10)
+    
+    # ========== 成交额动态过滤 ==========
+    # ABC38:=AMOUNT/10000;
+    ABC38 = df['amount'] / 10000
+    
+    # ABC39:=LLV(ABC38,2) > 成交额阈值1 AND ABC38 > 成交额阈值2;
+    ABC39 = (to_series(LLV(ABC38.values, 2), idx) > 成交额阈值1) & (ABC38 > 成交额阈值2)
+    
+    # ========== 趋势过滤条件 ==========
+    # ABC37:=ABC35 < 1.3 AND REF(ABC36,1) < 1.05 AND CLOSE > ABC14 AND CLOSE > ABC33 AND ABC36 < 1.08;
+    ABC37 = (ABC35 < 1.3) & (to_series(REF(ABC36.values, 1), idx) < 1.05) & (df['close'] > ABC14) & (df['close'] > ABC33) & (ABC36 < 1.08)
+    
+    # ========== 成交量确认增强 ==========
+    # 量能放大1:=VOL > REF(VOL,1)*1.5;
+    量能放大1 = df['volume'] > to_series(REF(df['volume'].values, 1), idx) * 1.5
+    
+    # 量能放大2:=VOL > MA(VOL,5)*1.2;
+    量能放大2 = df['volume'] > to_series(MA(df['volume'], 5), idx) * 1.2
+    
+    # 量能放大3:=VOL > MA(VOL,20)*1.1;
+    量能放大3 = df['volume'] > to_series(MA(df['volume'], 20), idx) * 1.1
+    
+    # 量能确认:=量能放大1 AND (量能放大2 OR 量能放大3);
+    量能确认 = 量能放大1 & (量能放大2 | 量能放大3)
+    
+    # ========== 涨跌幅计算 ==========
+    # ABC40:=CLOSE/REF(CLOSE,1);
+    ABC40 = df['close'] / to_series(REF(df['close'].values, 1), idx)
+    
+    # ========== 买入信号1：均线突破 ==========
+    # ABC41:=EMA(CLOSE,5);
+    ABC41 = to_series(EMA(df['close'], 5), idx)
+    
+    # ABC42:=EMA(CLOSE,10);
+    ABC42 = to_series(EMA(df['close'], 10), idx)
+    
+    # ABC43:=EMA(CLOSE,20);
+    ABC43 = to_series(EMA(df['close'], 20), idx)
+    
+    # ABC44:=MAX(MAX(ABC41,ABC42),ABC43);
+    ABC44 = pd.Series([max(max(ABC41.iloc[i], ABC42.iloc[i]), ABC43.iloc[i]) for i in range(len(idx))], index=idx)
+    
+    # ABC45:=MIN(MIN(ABC41,ABC42),ABC43);
+    ABC45 = pd.Series([min(min(ABC41.iloc[i], ABC42.iloc[i]), ABC43.iloc[i]) for i in range(len(idx))], index=idx)
+    
+    # ABC46:=LOW < ABC45 AND CLOSE > ABC44 AND 量能确认 AND ABC39 AND ABC40 > (1+涨幅阈值1/100) AND ABC37;
+    ABC46 = (df['low'] < ABC45) & (df['close'] > ABC44) & 量能确认 & ABC39 & (ABC40 > (1 + 涨幅阈值1/100)) & ABC37
+    
+    # ========== 买入信号2：典型价格突破 ==========
+    # ABC47:=(HIGH+LOW+CLOSE)/3;
+    ABC47 = (df['high'] + df['low'] + df['close']) / 3
+    
+    # ABC48:=(ABC47-MA(ABC47,81))*1000/(15*AVEDEV(ABC47,81));
+    ABC47_ma = to_series(MA(ABC47.values, 81), idx)
+    ABC47_avedev = to_series(AVEDEV(ABC47.values, 81), idx)
+    ABC48 = to_series((ABC47 - ABC47_ma) * 1000 / (15 * ABC47_avedev + 1e-10), idx)
+    
+    # CROSS(ABC48,100) - 使用CROSS函数计算向上穿越100
+    ABC48_cross = pd.Series(CROSS(ABC48.values, np.array([100] * len(ABC48))), index=idx)
+    
+    # ABC49:=CROSS(ABC48,100) AND 量能确认 AND ABC39 AND ABC40 > (1+涨幅阈值1/100) AND ABC37;
+    ABC49 = ABC48_cross & 量能确认 & ABC39 & (ABC40 > (1 + 涨幅阈值1/100)) & ABC37
+    
+    # ========== 买入信号3：均线粘合突破 ==========
+    # ABC50:=MA(CLOSE,30);
+    ABC50 = to_series(MA(df['close'], 30), idx)
+    
+    # ABC51:=MA(CLOSE,60);
+    ABC51 = to_series(MA(df['close'], 60), idx)
+    
+    # ABC52:=MA(CLOSE,90);
+    ABC52 = to_series(MA(df['close'], 90), idx)
+    
+    # ABC53:=MA(CLOSE,240);
+    ABC53 = to_series(MA(df['close'], 240), idx)
+    
+    # ABC54:=ABS(ABC50/ABC51-1);
+    ABC54 = ABS(ABC50 / (ABC51 + 1e-10) - 1)
+    
+    # ABC55:=ABS(ABC51/ABC52-1);
+    ABC55 = ABS(ABC51 / (ABC52 + 1e-10) - 1)
+    
+    # ABC56:=ABS(ABC50/ABC52-1);
+    ABC56 = ABS(ABC50 / (ABC52 + 1e-10) - 1)
+    
+    # ABC57:=CLOSE/REF(CLOSE,1);
+    ABC57 = df['close'] / to_series(REF(df['close'].values, 1), idx)
+    
+    # ABC58:=ABC57-1;
+    ABC58 = ABC57 - 1
+    
+    # ABC59:=(ABC50+ABC51+ABC52)/3;
+    ABC59 = (ABC50 + ABC51 + ABC52) / 3
+    
+    # ABC60:=IF(CLOSE > ABC59*1.04 AND CLOSE < ABC59*1.15,1,0);
+    ABC60 = ((df['close'] > ABC59 * 1.04) & (df['close'] < ABC59 * 1.15)).astype(int)
+    
+    # ABC61:=ABC53/REF(ABC53,20);
+    ABC61 = ABC53 / (to_series(REF(ABC53.values, 20), idx) + 1e-10)
+    
+    # ABC62:=ABS(ABC61-1);
+    ABC62 = ABS(ABC61 - 1)
+    
+    # ABC63:=IF(ABC62 < 0.04,1,0);
+    ABC63 = (ABC62 < 0.04).astype(int)
+    
+    # ABC64:=IF(ABC54 < 0.04 AND ABC55 < 0.04 AND ABC56 < 0.04 AND ABC58 > 0.04 AND ABC60=1 AND ABC63=1 AND ABC59 > ABC53,1,0);
+    ABC64 = ((ABC54 < 0.04) & (ABC55 < 0.04) & (ABC56 < 0.04) & (ABC58 > 0.04) & (ABC60 == 1) & (ABC63 == 1) & (ABC59 > ABC53)).astype(int)
+    
+    # ABC65:=ABC64 AND 量能确认 AND ABC39 AND ABC37;
+    ABC65 = (ABC64 == 1) & 量能确认 & ABC39 & ABC37
+    
+    # ========== 买入信号4：强势突破 ==========
+    # ABC66:=ABC35 < 1.15 AND REF(ABC36,1) < 1.04 AND CLOSE > ABC14 AND CLOSE > ABC33 AND ABC36 < 1.08 AND ABC40 > (1+涨幅阈值2/100) AND 量能确认 AND ABC39 AND ABC37;
+    ABC66 = (ABC35 < 1.15) & (to_series(REF(ABC36.values, 1), idx) < 1.04) & (df['close'] > ABC14) & (df['close'] > ABC33) & (ABC36 < 1.08) & (ABC40 > (1 + 涨幅阈值2/100)) & 量能确认 & ABC39 & ABC37
+    
+    # ========== 买入信号5：低位反弹 ==========
+    # ABC67:=LOW < ABC34 AND CLOSE > ABC33 AND ABC40 > (1+涨幅阈值3/100) AND 量能确认;
+    ABC67 = (df['low'] < ABC34) & (df['close'] > ABC33) & (ABC40 > (1 + 涨幅阈值3/100)) & 量能确认
+    
+    # ========== 综合买入信号 ==========
+    # ABC68:=ABC46 OR ABC49 OR ABC65 OR ABC66 OR ABC67;
+    ABC68 = ABC46 | ABC49 | ABC65 | ABC66 | ABC67
+    
+    # ========== 输出计算 ==========
+    # ABC71:=IF(ABC68_优化,ABC2,0);
+    ABC71 = pd.Series([0.0] * len(df), index=df.index, dtype=float)
+    ABC71.loc[ABC68] = ABC2.loc[ABC68]
+    
+    # ========== 选股输出 ==========
+    # OUT:ABC68_优化 AND (ABC71*6>40);
+    OUT = ABC68 & (ABC71 * 6 > threshold)
+
+    # 检查最后一个交易日是否满足选股条件
+    last_trading_day = df['date'].iloc[-1]
+    last_index = df.index[-1]
+    
+    # 判断最后一个交易日是否满足选股条件
+    if OUT.iloc[-1]:
+        abc71_value = ABC71.loc[last_index]
+        abc71_multiplied = abc71_value * 6
+        
+        # 记录选股信息
+        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 吃鱼行情选股信号")
+        czsc_logger().info("     1）当前日期："+str(last_trading_day))
+        czsc_logger().info("     2）ABC71值："+str(round(abc71_value, 2)))
+        czsc_logger().info("     3）ABC71*6值："+str(round(abc71_multiplied, 2)))
+        czsc_logger().info("     4）当前收盘价："+str(round(df['close'].iloc[-1], 2)))
+        czsc_logger().info("     5）当前成交量："+str(round(df['volume'].iloc[-1], 2)))
+        czsc_logger().info("     6）当前成交额："+str(round(df['amount'].iloc[-1]/10000, 2))+"万元")
+        
+        # 检查买入信号类型
+        signal_types = []
+        if ABC46.iloc[-1]:
+            signal_types.append("均线突破")
+        if ABC49.iloc[-1]:
+            signal_types.append("典型价格突破")
+        if ABC65.iloc[-1]:
+            signal_types.append("均线粘合突破")
+        if ABC66.iloc[-1]:
+            signal_types.append("强势突破")
+        if ABC67.iloc[-1]:
+            signal_types.append("低位反弹")
+        
+        if signal_types:
+            czsc_logger().info("     7）买入信号类型："+", ".join(signal_types))
+        
+        return True
+    
+    return False 
+            
+'''
     最佳策略
 '''
 def is_best_strategy_point(symbol,df,max_ratio=0.2):

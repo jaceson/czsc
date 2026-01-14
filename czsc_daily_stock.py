@@ -3,6 +3,8 @@ import os
 import sys
 import json
 import shutil
+import time
+import requests
 import baostock as bs
 from lib.email_sender import *
 from czsc_daily_util import *
@@ -155,7 +157,7 @@ def send_summary_email():
     # 邮件内容
     data_dir = get_data_dir()
     html_content = email_html_header()
-    for filename in ['黄金分割线抄底.json','KD线抄底.json','chan中枢T1买点.json','chan中枢T1P买点.json','chan中枢T2买点.json','chan中枢T2S买点.json','chan中枢T3A买点.json','chan中枢T3B买点.json','最佳策略.json']:
+    for filename in ['黄金分割线抄底.json','KD线抄底.json','chan中枢T1买点.json','chan中枢T1P买点.json','chan中枢T2买点.json','chan中枢T2S买点.json','chan中枢T3A买点.json','chan中枢T3B买点.json','最佳策略.json','吃鱼行情.json']:
         html_row = email__html_row_file(os.path.join(data_dir, filename))
         if html_row:
             html_content += html_row
@@ -176,6 +178,9 @@ def golden_chart_dir():
 
 def strategy_chart_dir():
     return get_data_dir()+"/html/最佳策略"
+
+def big_fish_chart_dir():
+    return get_data_dir()+"/html/吃鱼行情"
 
 def chaodi_chart_dir():
     return get_data_dir()+"/html/KD线抄底"
@@ -241,7 +246,7 @@ def rz_rq_symbols(symbols):
             arr.append(symbol)
     return arr
 
-def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols):
+def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,big_fish_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols):
     # 打印股票池数据
     czsc_logger().info("月线反转股票列表：")
     czsc_logger().info('     '+', '.join(mline_symbols))
@@ -257,6 +262,9 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,str
 
     czsc_logger().info("强势上涨列表：")
     czsc_logger().info('     '+', '.join(strong_symbols))
+
+    czsc_logger().info("吃鱼行情列表：")
+    czsc_logger().info('     '+', '.join(big_fish_symbols))
 
     czsc_logger().info("中枢一买点位置：")
     czsc_logger().info('     '+', '.join(one_buypoint_symbols))
@@ -448,13 +456,13 @@ def main():
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
 
     # 计算配置
-    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':True,'buypoint':False,'chan':False}
+    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':True,'buypoint':False,'chan':False,'bigfish':True}
     # 获取当前日期
     today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
     weekday = today.weekday()
     if weekday>=4:
-        daily_config = {'mline':True,'minion':True,'chaodi':True,'golden':True,'strong':True,'strategy':True,'buypoint':True,'chan':True}
+        daily_config = {'mline':True,'minion':True,'chaodi':True,'golden':True,'strong':True,'strategy':True,'buypoint':True,'chan':True,'bigfish':True}
     # 所有股票
     all_symbols  = get_daily_symbols()
     # 股票池
@@ -464,6 +472,7 @@ def main():
     chaodi_symbols = []
     strong_symbols = []
     strategy_symbols = []
+    big_fish_symbols = []
     one_buypoint_symbols = []
     second_buypoint_symbols = []
     third_buypoint_symbols = []
@@ -499,6 +508,7 @@ def main():
         chaodi_symbols = read_symbols("KD线抄底.json")
         strong_symbols = read_symbols("强势上涨.json")
         strategy_symbols = read_symbols("最佳策略.json")
+        big_fish_symbols = read_symbols("吃鱼行情.json")
         one_buypoint_symbols = read_symbols("中枢一买点.json")
         second_buypoint_symbols = read_symbols("中枢二买点.json")
         third_buypoint_symbols = read_symbols("中枢三买点.json")
@@ -519,6 +529,7 @@ def main():
             clear_cache(chaodi_chart_dir())
             clear_cache(strong_chart_dir())
             clear_cache(strategy_chart_dir())
+            clear_cache(big_fish_chart_dir())
             clear_cache(buypoint_chart_dir(1))
             clear_cache(buypoint_chart_dir(2))
             clear_cache(buypoint_chart_dir(3))
@@ -583,7 +594,7 @@ def main():
 
             # 黄金分割抄底位置
             # symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1
-            if daily_config['golden'] and is_golden_point(symbol,df):
+            if daily_config['golden'] and is_golden_point(symbol=symbol,df=df,min_angle=12):
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
@@ -591,6 +602,11 @@ def main():
             if daily_config['strategy'] and is_best_strategy_point(symbol,df):
                 strategy_symbols.append(symbol)
                 output_chart(symbol, df, strategy_chart_dir())
+
+            # 吃鱼行情选股策略
+            if daily_config['bigfish'] and get_big_fish_strategy_point(symbol,df):
+                big_fish_symbols.append(symbol)
+                output_chart(symbol, df, big_fish_chart_dir())
 
             # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
             if daily_config['strong'] and has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):
@@ -647,6 +663,7 @@ def main():
         save_symbols(chaodi_symbols,"KD线抄底.json")
         save_symbols(strong_symbols,"强势上涨.json")
         save_symbols(strategy_symbols,"最佳策略.json")
+        save_symbols(big_fish_symbols,"吃鱼行情.json")
         save_symbols(one_buypoint_symbols,"中枢一买点.json")
         save_symbols(second_buypoint_symbols,"中枢二买点.json")
         save_symbols(third_buypoint_symbols,"中枢三买点.json")
@@ -659,13 +676,13 @@ def main():
         save_symbols(third_b_chan_buypoint_symbols,"chan中枢T3B买点.json")
     
     #打印筛选结果
-    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols)
+    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,strong_symbols,big_fish_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols)
 
     #打印可融资融券筛选结果
     czsc_logger().info("\n\n")
     czsc_logger().info("========================以下是可融资融券的结果========================")
     czsc_logger().info("\n\n")
-    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
+    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(big_fish_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
 
     # 登出系统
     bs.logout()

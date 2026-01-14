@@ -329,7 +329,7 @@ def evolution_goldenline(df,c):
     while start_index<len(c.bi_list):
         fx_a,fx_b,last_bi = find_up_seg(c.bi_list,start_index)
         if fx_a and fx_b:
-            min_angle = 15
+            min_angle = 12
             end_index = start_index
             if last_bi:
                 end_index = c.bi_list.index(last_bi)
@@ -342,52 +342,17 @@ def evolution_goldenline(df,c):
         else:
             break
 
-# 初始黄金分割点策略
-def normal_goldenline(df,c):
-    idx = 0
-    for last_bi in c.bi_list:
-        fx_a = last_bi.fx_a
-        fx_b = last_bi.fx_b
-        if fx_a.fx > fx_b.fx:
-            idx += 1
-            continue
-
-        if fx_a.fx*threshold > fx_b.fx:
-            if idx>1:
-                pre_up_bi = c.bi_list[idx-2]
-                if pre_up_bi.fx_a.fx < fx_a.fx and pre_up_bi.fx_b.fx < fx_b.fx:
-                    fx_a = pre_up_bi.fx_a
-        next_up_bi = None
-        if (idx+2)<len(c.bi_list):
-            next_up_bi = c.bi_list[idx+2]
-        get_buy_point(df,fx_a,fx_b,next_up_bi,threshold)
-        idx += 1
-
-if __name__ == '__main__':
-    type_goldenline = 0
-    if len(sys.argv)>1:
-        type_goldenline = int(sys.argv[1])
-    print('黄金分割策略类型：'+str(type_goldenline))
-    start_date = "2020-01-01"
-    all_symbols  = get_daily_symbols()
-    for symbol in all_symbols:
-        print("[{}] 进度：{} / {}".format(pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), all_symbols.index(symbol), len(all_symbols)))
-        df = get_local_stock_data(symbol,start_date)
-        bars = get_stock_bars(symbol=symbol,df=df)
-        c = CZSC(bars, get_signals=None)
-        if type_goldenline == 0:
-            # 初始黄金分割点策略
-            normal_goldenline(df,c)
-        elif type_goldenline == 1:
-            # 进化版黄金分割点策略
-            evolution_goldenline(df,c)
-        elif type_goldenline == 2:
-            # 进一步进化版黄金分割点策略
-            more_evolution_goldenline(df,c)
-
-    # 输出统计结果
+# 打印统计数据的函数
+def print_statistics(type_goldenline, symbol_count=None):
+    """打印统计数据，可以指定当前处理的symbol数量"""
+    prefix = ""
+    if symbol_count is not None:
+        prefix = f"\n=== 已处理 {symbol_count} 个symbol的统计结果 ===\n"
+    else:
+        prefix = "\n=== 最终统计结果 ===\n"
+    
     if type_goldenline == 2:
-        print("\n=== 进一步进化版黄金分割点策略统计结果 ===")
+        print(prefix)
         print(f"总案例数: {total_cases}")
     
         if total_cases > 0:
@@ -428,14 +393,13 @@ if __name__ == '__main__':
                 print(f"   正收益次数占比: {positive_ratio_ma120}% ({len(positive_ma120)}/{len(ma120_buy_ratios)})")
                 print(f"   正收益总和: {positive_sum_ma120}")
                 print(f"   负收益总和: {negative_sum_ma120}")
-                sys.exit(0)
-            else:
-                print("4. MA120买入策略: 无符合条件的交易")
-                sys.exit(0)
         else:
             print("没有找到符合条件的案例")
-            sys.exit(0)
-
+        return
+    
+    # 对于type_goldenline 0和1的统计
+    print(prefix)
+    
     # 遍历数组并统计
     if len(total_ratio)>0:
         # 初始化计数器
@@ -496,6 +460,63 @@ if __name__ == '__main__':
     for x in range(1,hold_days+1):
         if len(ratio_map[x])>0:
             print_console("第 {} 天：".format(x), ratio_map[x])
+
+# 初始黄金分割点策略
+def normal_goldenline(df,c):
+    idx = 0
+    for last_bi in c.bi_list:
+        fx_a = last_bi.fx_a
+        fx_b = last_bi.fx_b
+        if fx_a.fx > fx_b.fx:
+            idx += 1
+            continue
+
+        if fx_a.fx*threshold > fx_b.fx:
+            if idx>1:
+                pre_up_bi = c.bi_list[idx-2]
+                if pre_up_bi.fx_a.fx < fx_a.fx and pre_up_bi.fx_b.fx < fx_b.fx:
+                    fx_a = pre_up_bi.fx_a
+        next_up_bi = None
+        if (idx+2)<len(c.bi_list):
+            next_up_bi = c.bi_list[idx+2]
+        get_buy_point(df,fx_a,fx_b,next_up_bi,threshold)
+        idx += 1
+
+if __name__ == '__main__':
+    type_goldenline = 0
+    if len(sys.argv)>1:
+        type_goldenline = int(sys.argv[1])
+    print('黄金分割策略类型：'+str(type_goldenline))
+    start_date = "2020-01-01"
+    all_symbols  = get_daily_symbols()
+    symbol_count = 0
+    
+    for symbol in all_symbols:
+        symbol_count += 1
+        print("[{}] 进度：{} / {}".format(pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), all_symbols.index(symbol), len(all_symbols)))
+        df = get_local_stock_data(symbol,start_date)
+        bars = get_stock_bars(symbol=symbol,df=df)
+        c = CZSC(bars, get_signals=None)
+        if type_goldenline == 0:
+            # 初始黄金分割点策略
+            normal_goldenline(df,c)
+        elif type_goldenline == 1:
+            # 进化版黄金分割点策略
+            evolution_goldenline(df,c)
+        elif type_goldenline == 2:
+            # 进一步进化版黄金分割点策略
+            more_evolution_goldenline(df,c)
+        
+        # 每100个symbol打印一次统计数据
+        if symbol_count % 100 == 0:
+            print_statistics(type_goldenline, symbol_count)
+
+    # 输出最终统计结果
+    if type_goldenline == 2:
+        print_statistics(type_goldenline)
+        sys.exit(0)
+    else:
+        print_statistics(type_goldenline)
 '''
 初始黄金分割点策略:
 正收益次数：488
