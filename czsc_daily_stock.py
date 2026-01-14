@@ -134,10 +134,16 @@ def email__html_row_file(jsonfile):
 
     sub_text_info = ''
     for symbol in symbols:
-        symbol = get_symbols_name(symbol)+": "+symbol
+        # 处理字典格式（吃鱼行情）和字符串格式
+        if isinstance(symbol, dict):
+            symbol_code = symbol.get('symbol', '')
+            abc71_6 = symbol.get('abc71_6', 0)
+            symbol_display = get_symbols_name(symbol_code)+": "+symbol_code+" (ABC71*6="+str(abc71_6)+")"
+        else:
+            symbol_display = get_symbols_name(symbol)+": "+symbol
         if len(sub_text_info)>0:
             sub_text_info += '<br/>'
-        sub_text_info += '<font color=\"#a11\">'+symbol+'</font>'
+        sub_text_info += '<font color=\"#a11\">'+symbol_display+'</font>'
 
     return '''
         <tr>
@@ -242,7 +248,12 @@ def read_symbols(filename):
 def rz_rq_symbols(symbols):
     arr = []
     for symbol in symbols:
-        if is_rz_rq_symobl(symbol):
+        # 兼容字典格式和字符串格式
+        if isinstance(symbol, dict):
+            symbol_code = symbol.get('symbol', '')
+        else:
+            symbol_code = symbol
+        if is_rz_rq_symobl(symbol_code):
             arr.append(symbol)
     return arr
 
@@ -264,7 +275,17 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,str
     czsc_logger().info('     '+', '.join(strong_symbols))
 
     czsc_logger().info("吃鱼行情列表：")
-    czsc_logger().info('     '+', '.join(big_fish_symbols))
+    # 处理吃鱼行情列表（可能是字典格式）
+    if len(big_fish_symbols) > 0 and isinstance(big_fish_symbols[0], dict):
+        big_fish_info = []
+        for item in big_fish_symbols:
+            if isinstance(item, dict):
+                big_fish_info.append("{} (ABC71*6={})".format(item.get('symbol', ''), item.get('abc71_6', '')))
+            else:
+                big_fish_info.append(str(item))
+        czsc_logger().info('     '+', '.join(big_fish_info))
+    else:
+        czsc_logger().info('     '+', '.join(big_fish_symbols))
 
     czsc_logger().info("中枢一买点位置：")
     czsc_logger().info('     '+', '.join(one_buypoint_symbols))
@@ -508,7 +529,18 @@ def main():
         chaodi_symbols = read_symbols("KD线抄底.json")
         strong_symbols = read_symbols("强势上涨.json")
         strategy_symbols = read_symbols("最佳策略.json")
-        big_fish_symbols = read_symbols("吃鱼行情.json")
+        # 读取吃鱼行情数据（保持字典格式）
+        data_dir = get_data_dir()
+        big_fish_data = read_json(os.path.join(data_dir, "吃鱼行情.json"))
+        if big_fish_data:
+            # 如果是字典格式，保持原样；如果是旧格式（字符串列表），转换为字典格式
+            if len(big_fish_data) > 0 and isinstance(big_fish_data[0], dict):
+                big_fish_symbols = big_fish_data
+            else:
+                # 旧格式：只有股票代码，转换为字典格式（abc71_6设为0）
+                big_fish_symbols = [{'symbol': symbol, 'abc71_6': 0} for symbol in big_fish_data]
+        else:
+            big_fish_symbols = []
         one_buypoint_symbols = read_symbols("中枢一买点.json")
         second_buypoint_symbols = read_symbols("中枢二买点.json")
         third_buypoint_symbols = read_symbols("中枢三买点.json")
@@ -604,9 +636,11 @@ def main():
                 output_chart(symbol, df, strategy_chart_dir())
 
             # 吃鱼行情选股策略
-            if daily_config['bigfish'] and get_big_fish_strategy_point(symbol,df):
-                big_fish_symbols.append(symbol)
-                output_chart(symbol, df, big_fish_chart_dir())
+            if daily_config['bigfish']:
+                abc71_value = get_big_fish_strategy_point(symbol,df)
+                if abc71_value is not None:
+                    big_fish_symbols.append({'symbol': symbol, 'abc71_6': abc71_value})
+                    output_chart(symbol, df, big_fish_chart_dir())
 
             # 最近5天涨停且，今日未涨停，今日下探到5日线附近的强势上涨股票
             if daily_config['strong'] and has_symbol_up_limit(df,N=5) and not has_symbol_up_limit(df,N=1):

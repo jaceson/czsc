@@ -644,9 +644,10 @@ def get_big_fish_strategy_point(symbol,df,threshold=40):
         if signal_types:
             czsc_logger().info("     7）买入信号类型："+", ".join(signal_types))
         
-        return True
+        # 返回ABC71*6的值
+        return round(abc71_multiplied, 2)
     
-    return False 
+    return None 
             
 '''
     最佳策略
