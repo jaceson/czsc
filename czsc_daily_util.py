@@ -330,7 +330,10 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
                 czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
                 czsc_logger().info("     8）20日均线："+str(round(df['MA20'].iloc[-1],2)))
-                return df['close'].iloc[-1]<df['MA20'].iloc[-1]
+                if stock_close<max_val:
+                    return True
+                else:
+                    return df['close'].iloc[-1]<df['MA20'].iloc[-1]
             else:
                 _,_,df['MACD'] = MACD(df['close'], 10, 20, 7)
                 if abs(df['MACD'].iloc[-1]) < 0.1:
