@@ -15,7 +15,7 @@ from Common.CEnum import AUTYPE, DATA_SRC, KL_TYPE
 from Plot.AnimatePlotDriver import CAnimateDriver
 from Plot.PlotDriver import CPlotDriver
 
-START_TRADE_DATE = "2023-01-01"
+START_TRADE_DATE = "2024-01-01"
 def output_chart(symbol, df, cachedir):
     if is_rz_rq_symobl(symbol):
         cachedir = cachedir+"/rzrq"
@@ -477,7 +477,7 @@ def main():
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
 
     # 计算配置
-    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':True,'buypoint':False,'chan':False,'bigfish':True}
+    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':False,'chan':False,'bigfish':False}
     # 获取当前日期
     today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
