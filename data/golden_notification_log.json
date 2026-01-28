@@ -1,0 +1,30 @@
+{
+    "sh.600501": {
+        "last_notify_date": "2026-01-28",
+        "last_notify_time": "2026-01-28 11:40:38",
+        "last_price": 27.58,
+        "sqr_val": 28.139,
+        "gold_val": 27.51112
+    },
+    "sh.600865": {
+        "last_notify_date": "2026-01-28",
+        "last_notify_time": "2026-01-28 11:40:45",
+        "last_price": 13.85,
+        "sqr_val": 14.314,
+        "gold_val": 14.30586
+    },
+    "sh.603278": {
+        "last_notify_date": "2026-01-28",
+        "last_notify_time": "2026-01-28 11:40:46",
+        "last_price": 12.68,
+        "sqr_val": 12.767,
+        "gold_val": 12.4844
+    },
+    "sh.600775": {
+        "last_notify_date": "2026-01-28",
+        "last_notify_time": "2026-01-28 14:43:30",
+        "last_price": 14.2,
+        "sqr_val": 14.561,
+        "gold_val": 14.193719999999999
+    }
+}

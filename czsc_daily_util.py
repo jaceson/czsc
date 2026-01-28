@@ -229,6 +229,7 @@ def get_minion_trend(df):
 """
     是否到达下跌黄金分割线抄底点
 """
+symbol_golden_cache = {}
 def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20,close_ratio=1.1):
     # 股票czsc结构
     c = get_stock_czsc(symbol,df)
@@ -277,6 +278,8 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
 
         last_seg_fx_a = fx_a # 最后一笔上涨线段起点
         last_seg_fx_b = fx_b # 最后一笔上涨线段终点
+        last_seg_sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
+        last_seg_gold_val = gold_val_low(fx_a.fx, fx_b.fx)
         new_min_angle = max(10, min_angle-(end_index-start_index))
         if bi_angle(df,fx_a,fx_b)<new_min_angle: # 时间跨度太长导致角度太小取
             fx_a = last_bi.fx_a
@@ -334,7 +337,15 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
                 czsc_logger().info("     8）20日均线："+str(round(df['MA20'].iloc[-1],2)))
                 czsc_logger().info("     9）最后一笔线段：最低价【"+str(round(last_seg_fx_a.fx,2))+"】，最高价：【"+str(round(last_seg_fx_b.fx,2))+"】")
-                czsc_logger().info("    10）最合适还需跌："+str(round(100*(stock_low-min(sqr_val,gold_low_val))/stock_low,2))+"%")
+                czsc_logger().info("    10）最合适还需跌："+str(round(100*(stock_low-min(last_seg_sqr_val,last_seg_gold_val))/stock_low,2))+"%")
+                # 添加到缓存文件
+                symbol_data = {}
+                symbol_data["fx_a"] = last_seg_fx_a.fx
+                symbol_data["fx_b"] = last_seg_fx_b.fx
+                symbol_data["sqr_val"] = last_seg_sqr_val
+                symbol_data["gold_val"] = last_seg_gold_val
+                symbol_golden_cache[symbol] = symbol_data
+                write_json(symbol_golden_cache, './data/golden_log.json')
                 if stock_close<max_val:
                     return True
                 else:
