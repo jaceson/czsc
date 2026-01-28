@@ -276,7 +276,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                     break
 
         last_seg_fx_a = fx_a # 最后一笔上涨线段起点
-        last_seg_fx_a = fx_b # 最后一笔上涨线段终点
+        last_seg_fx_b = fx_b # 最后一笔上涨线段终点
         new_min_angle = max(10, min_angle-(end_index-start_index))
         if bi_angle(df,fx_a,fx_b)<new_min_angle: # 时间跨度太长导致角度太小取
             fx_a = last_bi.fx_a
