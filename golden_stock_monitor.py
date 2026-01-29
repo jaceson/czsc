@@ -75,15 +75,65 @@ def get_current_stock_price(symbol,tdx_api):
 
 
 def load_notification_log():
-    """加载通知记录"""
+    """加载通知记录，只保留当天的数据"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    
     if os.path.exists(NOTIFICATION_LOG_FILE):
-        return read_json(NOTIFICATION_LOG_FILE)
+        all_data = read_json(NOTIFICATION_LOG_FILE)
+        if all_data is None:
+            return {}
+        
+        # 过滤出今天的数据
+        today_data = {}
+        for symbol, record in all_data.items():
+            if isinstance(record, dict) and record.get('last_notify_date') == today:
+                today_data[symbol] = record
+        
+        # 如果过滤后的数据与原始数据不同，说明有旧数据，需要清理
+        if len(today_data) != len(all_data):
+            # 保存清理后的数据
+            write_json(today_data, NOTIFICATION_LOG_FILE)
+            removed_count = len(all_data) - len(today_data)
+            logger.info(f"已清理 {removed_count} 条历史通知记录，保留当天数据 {len(today_data)} 条")
+        
+        return today_data
+    
     return {}
 
 
+def cleanup_old_notification_log():
+    """清理旧的通知记录，只保留当天的数据"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    if os.path.exists(NOTIFICATION_LOG_FILE):
+        all_data = read_json(NOTIFICATION_LOG_FILE)
+        if all_data is None:
+            return
+        
+        # 过滤出今天的数据
+        today_data = {}
+        for symbol, record in all_data.items():
+            if isinstance(record, dict) and record.get('last_notify_date') == today:
+                today_data[symbol] = record
+        
+        # 如果有旧数据，清理并保存
+        if len(today_data) != len(all_data):
+            write_json(today_data, NOTIFICATION_LOG_FILE)
+            removed_count = len(all_data) - len(today_data)
+            logger.info(f"启动时清理了 {removed_count} 条历史通知记录，保留当天数据 {len(today_data)} 条")
+
+
 def save_notification_log(log_data):
-    """保存通知记录"""
-    write_json(log_data, NOTIFICATION_LOG_FILE)
+    """保存通知记录，确保只保存当天的数据"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # 再次过滤，确保只保存今天的数据
+    today_data = {}
+    for symbol, record in log_data.items():
+        if isinstance(record, dict) and record.get('last_notify_date') == today:
+            today_data[symbol] = record
+    
+    write_json(today_data, NOTIFICATION_LOG_FILE)
 
 
 def should_notify_today(symbol, log_data):
@@ -100,6 +150,7 @@ def record_notification(symbol, price, sqr_val, gold_val, log_data):
     """记录通知"""
     today = datetime.now().strftime('%Y-%m-%d')
     log_data[symbol] = {
+        'stock_name': get_symbols_name(symbol),
         'last_notify_date': today,
         'last_notify_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'last_price': price,
@@ -290,6 +341,9 @@ def main():
     logger.info(f"监控文件: {GOLDEN_LOG_FILE}")
     logger.info(f"监控间隔: {MONITOR_INTERVAL} 秒")
     logger.info("=" * 50)
+
+    # 启动时清理旧的通知记录，只保留当天的数据
+    cleanup_old_notification_log()
 
     # 登录 baostock
     lg = bs.login()
