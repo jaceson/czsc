@@ -9,10 +9,13 @@ import sys
 import json
 import time
 import logging
-from datetime import datetime, timedelta
-import akshare as ak
-import tushare as ts
 import requests
+import baostock as bs
+import pandas as pd
+import akshare as ak
+from czsc_daily_util import *
+from datetime import datetime, timedelta
+from pytdx.hq import TdxHq_API
 from akshare_one import get_realtime_data
 
 # 添加项目路径
@@ -38,7 +41,7 @@ GOLDEN_LOG_FILE = os.path.join(get_data_dir(), 'golden_log.json')
 MONITOR_INTERVAL = 300  # 每5分钟检查一次
 
 
-def get_current_stock_price(symbol,pro):
+def get_current_stock_price(symbol,tdx_api):
     """
     获取股票当前价格
     优先使用实时行情，如果失败则使用最新收盘价
@@ -46,21 +49,24 @@ def get_current_stock_price(symbol,pro):
     try:
         # 方法1: 使用 akshare 获取实时行情
         # 转换股票代码格式：sh.600501 -> 600501
+        market = symbol.split('.')[0]
+        market = 1 if market.lower() == 'sh' else 0
         code = symbol.split('.')[-1]
 
         # 获取实时行情
         try:
-            df = get_realtime_data(symbol=code)
+            # 参数：(市场代码, 股票代码)
+            # 0: 深市， 1: 沪市
+            data = tdx_api.get_security_bars(4, market, code, 0, 10)
+            df = pd.DataFrame(data)
+            print(df)
             if df is not None and not df.empty:
                 # 查找对应的股票
-                low_price = float(df['low'].iloc[0])
+                low_price = float(df['low'].iloc[-1])
                 logger.debug(f"【{symbol}】实时价格: {low_price}")
                 return low_price
         except Exception as e:
             logger.debug(f"获取 {symbol} 实时价格失败，尝试使用历史数据: {e}")
-        # df = pro.index_basic(ts_code='600519.SH')
-        df = pro.daily_basic(ts_code='600519.SH', fields='ts_code,trade_date,close')
-        print(df)
         return None
         
     except Exception as e:
@@ -192,7 +198,7 @@ def send_notification_email(stocks_to_notify):
         return False
 
 
-def monitor_stocks(pro):
+def monitor_stocks(tdx_api):
     """监控股票价格"""
     # 读取 golden_log.json
     if not os.path.exists(GOLDEN_LOG_FILE):
@@ -223,7 +229,7 @@ def monitor_stocks(pro):
                 continue
             
             # 获取当前价格
-            current_price = get_current_stock_price(symbol,pro)
+            current_price = get_current_stock_price(symbol,tdx_api)
             if current_price is None:
                 logger.warning(f"【{symbol}】无法获取价格")
                 continue
@@ -282,18 +288,37 @@ def main():
     logger.info(f"监控间隔: {MONITOR_INTERVAL} 秒")
     logger.info("=" * 50)
 
-    # 初始化 baostock
+    # 登录 baostock
+    lg = bs.login()
+    logger.debug('login respond error_code:' + lg.error_code)
+    logger.debug('login respond  error_msg:' + lg.error_msg)
+
+    # 判断今天是不是最后一个交易日，不是则退出
+    last_trade_date = get_latest_trade_date()
+    today_str = datetime.today().strftime('%Y-%m-%d')
+    if today_str != last_trade_date:
+        logger.info(f"今天({today_str})不是交易日，最近交易日为 {last_trade_date}，程序退出")
+        bs.logout()
+        sys.exit(0)
+    
+    # 初始化 通达信API
+    tdx_api = TdxHq_API()
     try:
-        ts.set_token('dae43c122a5707dec0d54bd8b6fc2dc5f840d9ca2364577fa8e99a12')
-        pro = ts.pro_api()
+        # ping shtdx.gtjas.com 或者 hq.cjis.cn
+        if tdx_api.connect('114.28.173.137', 7709):
+            pass
+        else:
+            logger.error(f"通达信API 初始化失败")
+            return
     except Exception as e:
-        logger.error(f"tushare 初始化失败: {e}")
+        logger.error(f"通达信API 初始化失败: {e}")
         return
     
+    # 获取股票数据
     try:
         while True:
             try:
-                monitor_stocks(pro)
+                monitor_stocks(tdx_api)
             except Exception as e:
                 logger.error(f"监控过程出错: {e}")
                 import traceback
@@ -308,6 +333,8 @@ def main():
     finally:
         logger.info("程序已退出")
 
+    # 登出系统
+    bs.logout()
 
 if __name__ == '__main__':
     main()

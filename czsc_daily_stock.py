@@ -373,7 +373,7 @@ def test_case(option):
         czsc_logger().info('login respond error_code:' + lg.error_code)
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
         last_trade_date = get_latest_trade_date()
-    
+        
         symbols = read_json(os.path.join(get_data_dir(),"黄金分割线抄底.json"))
         # symbols = ['sz.301066']
         for symbol in symbols:
