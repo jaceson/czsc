@@ -325,8 +325,9 @@ def main():
                 logger.error(traceback.format_exc())
             
             # 等待下次检查
-            logger.info(f"等待 {MONITOR_INTERVAL} 秒后进行下次检查...")
-            time.sleep(MONITOR_INTERVAL)
+            # logger.info(f"等待 {MONITOR_INTERVAL} 秒后进行下次检查...")
+            # time.sleep(MONITOR_INTERVAL)
+            break
             
     except KeyboardInterrupt:
         logger.info("收到中断信号，程序退出")
