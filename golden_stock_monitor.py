@@ -218,7 +218,6 @@ def monitor_stocks(tdx_api):
     logger.info(f"开始监控 {len(golden_data)} 只股票...")
     
     for symbol, stock_info in golden_data.items():
-        time.sleep(5)
         try:
             sqr_val = stock_info.get('sqr_val')
             gold_val = stock_info.get('gold_val')
