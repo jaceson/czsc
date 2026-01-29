@@ -62,15 +62,16 @@ def get_current_stock_price(symbol,tdx_api):
             if df is not None and not df.empty:
                 # 查找对应的股票
                 close_price = float(df['close'].iloc[-1])
-                logger.debug(f"【{symbol}】实时价格: {close_price}")
-                return close_price
+                low_price = float(df['low'].iloc[-1])
+                logger.debug(f"【{symbol}】实时价格: {close_price}, 最低价格: {low_price}")
+                return close_price,low_price
         except Exception as e:
             logger.debug(f"获取 {symbol} 实时价格失败，尝试使用历史数据: {e}")
-        return None
+        return None,None
         
     except Exception as e:
         logger.error(f"获取 {symbol} 价格时出错: {e}")
-        return None
+        return None,None
 
 
 def load_notification_log():
@@ -222,19 +223,23 @@ def monitor_stocks(tdx_api):
             sqr_val = stock_info.get('sqr_val')
             gold_val = stock_info.get('gold_val')
             
+            if not should_notify_today(symbol, notification_log):
+                logger.debug(f"【{symbol}】今天已通知过，跳过")
+                continue
+
             if sqr_val is None or gold_val is None:
                 logger.warning(f"【{symbol}】缺少 sqr_val 或 gold_val")
                 continue
             
             # 获取当前价格
-            current_price = get_current_stock_price(symbol,tdx_api)
-            if current_price is None:
+            current_price,low_price = get_current_stock_price(symbol,tdx_api)
+            if current_price is None or low_price is None:
                 logger.warning(f"【{symbol}】无法获取价格")
                 continue
             
             # 检查价格是否低于阈值（低于 sqr_val 或 gold_val 任一值即通知）
-            price_below_sqr = current_price < sqr_val
-            price_below_gold = current_price < gold_val
+            price_below_sqr = low_price < sqr_val
+            price_below_gold = low_price < gold_val
             
             if price_below_sqr and price_below_gold:
                 # 检查今天是否已经通知过
