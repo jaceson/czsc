@@ -61,9 +61,9 @@ def get_current_stock_price(symbol,tdx_api):
             df = pd.DataFrame(data)
             if df is not None and not df.empty:
                 # 查找对应的股票
-                low_price = float(df['low'].iloc[-1])
-                logger.debug(f"【{symbol}】实时价格: {low_price}")
-                return low_price
+                close_price = float(df['close'].iloc[-1])
+                logger.debug(f"【{symbol}】实时价格: {close_price}")
+                return close_price
         except Exception as e:
             logger.debug(f"获取 {symbol} 实时价格失败，尝试使用历史数据: {e}")
         return None
@@ -236,7 +236,7 @@ def monitor_stocks(tdx_api):
             price_below_sqr = current_price < sqr_val
             price_below_gold = current_price < gold_val
             
-            if price_below_sqr or price_below_gold:
+            if price_below_sqr and price_below_gold:
                 # 检查今天是否已经通知过
                 if should_notify_today(symbol, notification_log):
                     stock_name = get_symbols_name(symbol)
