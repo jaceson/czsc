@@ -1715,10 +1715,11 @@ def get_minion_area_path():
 
 """
     读取json文件
+    使用 utf-8 编码，保证中文正确读取
 """
 def read_json(json_path):
     if os.path.exists(json_path):
-        with open(json_path, 'r') as file:
+        with open(json_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
             file.close()
             return data
@@ -1726,12 +1727,13 @@ def read_json(json_path):
 
 """
     json数据写入文件
+    使用 ensure_ascii=False 和 utf-8 编码，保证中文以可读形式存储
 """
 def write_json(data, json_path):
     if os.path.exists(json_path):
         os.remove(json_path)
-    with open(json_path, 'w') as file:
-        json.dump(data, file, indent=4)
+    with open(json_path, 'w', encoding='utf-8') as file:
+        json.dump(data, file, ensure_ascii=False, indent=4)
         file.close()
 
 """
