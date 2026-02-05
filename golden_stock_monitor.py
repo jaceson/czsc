@@ -57,7 +57,7 @@ def get_current_stock_price(symbol,tdx_api):
         try:
             # 参数：(市场代码, 股票代码)
             # 0: 深市， 1: 沪市
-            data = tdx_api.get_security_bars(4, market, code, 0, 10)
+            data = tdx_api.get_security_bars(4, market, code, 0, 2)
             df = pd.DataFrame(data)
             logger.debug(f"【{symbol}】实时K线:")
             logger.debug(f"{df}")
