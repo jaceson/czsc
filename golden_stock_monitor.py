@@ -59,6 +59,8 @@ def get_current_stock_price(symbol,tdx_api):
             # 0: 深市， 1: 沪市
             data = tdx_api.get_security_bars(4, market, code, 0, 10)
             df = pd.DataFrame(data)
+            logger.debug(f"【{symbol}】实时K线:")
+            logger.debug(f"{df}")
             if df is not None and not df.empty:
                 # 查找对应的股票
                 close_price = float(df['close'].iloc[-1])
