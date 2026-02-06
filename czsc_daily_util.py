@@ -336,7 +336,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
                 czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
                 czsc_logger().info("     8）20日均线："+str(round(df['MA20'].iloc[-1],2)))
-                czsc_logger().info("     9）最后一笔线段：最低价【"+str(round(last_seg_fx_a.fx,2))+"】，最高价：【"+str(round(last_seg_fx_b.fx,2))+"】")
+                czsc_logger().info("     9）最后一笔线段：最低价【"+str(round(last_seg_fx_a.fx,2))+"】，最高价：【"+str(round(last_seg_fx_b.fx,2))+"】，平方根：【"+str(round(last_seg_sqr_val,2))+"】，黄金点位：【"+str(round(last_seg_gold_val,2))+"】")
                 czsc_logger().info("    10）最合适还需跌："+str(round(100*(stock_low-min(last_seg_sqr_val,last_seg_gold_val))/stock_low,2))+"%")
                 # 添加到缓存文件
                 symbol_data = {}
