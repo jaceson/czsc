@@ -63,6 +63,17 @@ def clear_cache(cachedir):
         shutil.rmtree(cachedir)
     os.makedirs(cachedir)
 
+def _fetch_fund_info_em(code, start_date, end_date):
+    """获取ETF基金净值信息，无数据或异常时返回 None。"""
+    try:
+        df = ak.fund_etf_fund_info_em(code, start_date, end_date)
+        if df is None or len(df) == 0:
+            return None
+        return df
+    except (ValueError, Exception):
+        return None
+
+
 def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.5):
     dt_list = etf_share_dict['share']['dt']
     share_list = etf_share_dict['share']['share']
@@ -71,28 +82,26 @@ def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.5):
     share_ratio_30 = share_list[-1]/share_list[-30]
     share_ratio_20 = share_list[-1]/share_list[-20]
     share_ratio_10 = share_list[-1]/share_list[-10]
+
+    start_str = START_DATE.replace('-','')
+    end_str = dt_list[-1].replace('-','')
+    data_list = _fetch_fund_info_em(code, start_str, end_str)
+    if data_list is None or len(data_list) < 30:
+        return False, None
+
+    close_list = data_list['单位净值'].tolist()
+    close_data = {'dt': data_list['净值日期'].tolist(), 'close': close_list}
+
     if share_ratio_30>1 and share_ratio_20>1 and share_ratio_10>1 and share_ratio_30>min_ratio:
         print("【{}】{}  10日份额增加：{}，20日份额增加：{}，30日份额增加：{}".format(code,etf_share_dict['name'],round(share_ratio_10,2),round(share_ratio_20,2),round(share_ratio_30,2)))
-        data_list = ak.fund_etf_fund_info_em(code,START_DATE.replace('-',''),dt_list[-1].replace('-',''))
-        if len(data_list)<30:
-            return False,None
-        close_list = data_list['单位净值'].tolist()
         close_ratio_30 = close_list[-1]/close_list[-30]
         close_ratio_20 = close_list[-1]/close_list[-20]
         close_ratio_10 = close_list[-1]/close_list[-10]
         if close_ratio_30<share_ratio_30 and close_ratio_20<share_ratio_20 and close_ratio_10<share_ratio_10:
-            print(START_DATE.replace('-',''),dt_list[-1].replace('-',''))
-            return True,{'dt':data_list['净值日期'].tolist(),'close':close_list}
-        else:
-            return False,{'dt':data_list['净值日期'].tolist(),'close':close_list}
-    elif code in ['159919','510300','159330','159949','159632','588000','159659','512100','159813','562500','159770','515070','560800','560580','561170','516900','159669','159518','515220','159655','159599','513220']:
-        data_list = ak.fund_etf_fund_info_em(code,START_DATE.replace('-',''),dt_list[-1].replace('-',''))
-        if len(data_list)<30:
-            return False,None
-        close_list = data_list['单位净值'].tolist()
-        return False,{'dt':data_list['净值日期'].tolist(),'close':close_list}
-
-    return False,None
+            print(start_str, end_str)
+            return True, close_data
+        return False, close_data
+    return False, close_data
 
 def main():
     # 清除etf缓存
