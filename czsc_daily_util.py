@@ -1354,7 +1354,7 @@ def get_kd_data(df):
     生成chan需要的数据结构
 """
 def get_kl_data(df):
-    fields = "date,open,high,low,close,volume,amount,turn"
+    fields = "date,open,high,low,close,volume,amount"
     for row_data in df[fields.split(",")].values.tolist():
         yield CKLine_Unit(create_item_dict(row_data, GetColumnNameFromFieldList(fields)))
 
@@ -1378,7 +1378,7 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     """
     rs = bs.query_history_k_data_plus(
             code=symbol,
-            fields="date,open,high,low,close,volume,amount,turn",
+            fields="date,open,high,low,close,volume,amount",
             start_date=start_date,
             end_date=end_date,
             frequency=frequency,
@@ -1399,8 +1399,7 @@ def get_stock_data(symbol, start_date, end_date, frequency):
             stock_close = float(row_data[4])
             stock_volume = float(row_data[5])
             stock_amount = float(row_data[6])
-            stock_turn = float(row_data[7])
-            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
                 continue
             data_list.append(row_data)
             # data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
@@ -1430,7 +1429,7 @@ def get_stock_data(symbol, start_date, end_date, frequency):
 4     2020-01-08  000001  17.00  16.66  17.05  16.63   847824  1.423609e+09  2.45 -2.86 -0.49  0.44
     '''
     data_list = []
-    columns = ['date','open','high','low','close','volume','amount','turn']
+    columns = ['date','open','high','low','close','volume','amount']
     for index, row_data in data.iterrows():
         try:
             stock_date = row_data['日期'].strftime('%Y-%m-%d')
@@ -1440,10 +1439,9 @@ def get_stock_data(symbol, start_date, end_date, frequency):
             stock_low = float(row_data['最低'])
             stock_volume = float(row_data['成交量'])
             stock_amount = float(row_data['成交额'])
-            stock_turn = float(row_data['换手率'])
-            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
                 continue
-            data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount, stock_turn])
+            data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
         except Exception as e:
             # czsc_logger().info(e)
             continue
@@ -1458,7 +1456,6 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
     df['close'] = df['close'].astype(float)
     df['volume'] = df['volume'].astype(float)
     df['amount'] = df['amount'].astype(float)
-    df['turn'] = df['turn'].astype(float)
     df['datetime'] = pd.to_datetime(df['date'])
     # df.set_index('date', inplace=True)
     return df

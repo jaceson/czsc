@@ -365,9 +365,12 @@ def main():
     try:
         # ping shtdx.gtjas.com 或者 hq.cjis.cn
         if tdx_api.connect('114.28.173.137', 7709):
-            pass
+            data = tdx_api.get_security_bars(9, 1, '600519', 0, 400)
+            df = pd.DataFrame(data)
+            print(df)
+            sys.exit(0)
         else:
-            logger.error(f"通达信API 初始化失败")
+            logger.error(f"通达信4PI 初始化失败")
             return
     except Exception as e:
         logger.error(f"通达信API 初始化失败: {e}")
