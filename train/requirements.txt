@@ -1,0 +1,5 @@
+# train 目录下 XGBoost 训练脚本依赖（项目根已安装的无需重复安装）
+xgboost>=2.0.0
+scikit-learn>=1.0.0
+pandas>=2.0.0
+numpy>=1.24.0

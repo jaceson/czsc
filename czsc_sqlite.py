@@ -118,6 +118,7 @@ def sync_db(file_path):
     if is_has_update:
         sql_connect.commit()
 
+# 获取本地股票数据；时间范围2001-01-02~2024-12-31
 def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
     # 连接数据库
     sqlite3_connect()

@@ -113,3 +113,4 @@ lib/chan/Daily
 # Log files and notification logs
 data/golden_notification_log.json
 data/log.json
+data/etf/png
