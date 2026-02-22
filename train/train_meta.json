@@ -1,0 +1,25 @@
+{
+  "feature_cols": [
+    "ret_1",
+    "ret_3",
+    "ret_5",
+    "ret_10",
+    "ret_20",
+    "close_ma5_ratio",
+    "close_ma10_ratio",
+    "close_ma20_ratio",
+    "close_ma60_ratio",
+    "vol_5",
+    "vol_10",
+    "vol_20",
+    "volume_ratio_5",
+    "amplitude"
+  ],
+  "target_days": 5,
+  "target_threshold": 0.0,
+  "train_end_ratio": 0.8,
+  "start_date": "2018-01-01",
+  "trained_at": "2026-02-21 22:36:24",
+  "val_accuracy": 0.5677,
+  "val_auc": 0.582
+}
