@@ -143,3 +143,26 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+总样本数: 11282251, 训练: 9025800, 验证: 2256451
+训练集正样本比例: 0.5006
+
+训练 LightGBM...
+[50]    valid_0's binary_logloss: 0.689717
+[100]   valid_0's binary_logloss: 0.689107
+[150]   valid_0's binary_logloss: 0.688786
+[200]   valid_0's binary_logloss: 0.68862
+
+验证集结果:
+  Accuracy: 0.5378
+  AUC:      0.5459
+              precision    recall  f1-score   support
+
+        下跌/平       0.56      0.64      0.59   1194270
+          上涨       0.51      0.42      0.46   1062181
+
+    accuracy                           0.54   2256451
+   macro avg       0.53      0.53      0.53   2256451
+weighted avg       0.53      0.54      0.53   2256451
+'''

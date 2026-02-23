@@ -489,8 +489,7 @@ def collect_all_samples(symbols: list, start_date: str):
     """汇总多只股票的特征与标签"""
     all_dfs = []
     for i, symbol in enumerate(symbols):
-        if (i + 1) % 100 == 0:
-            print(f"  已处理 {i + 1}/{len(symbols)} 只股票")
+        print(f"  已处理 {i + 1}/{len(symbols)} 只股票")
         try:
             df = get_local_stock_data(symbol, start_date=start_date, frequency="d")
             if df is None or len(df) < MIN_BARS:
@@ -604,3 +603,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+'''
+总样本数: 11282251, 训练: 9025800, 验证: 2256451
+训练集正样本比例: 0.5006
+
+训练 XGBoost...
+/Users/wj/workspace/czsc/czsc_env/lib/python3.11/site-packages/xgboost/training.py:183: UserWarning: [10:26:34] WARNING: /Users/runner/work/xgboost/xgboost/src/learner.cc:738: 
+Parameters: { "use_label_encoder" } are not used.
+
+  bst.update(dtrain, iteration=i, fobj=obj)
+[0] validation_0-logloss:0.69300
+[50]    validation_0-logloss:0.68963
+[100]   validation_0-logloss:0.68896
+[150]   validation_0-logloss:0.68866
+[199]   validation_0-logloss:0.68857
+
+验证集结果:
+  Accuracy: 0.5377
+  AUC:      0.5463
+              precision    recall  f1-score   support
+
+        下跌/平       0.56      0.64      0.59   1194270
+          上涨       0.51      0.42      0.46   1062181
+
+    accuracy                           0.54   2256451
+   macro avg       0.53      0.53      0.53   2256451
+weighted avg       0.53      0.54      0.53   2256451
+'''
