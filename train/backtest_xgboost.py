@@ -36,8 +36,11 @@ MODEL_NAME = "xgboost_stock_clf.json"
 META_NAME = "train_meta.json"
 BACKTEST_START = "2024-01-01"   # 回测起始日（建议在训练结束之后）
 BACKTEST_END = "2024-12-31"     # 回测结束日
-PROBA_THRESHOLD = 0.5           # 预测概率 >= 此阈值才发出买入信号
-MAX_SYMBOLS_BACKTEST = None      # 回测股票数量（None 表示全部）
+PROBA_THRESHOLD = 0.55          # 预测概率 >= 此阈值才发出买入信号（在「按概率阈值」模式下无效）
+USE_TOP_PCT_BY_PROBA = 2        # 只做概率最高的 N% 信号（2 更精选、追求高胜率；5 交易更多；0=按 PROBA_THRESHOLD）
+WIN_RATE_TARGET = 90.0
+MIN_TRADES_AT_TARGET = 10
+MAX_SYMBOLS_BACKTEST = 200
 
 
 def load_model_and_meta():
@@ -59,11 +62,14 @@ def load_model_and_meta():
 
 
 def run_backtest_for_symbol(symbol: str, model, feature_cols: list, target_days: int,
-                            start_date: str, end_date: str):
+                            start_date: str, end_date: str, proba_threshold: float = None):
     """
     单只股票回测：构建特征 -> 预测 -> 按「次日开盘买、TARGET_DAYS 日后收盘卖」计算收益。
+    proba_threshold 为 None 时使用全局 PROBA_THRESHOLD；设为 0 可返回所有信号用于「按概率取前 N%」.
     返回 list of dict: [{"date", "symbol", "ret", "proba", "buy_price", "sell_price"}, ...]
     """
+    if proba_threshold is None:
+        proba_threshold = PROBA_THRESHOLD
     df_raw = get_local_stock_data(symbol, start_date=start_date, frequency="d")
     if df_raw is None or len(df_raw) < MIN_BARS:
         return []
@@ -81,7 +87,7 @@ def run_backtest_for_symbol(symbol: str, model, feature_cols: list, target_days:
 
     X = df_feat[feature_cols]
     proba = model.predict_proba(X)[:, 1]
-    pred = (proba >= PROBA_THRESHOLD).astype(int)
+    pred = (proba >= proba_threshold).astype(int)
 
     # 对齐 raw 的日期索引，用于取次日开盘、TARGET_DAYS 日后收盘
     raw_dates = pd.to_datetime(df_raw["date"]).dt.strftime("%Y-%m-%d").values
@@ -123,7 +129,10 @@ def main():
     print("已加载模型: {}".format(os.path.join(TRAIN_DIR, MODEL_NAME)))
     print("特征数: {}, 持有天数: {}".format(len(feature_cols), target_days))
     print("回测区间: {} ~ {}".format(BACKTEST_START, BACKTEST_END))
-    print("信号阈值: 预测概率 >= {}".format(PROBA_THRESHOLD))
+    if USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0:
+        print("信号筛选: 只做概率最高的 {}% 信号（追求高胜率）".format(USE_TOP_PCT_BY_PROBA))
+    else:
+        print("信号阈值: 预测概率 >= {}".format(PROBA_THRESHOLD))
     print("规则: 信号日次日开盘买入，持有 {} 日后收盘卖出".format(target_days))
     print("=" * 60)
 
@@ -133,6 +142,7 @@ def main():
     print("回测股票数: {}".format(len(symbols)))
 
     all_trades = []
+    proba_threshold_for_collect = 0.0 if (USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0) else None
     for i, symbol in enumerate(symbols):
         if (i + 1) % 100 == 0:
             print("  已回测 {}/{} 只股票".format(i + 1, len(symbols)))
@@ -140,13 +150,22 @@ def main():
             trades = run_backtest_for_symbol(
                 symbol, model, feature_cols, target_days,
                 BACKTEST_START, BACKTEST_END,
+                proba_threshold=proba_threshold_for_collect,
             )
             all_trades.extend(trades)
         except Exception as e:
             continue
 
+    if USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0 and len(all_trades) > 0:
+        all_trades = sorted(all_trades, key=lambda t: t["proba"], reverse=True)
+        n_keep = max(1, int(len(all_trades) * USE_TOP_PCT_BY_PROBA / 100))
+        all_trades = all_trades[:n_keep]
+        print("已按概率取前 {}% 信号，实际交易数: {}".format(USE_TOP_PCT_BY_PROBA, len(all_trades)))
+
     if not all_trades:
-        print("回测区间内无有效交易，请检查数据与回测区间。")
+        print("回测区间内无有效交易，请检查：")
+        print("  1）PROBA_THRESHOLD 是否过高（当前 {}）— 建议先改为 0.5 或 0.55 重跑，看「按信号阈值统计」后再调高。".format(PROBA_THRESHOLD))
+        print("  2）回测区间 {} ~ {} 是否在本地数据范围内且有足够 K 线。".format(BACKTEST_START, BACKTEST_END))
         return
 
     # 汇总统计
@@ -154,16 +173,29 @@ def main():
     n = len(rets)
     win_rate = (rets > 0).mean() * 100
     avg_ret = rets.mean() * 100
-    total_ret_compound = (np.prod(1 + rets) - 1) * 100
 
-    # 按时间排序做收益曲线与最大回撤
+    # 复利与回撤：将单笔收益裁剪到合理区间，避免 (1+ret)<=0 或溢出导致 inf/-100% 回撤
+    ret_min, ret_max = -0.99, 5.0
+    rets_clip = np.clip(rets, ret_min, ret_max)
+    total_ret_compound = (np.prod(1 + rets_clip) - 1) * 100
+    if not np.isfinite(total_ret_compound) or total_ret_compound > 9999:
+        total_ret_compound = (np.exp(np.log(1 + rets_clip).sum()) - 1) * 100
+    # 笔数过多时复利会极大，仅作展示上限，实盘应以平均单笔与胜率为准
+    total_ret_display = min(total_ret_compound, 9999.99) if np.isfinite(total_ret_compound) else 9999.99
+
     df_trades = pd.DataFrame(all_trades)
     df_trades["date"] = pd.to_datetime(df_trades["date"])
     df_trades = df_trades.sort_values("date").reset_index(drop=True)
-    equity = (1 + df_trades["ret"]).cumprod()
-    peak = equity.cummax()
+    ret_curve = np.clip(df_trades["ret"].values, ret_min, ret_max)
+    equity = np.cumprod(1 + ret_curve)
+    peak = np.maximum.accumulate(equity)
     drawdown = (equity - peak) / (peak + 1e-10)
     max_dd = drawdown.min() * 100
+
+    # 异常收益数量（供排查）
+    n_bad = np.sum((rets < ret_min) | (rets > ret_max))
+    if n_bad > 0:
+        print("说明: 有 {} 笔收益超出 [{:.0%}, {:.0%}]，已裁剪后参与复利与回撤计算。".format(n_bad, ret_min, ret_max))
 
     print("\n" + "=" * 60)
     print("回测结果")
@@ -171,9 +203,49 @@ def main():
     print("交易次数:       {}".format(n))
     print("胜率:           {:.2f}%".format(win_rate))
     print("平均单笔收益:   {:.2f}%".format(avg_ret))
-    print("累计收益(复利): {:.2f}%".format(total_ret_compound))
-    print("最大回撤:       {:.2f}%".format(max_dd))
+    if total_ret_compound > 9999:
+        print("累计收益(复利): >9999%（笔数过多，复利仅作参考，请以平均单笔与胜率为主）")
+    else:
+        print("累计收益(复利): {:.2f}%".format(float(total_ret_display)))
+    print("最大回撤:       {:.2f}%".format(float(max_dd)))
     print("=" * 60)
+
+    # 按概率阈值统计（在「概率前N%」模式下，下表多为已筛选后的子集，区分度有限）
+    if USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0:
+        print("\n说明: 当前已按「概率前 {}%」筛选，下表为筛选后交易在不同阈值下的分布。".format(USE_TOP_PCT_BY_PROBA))
+        print("若要看全量信号的阈值统计，请将 USE_TOP_PCT_BY_PROBA 设为 0 后重跑。")
+    print("\n按信号阈值统计（当前使用阈值 {:.2f}）：".format(PROBA_THRESHOLD))
+    print("-" * 60)
+    print("{:>8} {:>10} {:>10} {:>12}".format("阈值", "交易数", "胜率%", "平均收益%"))
+    print("-" * 60)
+    th_list = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+    best_th = None
+    best_wr = 0.0
+    best_n = 0
+    for th in th_list:
+        sub = df_trades[df_trades["proba"] >= th]
+        if len(sub) == 0:
+            print("{:>8.2f} {:>10} {:>10} {:>12}".format(th, 0, "-", "-"))
+            continue
+        wr = (sub["ret"] > 0).mean() * 100
+        ar = sub["ret"].mean() * 100
+        print("{:>8.2f} {:>10} {:>10.2f} {:>12.2f}".format(th, len(sub), wr, ar))
+        if wr >= WIN_RATE_TARGET and len(sub) >= MIN_TRADES_AT_TARGET:
+            if best_th is None or th < best_th:
+                best_th = th
+                best_wr = wr
+                best_n = len(sub)
+    print("-" * 60)
+    if best_th is not None:
+        print("为达到胜率≥{:.0f}%，建议 PROBA_THRESHOLD = {:.2f}（该阈值下交易数 {}，胜率 {:.1f}%）".format(
+            WIN_RATE_TARGET, best_th, best_n, best_wr))
+    else:
+        print("当前回测下未达到胜率≥{:.0f}% 且交易数≥{}。".format(WIN_RATE_TARGET, MIN_TRADES_AT_TARGET))
+        if USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0 and win_rate < 55:
+            print("「概率前{}%」胜率仍不足 55%，说明模型高概率与回测区间真实收益未对齐（可能原因：回测与训练区间市场不同、特征泛化不足）。可尝试：1）USE_TOP_PCT_BY_PROBA=2 或 1 更精选；2）TARGET_THRESHOLD=0.20 重新训练；3）扩大训练数据时间范围。".format(USE_TOP_PCT_BY_PROBA))
+        else:
+            print("建议：1）提高 train_xgboost 中 TARGET_THRESHOLD（如 0.15~0.20）后重新训练；2）或使用上表中胜率最高的阈值。")
+    print()
 
     # 可选：保存回测明细
     out_path = os.path.join(TRAIN_DIR, "backtest_trades.csv")

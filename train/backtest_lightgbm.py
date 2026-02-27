@@ -34,8 +34,8 @@ TRAIN_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_NAME = "lightgbm_stock_clf.txt"
 META_NAME = "train_meta_lightgbm.json"
 BACKTEST_START = "2024-01-01"
-BACKTEST_END = "2024-12-31"
-PROBA_THRESHOLD = 0.5
+BACKTEST_END = "2024-02-31"
+PROBA_THRESHOLD = 0.95   # 提高可提升胜率、减少交易次数
 MAX_SYMBOLS_BACKTEST = None
 
 
@@ -152,15 +152,25 @@ def main():
     n = len(rets)
     win_rate = (rets > 0).mean() * 100
     avg_ret = rets.mean() * 100
-    total_ret_compound = (np.prod(1 + rets) - 1) * 100
+
+    ret_min, ret_max = -0.99, 5.0
+    rets_clip = np.clip(rets, ret_min, ret_max)
+    total_ret_compound = (np.prod(1 + rets_clip) - 1) * 100
+    if not np.isfinite(total_ret_compound):
+        total_ret_compound = (np.exp(np.log(1 + rets_clip).sum()) - 1) * 100
 
     df_trades = pd.DataFrame(all_trades)
     df_trades["date"] = pd.to_datetime(df_trades["date"])
     df_trades = df_trades.sort_values("date").reset_index(drop=True)
-    equity = (1 + df_trades["ret"]).cumprod()
-    peak = equity.cummax()
+    ret_curve = np.clip(df_trades["ret"].values, ret_min, ret_max)
+    equity = np.cumprod(1 + ret_curve)
+    peak = np.maximum.accumulate(equity)
     drawdown = (equity - peak) / (peak + 1e-10)
     max_dd = drawdown.min() * 100
+
+    n_bad = np.sum((rets < ret_min) | (rets > ret_max))
+    if n_bad > 0:
+        print("说明: 有 {} 笔收益超出 [{:.0%}, {:.0%}]，已裁剪后参与复利与回撤计算。".format(n_bad, ret_min, ret_max))
 
     print("\n" + "=" * 60)
     print("回测结果")
@@ -168,9 +178,23 @@ def main():
     print("交易次数:       {}".format(n))
     print("胜率:           {:.2f}%".format(win_rate))
     print("平均单笔收益:   {:.2f}%".format(avg_ret))
-    print("累计收益(复利): {:.2f}%".format(total_ret_compound))
-    print("最大回撤:       {:.2f}%".format(max_dd))
+    print("累计收益(复利): {:.2f}%".format(float(total_ret_compound)))
+    print("最大回撤:       {:.2f}%".format(float(max_dd)))
     print("=" * 60)
+
+    print("\n按信号阈值统计（当前使用阈值 {:.2f}）：".format(PROBA_THRESHOLD))
+    print("-" * 60)
+    print("{:>8} {:>10} {:>10} {:>12}".format("阈值", "交易数", "胜率%", "平均收益%"))
+    print("-" * 60)
+    for th in [0.50, 0.55, 0.60, 0.65, 0.70]:
+        sub = df_trades[df_trades["proba"] >= th]
+        if len(sub) == 0:
+            print("{:>8.2f} {:>10} {:>10} {:>12}".format(th, 0, "-", "-"))
+            continue
+        wr = (sub["ret"] > 0).mean() * 100
+        ar = sub["ret"].mean() * 100
+        print("{:>8.2f} {:>10} {:>10.2f} {:>12.2f}".format(th, len(sub), wr, ar))
+    print("-" * 60)
 
     out_path = os.path.join(TRAIN_DIR, "backtest_trades_lightgbm.csv")
     df_trades.to_csv(out_path, index=False, encoding="utf-8-sig")
