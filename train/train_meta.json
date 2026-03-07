@@ -1,22 +1,123 @@
 {
   "feature_cols": [
-    "rsi_6",
-    "rsi_12",
-    "rsi_14",
     "macd_dif",
     "macd_dea",
     "macd_bar",
+    "macd_golden_cross",
+    "ema5",
+    "ema20",
+    "ema60",
+    "price_ema5_ratio",
+    "price_ema20_ratio",
+    "ema5_ema20_diff",
+    "rsi_6",
+    "rsi_12",
+    "rsi_24",
+    "kdj_k",
+    "kdj_d",
+    "kdj_j",
+    "kd_diff",
+    "cci_14",
+    "cci_84",
+    "boll_upper",
+    "boll_mid",
+    "boll_lower",
     "boll_pct_b",
-    "boll_close_mid_ratio",
     "boll_width",
-    "volume_ratio_5"
+    "vol_ma5",
+    "vol_ma20",
+    "volume_ratio",
+    "volume_ma_ratio",
+    "obv",
+    "obv_ma5",
+    "vr_26",
+    "roc_12",
+    "mtm_12",
+    "price_range",
+    "price_change",
+    "price_position",
+    "consecutive_up",
+    "consecutive_down",
+    "longterm_turn",
+    "main_strong_join",
+    "pocket_pivot",
+    "开始吃鱼",
+    "COLORGRAY_TOP",
+    "COLORGRAY_BOTTOM",
+    "COLOR4080FF",
+    "COLORFF0080",
+    "COLORRED",
+    "COLORGREEN",
+    "公式平台",
+    "好股网",
+    "RPS10",
+    "RPS20",
+    "RPS50",
+    "RPS120",
+    "RPS250"
   ],
-  "target_days": 5,
-  "target_threshold": 0.15,
-  "train_end_ratio": 0.8,
-  "start_date": "2023-01-01",
+  "target_days": 10,
+  "target_threshold": 0.05,
+  "train_end_ratio": 0.9,
+  "start_date": "2020-01-01",
   "end_date": "2023-12-31",
-  "trained_at": "2026-02-26 18:13:36",
-  "val_accuracy": 0.7011,
-  "val_auc": 0.6977
+  "trained_at": "2026-03-07 20:01:33",
+  "val_accuracy": 0.7732,
+  "val_auc": 0.6708,
+  "val_precision": 0.2306,
+  "val_recall": 0.4014,
+  "val_f1": 0.2929,
+  "best_params": {
+    "n_estimators": 300,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 3,
+    "gamma": 0.1,
+    "reg_alpha": 1.0,
+    "reg_lambda": 5.0
+  },
+  "top_features": [
+    {
+      "feature": "price_range",
+      "importance": 0.0572819858789444
+    },
+    {
+      "feature": "boll_width",
+      "importance": 0.03490617498755455
+    },
+    {
+      "feature": "longterm_turn",
+      "importance": 0.030324239283800125
+    },
+    {
+      "feature": "RPS250",
+      "importance": 0.025553464889526367
+    },
+    {
+      "feature": "ema5_ema20_diff",
+      "importance": 0.025165166705846786
+    },
+    {
+      "feature": "obv_ma5",
+      "importance": 0.024303480982780457
+    },
+    {
+      "feature": "boll_mid",
+      "importance": 0.023867448791861534
+    },
+    {
+      "feature": "COLORFF0080",
+      "importance": 0.022825120016932487
+    },
+    {
+      "feature": "RPS50",
+      "importance": 0.022404493764042854
+    },
+    {
+      "feature": "RPS120",
+      "importance": 0.022261613979935646
+    }
+  ]
 }

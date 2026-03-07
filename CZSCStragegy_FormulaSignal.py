@@ -280,7 +280,42 @@ def calculate_formula_indicators(df):
     # ABC71:=IF(ABC68,ABC2,0);
     ABC71 = IF(ABC68, ABC2, 0)
     ndf['ABC71'] = ABC71
-    
+
+    # ========== 通达信吃鱼公式绘图/输出指标 ==========
+    # 开始吃鱼: IF(ABC68,ABC70,ABC69), NODRAW
+    开始吃鱼 = IF(ABC68, ABC70, ABC69)
+    ndf['开始吃鱼'] = 开始吃鱼
+
+    # COLORGRAY: STICKLINE(1, ABC2*2, ABC3*2, 2, 0) — 默认柱线上下沿，用于绘图
+    ABC2_2 = ABC2 * 2
+    ABC3_2 = ABC3 * 2
+    ndf['COLORGRAY_TOP'] = ABC2_2
+    ndf['COLORGRAY_BOTTOM'] = ABC3_2
+
+    # COLOR4080FF: STICKLINE(ABC2*2 > REF(ABC2*2,1), ABC2*2, ABC3*2, 2, 0)
+    ABC2_2_PREV = REF(ABC2_2, 1)
+    COLOR4080FF = (ABC2_2 > ABC2_2_PREV)
+    ndf['COLOR4080FF'] = COLOR4080FF
+
+    # COLORFF0080: STICKLINE(ABC2*2 > 20 AND ABC2*2 > REF(ABC2*2,1), ABC2*2, ABC3*2, 2, 0)
+    COLORFF0080 = (ABC2_2 > 20) & (ABC2_2 > ABC2_2_PREV)
+    ndf['COLORFF0080'] = COLORFF0080
+
+    # COLORRED: STICKLINE(ABC13, ABC2, ABC3, 2, 0)
+    ndf['COLORRED'] = ABC13
+
+    # COLORGREEN: STICKLINE(NOT(ABC13) AND ABC2 > 0, ABC2, ABC3, 2, 1)
+    COLORGREEN = (~ABC13) & (ABC2 > 0)
+    ndf['COLORGREEN'] = COLORGREEN
+
+    # 公式平台: IF(ABC68, ABC71*6, ABC71*4), COLORYELLOW, LINETHICK2
+    公式平台 = IF(ABC68, ABC71 * 6, ABC71 * 4)
+    ndf['公式平台'] = 公式平台
+
+    # 好股网: IF(ABC68, (-1)*ABC71*6, (-1)*ABC71*4), COLORMAGENTA, LINETHICK2
+    好股网 = IF(ABC68, (-1) * ABC71 * 6, (-1) * ABC71 * 4)
+    ndf['好股网'] = 好股网
+
     return ndf
 
 def get_formula_signal_condition(symbol, df, max_days=20):

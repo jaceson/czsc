@@ -9,7 +9,7 @@ import sys
 import json
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _train_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,15 +32,19 @@ from train_xgboost import build_features, MIN_BARS
 
 # 回测配置
 TRAIN_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_NAME = "xgboost_stock_clf.json"
+# 模型文件名称（自动检测最新版本）
+if os.path.isfile(os.path.join(TRAIN_DIR, "xgboost_stock_clf_v2.json")):
+    MODEL_NAME = "xgboost_stock_clf_v2.json"  # 新版本
+else:
+    MODEL_NAME = "xgboost_stock_clf.json"     # 旧版本
 META_NAME = "train_meta.json"
-BACKTEST_START = "2024-01-01"   # 回测起始日（建议在训练结束之后）
-BACKTEST_END = "2024-12-31"     # 回测结束日
-PROBA_THRESHOLD = 0.55          # 预测概率 >= 此阈值才发出买入信号（在「按概率阈值」模式下无效）
-USE_TOP_PCT_BY_PROBA = 2        # 只做概率最高的 N% 信号（2 更精选、追求高胜率；5 交易更多；0=按 PROBA_THRESHOLD）
+BACKTEST_START = "2010-01-01"   # 回测起始日（建议在训练结束之后）
+BACKTEST_END = "2015-12-31"     # 回测结束日
+PROBA_THRESHOLD = 0.78          # 预测概率 >= 此阈值才发出买入信号
+USE_TOP_PCT_BY_PROBA = 0        # 0=按 PROBA_THRESHOLD；>0 时按概率前 N% 信号
 WIN_RATE_TARGET = 90.0
 MIN_TRADES_AT_TARGET = 10
-MAX_SYMBOLS_BACKTEST = 200
+MAX_SYMBOLS_BACKTEST = 100
 
 
 def load_model_and_meta():
@@ -70,13 +74,18 @@ def run_backtest_for_symbol(symbol: str, model, feature_cols: list, target_days:
     """
     if proba_threshold is None:
         proba_threshold = PROBA_THRESHOLD
-    df_raw = get_local_stock_data(symbol, start_date=start_date, frequency="d")
+
+    # 为了计算 RPS、长线转折、口袋支点等长周期指标，需要比回测起点更长的历史数据
+    # 这里向前多取约 400 天的 K 线，仅用于特征计算，真实信号仍从 start_date 开始
+    bt_start = pd.to_datetime(start_date)
+    hist_start = (bt_start - timedelta(days=400)).strftime("%Y-%m-%d")
+    df_raw = get_local_stock_data(symbol, start_date=hist_start, frequency="d")
     if df_raw is None or len(df_raw) < MIN_BARS:
         return []
     df_raw = df_raw.sort_values("date").reset_index(drop=True)
     df_raw["date"] = pd.to_datetime(df_raw["date"])
 
-    df_feat = build_features(df_raw)
+    df_feat = build_features(df_raw, symbol=symbol)
     if df_feat is None or len(df_feat) == 0:
         return []
     df_feat["date"] = pd.to_datetime(df_feat["date"])
@@ -141,31 +150,61 @@ def main():
         symbols = symbols[:MAX_SYMBOLS_BACKTEST]
     print("回测股票数: {}".format(len(symbols)))
 
-    all_trades = []
-    proba_threshold_for_collect = 0.0 if (USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0) else None
+    # 先按 0 阈值收集全部信号，再按阈值/前N% 筛选，便于在无交易时仍能看「按信号阈值统计」
+    all_trades_raw = []
+    first_error = None
     for i, symbol in enumerate(symbols):
-        if (i + 1) % 100 == 0:
+        if (i + 1) % 50 == 0 or len(symbols) <= 20:
             print("  已回测 {}/{} 只股票".format(i + 1, len(symbols)))
         try:
             trades = run_backtest_for_symbol(
                 symbol, model, feature_cols, target_days,
                 BACKTEST_START, BACKTEST_END,
-                proba_threshold=proba_threshold_for_collect,
+                proba_threshold=0.0,
             )
-            all_trades.extend(trades)
+            all_trades_raw.extend(trades)
         except Exception as e:
+            if first_error is None:
+                first_error = (symbol, str(e))
             continue
 
-    if USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0 and len(all_trades) > 0:
-        all_trades = sorted(all_trades, key=lambda t: t["proba"], reverse=True)
+    if first_error is not None:
+        print("  提示: 部分股票回测异常，首例 {} — {}".format(first_error[0], first_error[1]))
+
+    if USE_TOP_PCT_BY_PROBA and USE_TOP_PCT_BY_PROBA > 0 and len(all_trades_raw) > 0:
+        all_trades = sorted(all_trades_raw, key=lambda t: t["proba"], reverse=True)
         n_keep = max(1, int(len(all_trades) * USE_TOP_PCT_BY_PROBA / 100))
         all_trades = all_trades[:n_keep]
         print("已按概率取前 {}% 信号，实际交易数: {}".format(USE_TOP_PCT_BY_PROBA, len(all_trades)))
+    else:
+        all_trades = [t for t in all_trades_raw if t["proba"] >= PROBA_THRESHOLD]
+        if len(all_trades_raw) > 0 and len(all_trades) == 0:
+            print("按阈值 {:.2f} 筛选后无交易（共采集到 {} 笔信号），将展示全量信号的阈值统计。".format(
+                PROBA_THRESHOLD, len(all_trades_raw)))
 
     if not all_trades:
         print("回测区间内无有效交易，请检查：")
-        print("  1）PROBA_THRESHOLD 是否过高（当前 {}）— 建议先改为 0.5 或 0.55 重跑，看「按信号阈值统计」后再调高。".format(PROBA_THRESHOLD))
-        print("  2）回测区间 {} ~ {} 是否在本地数据范围内且有足够 K 线。".format(BACKTEST_START, BACKTEST_END))
+        print("  1）PROBA_THRESHOLD 是否过高（当前 {}）— 可先改为 0.5 或 0.55 重跑，或查看下方「按信号阈值统计」选阈值。".format(PROBA_THRESHOLD))
+        print("  2）回测区间 {} ~ {} 是否在本地数据范围内且有足够 K 线（需含回测起点前约 250 日以计算 RPS 等）。".format(BACKTEST_START, BACKTEST_END))
+        if first_error is not None:
+            print("  3）部分股票报错，首例 {} — 若为 KeyError 多为特征列与模型不一致，请重新训练后回测。".format(first_error[0]))
+        if len(all_trades_raw) > 0:
+            df_raw = pd.DataFrame(all_trades_raw)
+            df_raw["date"] = pd.to_datetime(df_raw["date"])
+            print("\n按信号阈值统计（全量 {} 笔）：".format(len(all_trades_raw)))
+            print("-" * 60)
+            print("{:>8} {:>10} {:>10} {:>12}".format("阈值", "交易数", "胜率%", "平均收益%"))
+            print("-" * 60)
+            for th in [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.78, 0.80, 0.85, 0.90]:
+                sub = df_raw[df_raw["proba"] >= th]
+                if len(sub) == 0:
+                    print("{:>8.2f} {:>10} {:>10} {:>12}".format(th, 0, "-", "-"))
+                else:
+                    wr = (sub["ret"] > 0).mean() * 100
+                    ar = sub["ret"].mean() * 100
+                    print("{:>8.2f} {:>10} {:>10.2f} {:>12.2f}".format(th, len(sub), wr, ar))
+            print("-" * 60)
+        print()
         return
 
     # 汇总统计

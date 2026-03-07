@@ -1345,8 +1345,8 @@ def get_kd_data(df):
     if not 'VAR' in df.columns:
         df['VAR'] = (df['close'] - LLV(df['low'], 10)) / (HHV(df['high'], 10) - LLV(df['low'], 10)) * 100
         df['K0'] = SMA(df['VAR'], 10, 1)
-        # df['D0'] = REF(df['K0'], 1)
-        # df['KD0'] = df['K0']-df['D0']
+        df['D0'] = REF(df['K0'], 1)
+        df['KD0'] = df['K0']-df['D0']
         # df['KDR'] = (df['K0']-df['D0'])/df['K0']
     return df
 
