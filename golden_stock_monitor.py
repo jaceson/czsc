@@ -28,7 +28,8 @@ from czsc_daily_util import (
     get_symbols_name,
     czsc_logger
 )
-from lib.email_sender import send_html_email, create_mail_conf
+from lib.email_sender import *
+from lib.email_sender_163 import *
 
 # 配置日志
 logger = czsc_logger()
@@ -165,16 +166,6 @@ def record_notification(symbol, price, sqr_val, gold_val, log_data):
 def send_notification_email(stocks_to_notify):
     """发送通知邮件"""
     try:
-        # 获取邮件密码
-        response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
-        if response.status_code == 200:
-            result = json.loads(response.content)
-            password = result["password"]
-            create_mail_conf("autobuild4ios", password)
-        else:
-            logger.error("无法获取邮件密码")
-            return False
-        
         # 构建邮件内容
         html_content = f"""
         <html>
@@ -242,7 +233,19 @@ def send_notification_email(stocks_to_notify):
         
         # 发送邮件
         subject = f"股票价格监控通知 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        send_html_email("autobuild4ios", "vickywang@qiyi.com", subject, html_content)
+        send_html_email_163("13311566853", "13311566853@163.com", subject, html_content)
+        
+        # 获取邮件密码
+        response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
+        if response.status_code == 200:
+            result = json.loads(response.content)
+            password = result["password"]
+            create_mail_conf("autobuild4ios", password)
+            send_html_email("autobuild4ios", "vickywang@qiyi.com", subject, html_content)
+        else:
+            logger.error("无法获取邮件密码")
+            return False
+        
         logger.info(f"已发送通知邮件，包含 {len(stocks_to_notify)} 只股票")
         return True
         

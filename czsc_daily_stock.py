@@ -7,6 +7,7 @@ import time
 import requests
 import baostock as bs
 from lib.email_sender import *
+from lib.email_sender_163 import *
 from czsc_daily_util import *
 from czsc.analyze import *
 from datetime import datetime
@@ -153,13 +154,6 @@ def email__html_row_file(jsonfile):
     '''.format(base_name=base_name, sub_text=sub_text_info)
 
 def send_summary_email():
-    # 获取autobuild4ios密码
-    response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
-    if response.status_code == 200:
-        result = json.loads(response.content)
-        password = result["password"]
-    create_mail_conf("autobuild4ios", password)
-
     # 邮件内容
     data_dir = get_data_dir()
     html_content = email_html_header()
@@ -168,7 +162,18 @@ def send_summary_email():
         if html_row:
             html_content += html_row
     html_content += email_html_footer()
-    send_html_email("autobuild4ios", "vickywang@qiyi.com", "每日精选", html_content)
+    send_html_email("13311566853", "13311566853@163.com", "每日精选", html_content)
+
+    # 获取autobuild4ios密码
+    try:
+        response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
+        if response.status_code == 200:
+            result = json.loads(response.content)
+            password = result["password"]
+            create_mail_conf("autobuild4ios", password)
+        send_html_email("autobuild4ios", "vickywang@qiyi.com", "每日精选", html_content)
+    except Exception as e:
+        pass
 
 def sz_chart_dir():
     return get_data_dir()+"/html/上证指数"
