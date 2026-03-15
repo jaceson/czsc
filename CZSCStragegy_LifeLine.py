@@ -12,7 +12,7 @@ import sys
 import pandas as pd
 import numpy as np
 from lib.MyTT import (
-    REF, EMA, SMA, HHV, LLV, MAX, MIN, ABS,
+    REF, EMA, SMA, HHV, LLV, MAX, MIN, ABS, IF,
 )
 from czsc_daily_util import get_daily_symbols
 from czsc_sqlite import get_local_stock_data
@@ -92,8 +92,20 @@ def calculate_lifeline_indicators(df):
     den12 = np.where(den12 <= 0, np.nan, den12)
     VAR12 = EMA((VAR6 - VAR8) / (den12 + 1e-10) * 100, 13)
 
-    # VAR13:=EMA(0.667*REF(VAR12,1)+0.333*VAR12,2);
-    VAR13 = EMA(0.667 * REF(VAR12, 1) + 0.333 * VAR12, 2)
+    # VAR13:=EMA(0.618*REF(VAR12,1)+0.382*VAR12,2);
+    VAR13 = EMA(0.618 * REF(VAR12, 1) + 0.382 * VAR12, 2)
+
+    # VAR14:=IF(VAR12>VAR13, 1, 0)
+    VAR14 = IF(VAR12>VAR13, 1, 0)
+
+    # VAR15:=REF(VAR14,1)
+    VAR15 = REF(VAR14,1)
+
+    # VAR16:=EMA(VAR13,5)
+    VAR16 = EMA(VAR13,5)
+
+    # VAR17:=REF(VAR16,1)
+    VAR17 = REF(VAR16,1)
 
     ndf["VAR1"] = VAR1
     ndf["VAR2"] = VAR2
@@ -108,35 +120,17 @@ def calculate_lifeline_indicators(df):
     ndf["VAR11"] = VAR11
     ndf["VAR12"] = VAR12
     ndf["VAR13"] = VAR13
+    ndf["VAR14"] = VAR14
+    ndf["VAR15"] = VAR15
+    ndf["VAR16"] = VAR16
+    ndf["VAR17"] = VAR17
 
-    # STICKLINE(VAR12-VAR13>0,VAR12,VAR13,5,0), COLORRED;
-    # STICKLINE(VAR12-VAR13<0,VAR12,VAR13,5,0), COLOR00FF0F;
-    COLORRED = (VAR12 - VAR13) > 0
-    COLOR00FF0F = (VAR12 - VAR13) < 0
-    ndf["COLORRED"] = COLORRED
-    ndf["COLOR00FF0F"] = COLOR00FF0F
-    ndf["COLORRED_TOP"] = np.where(COLORRED, VAR12, np.nan)
-    ndf["COLORRED_BOTTOM"] = np.where(COLORRED, VAR13, np.nan)
-    ndf["COLOR00FF0F_TOP"] = np.where(COLOR00FF0F, VAR12, np.nan)
-    ndf["COLOR00FF0F_BOTTOM"] = np.where(COLOR00FF0F, VAR13, np.nan)
+    # 过去30个交易日 VAR16 曾 > 70
+    VAR16_HHV30 = HHV(VAR16, 30)
+    cond_var16_gt70 = VAR16_HHV30 > 75
 
-    # 生命线: EMA(VAR13,5), COLORYELLOW;
-    生命线 = EMA(VAR13, 5)
-    ndf["生命线"] = 生命线
-
-    # 买: IF(CROSS(VAR13,VAR12) AND VAR12<VAR13 AND VAR12>60, VAR13, 88);
-    cross_buy = _cross_up(VAR13, VAR12)
-    cond_buy = cross_buy & (VAR12 < VAR13) & (VAR12 > 60)
-    买 = _if(cond_buy, VAR13, 88)
-    ndf["买"] = 买
+    cond_buy = (VAR14 == 1) & (VAR15 == 0) & (VAR16 < 10) & cond_var16_gt70
     ndf["买信号"] = cond_buy
-
-    # 卖: IF(CROSS(VAR12,VAR13) AND VAR12>VAR13 AND VAR12<18, 38, 18);
-    cross_sell = _cross_up(VAR12, VAR13)
-    cond_sell = cross_sell & (VAR12 > VAR13) & (VAR12 < 18)
-    卖 = _if(cond_sell, 38, 18)
-    ndf["卖"] = 卖
-    ndf["卖信号"] = cond_sell
 
     return ndf
 
@@ -245,14 +239,15 @@ if __name__ == "__main__":
     all_symbols = get_daily_symbols()
     total = len(all_symbols)
     for i, symbol in enumerate(all_symbols):
-        if (i + 1) % 100 == 0 or total <= 50:
-            print("[{}] 进度：{} / {}".format(
+        print("[{}] 进度：{} / {}".format(
                 pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i + 1, total))
         try:
             df = get_local_stock_data(symbol, start_date)
             get_lifeline_buy_point(symbol, df)
         except Exception as e:
             continue
+        if (i + 1) % 100 == 0:
+            print_statistics()
     print_statistics()
 
 '''
