@@ -55,14 +55,14 @@ def get_mail_pass_163(username):
         print("Cannot get email password, plz run create pass first.")
         raise e
 
-def send_smtpmail_core(mail_host, port, username, sender_email, sender_password, receivers, message, use_ssl=True):
+def send_smtpmail_core_163(mail_host, port, username, sender_email, sender_password, receivers, message, use_ssl=True):
     """
     核心发送函数
-    163邮箱使用 SSL 连接，端口 465 或 994
+    163 邮箱使用 SSL 连接，端口 465 或 994
     """
     try:
         if use_ssl:
-            # 163邮箱必须使用 SSL
+            # 163 邮箱必须使用 SSL
             smtpObj = smtplib.SMTP_SSL(mail_host, port)
         else:
             smtpObj = smtplib.SMTP()
@@ -77,12 +77,12 @@ def send_smtpmail_core(mail_host, port, username, sender_email, sender_password,
         print('send to {} error'.format(receivers), e)
         return False
 
-def send_html_email(username, receivers, subject, content, attachments_path=None, cc_list=None, image_list=None):
+def send_html_email_163(username, receivers, subject, content, attachments_path=None, cc_list=None, image_list=None):
     """
     发送 HTML 邮件（支持附件和图片）
 
     参数:
-        username: 163邮箱用户名（如 xxx，完整邮箱为 xxx@163.com）
+        username: 163 邮箱用户名（不含 @163.com 部分）
         receivers: 收件人列表或字符串（多个用逗号分隔）
         subject: 邮件主题
         content: HTML 内容
@@ -166,7 +166,7 @@ def send_html_email(username, receivers, subject, content, attachments_path=None
         if send_cnt > 1:
             print("start to retry")
         print("send cnt is {}......".format(send_cnt))
-        send_success = send_smtpmail_core(
+        send_success = send_smtpmail_core_163(
             mail_host, smtp_port, username, sender_email, 
             sender_password, receivers, message, use_ssl=True
         )
@@ -177,12 +177,12 @@ def send_html_email(username, receivers, subject, content, attachments_path=None
     return send_success
 
 
-def receive_email_imap(username, folder="inbox", limit=10):
+def receive_email_imap_163(username, folder="inbox", limit=10):
     """
     使用 IMAP 接收邮件（新增功能）
 
     参数:
-        username: 163邮箱用户名
+        username: 163 邮箱用户名
         folder: 邮箱文件夹（默认 inbox）
         limit: 获取邮件数量
 
@@ -207,7 +207,7 @@ def receive_email_imap(username, folder="inbox", limit=10):
         # 选择邮箱文件夹
         status, messages = mail.select(folder)
         if status != "OK":
-            print(f"无法选择文件夹: {folder}")
+            print(f"无法选择文件夹：{folder}")
             return []
 
         # 获取邮件数量
@@ -238,14 +238,14 @@ def receive_email_imap(username, folder="inbox", limit=10):
                             "from": from_addr,
                             "date": date
                         })
-                        print(f"[{i}] 主题: {subject} | 发件人: {from_addr}")
+                        print(f"[{i}] 主题：{subject} | 发件人：{from_addr}")
 
         mail.close()
         mail.logout()
         return result
 
     except Exception as e:
-        print(f"接收邮件失败: {e}")
+        print(f"接收邮件失败：{e}")
         return []
 
 
@@ -271,10 +271,10 @@ if __name__ == '__main__':
     '''
     
     # 发送给单个收件人
-    send_html_email("13311566853", "13311566853@163.com", "测试邮件", html)
+    send_html_email_163("13311566853", "13311566853@163.com", "测试邮件", html)
     # 
     # # 发送给多个收件人（带附件和抄送）
-    # send_html_email(
+    # send_html_email_163(
     #     username="your_163_username",
     #     receivers=["vickywang@qiyi.com", "another@example.com"],
     #     subject="带附件的测试邮件",
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     # )
 
     # 3. 接收邮件示例
-    # receive_email_imap("your_163_username", folder="inbox", limit=5)
+    # receive_email_imap_163("your_163_username", folder="inbox", limit=5)
 
     # print("请取消注释上面的示例代码并修改配置后运行")
     # print("注意：首次使用必须先运行 create_mail_conf_163() 保存授权码")

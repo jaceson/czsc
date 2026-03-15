@@ -162,7 +162,7 @@ def send_summary_email():
         if html_row:
             html_content += html_row
     html_content += email_html_footer()
-    send_html_email("13311566853", "13311566853@163.com", "每日精选", html_content)
+    send_html_email_163("13311566853", "13311566853@163.com", "每日精选", html_content)
 
     # 获取autobuild4ios密码
     try:
