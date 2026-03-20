@@ -165,15 +165,15 @@ def get_local_stock_bars(symbol, start_date=None, frequency='d', df=None):
 
 def fetch_all_symbols_kline():
     lg = bs.login()
-    frequency = '30'
-    start_date = '2020-01-01'
-    end_date = '2025-01-01'
+    frequency = 'd'
+    start_date = '2025-01-01'
+    end_date = '2025-12-31'
     all_symbols = get_daily_symbols()
     for symbol in all_symbols:
         fields="date,open,high,low,close,volume,amount,time"
         if frequency == 'd':
-            start_date = '2000-01-01'
-            fields="date,open,high,low,close,volume,amount,turn",
+            start_date = '2025-01-01'
+            fields="date,open,high,low,close,volume,amount,turn"
         # if all_symbols.index(symbol) < 1140:
         #     continue
         print("进度：{} / {}".format(all_symbols.index(symbol),len(all_symbols)))
@@ -189,24 +189,49 @@ def fetch_all_symbols_kline():
             row_data = rs.get_row_data()
             try:
                 stock_date = row_data[0]
+                
+                # 检查并转换价格数据，处理空字符串
+                if not row_data[1] or row_data[1] == '':
+                    continue
                 stock_open = float(row_data[1])
+                
+                if not row_data[2] or row_data[2] == '':
+                    continue
                 stock_high = float(row_data[2])
+                
+                if not row_data[3] or row_data[3] == '':
+                    continue
                 stock_low = float(row_data[3])
+                
+                if not row_data[4] or row_data[4] == '':
+                    continue
                 stock_close = float(row_data[4])
+                
+                if not row_data[5] or row_data[5] == '':
+                    continue
                 stock_volume = float(row_data[5])
+                
+                if not row_data[6] or row_data[6] == '':
+                    continue
                 stock_amount = float(row_data[6])
+                
+                # 验证数据有效性
                 if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
                     continue
+                    
                 if frequency == 'd':
+                    if not row_data[7] or row_data[7] == '':
+                        continue
                     stock_turn = float(row_data[7])
                     sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, turn, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_turn, frequency))
                 else:
                     stock_time = row_data[7]
-                    if len(stock_time)<0:
+                    if not stock_time or len(stock_time)<=0:
                         continue
                     sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, time, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_time, frequency))    
             except Exception as e:
-                print(e)
+                print("处理数据失败：symbol={}, date={}, row_data={}".format(symbol, row_data[0] if len(row_data)>0 else 'N/A', row_data))
+                print("详细错误：", e)
                 continue
         # 提交数据
         sql_connect.commit()
@@ -218,8 +243,8 @@ def main():
     # 连接数据库
     sqlite3_connect()
 
-    # fetch_all_symbols_kline()
-    # return
+    fetch_all_symbols_kline()
+    return
 
     # 查询已有数据，避免重复添加
     sql_connect_cursor.execute("SELECT dt,code FROM ETF_DAILY")
