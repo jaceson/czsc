@@ -114,3 +114,4 @@ lib/chan/Daily
 data/golden_notification_log.json
 data/log.json
 data/etf/png
+.chainlit
