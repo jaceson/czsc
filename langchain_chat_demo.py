@@ -6,7 +6,7 @@ LangChain 聊天 Demo（命令行多轮对话）
 默认使用 OpenAI（也可切换 deepseek / qwen）。
 
 必需：
-  export OPENAI_API_KEY="35d9a93f-f569-4083-a4e6-7c893c9c72b2"
+  export OPENAI_API_KEY="your_api_key"
 
 可选：
   export LLM_PROVIDER="openai|deepseek|qwen"   (默认 openai)
@@ -17,8 +17,10 @@ LangChain 聊天 Demo（命令行多轮对话）
 import os
 from typing import List
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+
+from weather_tool import run_chat_with_tools_sync
 
 
 def build_llm() -> ChatOpenAI:
@@ -40,7 +42,7 @@ def build_llm() -> ChatOpenAI:
         # openai 默认
         base_url = base_url or "http://aicode.qiyi.domain:3000/api/openai/product/test_biz0/v1"
         model = model or "GPT-5-mini"
-
+    
     if not api_key:
         raise EnvironmentError("OPENAI_API_KEY 未设置。")
 
@@ -56,7 +58,15 @@ def chat_loop() -> None:
 
     llm = build_llm()
     history: List[BaseMessage] = [
-        SystemMessage(content="你是一个简洁、专业的助手。"),
+        SystemMessage(
+            content=(
+                "你是一个简洁、专业的助手。\n"
+                "当用户询问天气、气温、降水、气候等时，必须先调用 get_weather(city) 获取实况，再作答。\n"
+                "当用户询问财经新闻、股市要闻、个股资讯时，必须先调用 get_finance_news(query, limit) 获取新闻列表，再总结；"
+                "query 可为空（综合）、6 位股票代码、或关键词。\n"
+                "若用户未指定城市或关键词，可简短追问；否则请用工具返回的数据回答。"
+            )
+        ),
     ]
 
     print("LangChain 聊天 Demo 已启动，输入 q/quit/exit 退出。\n")
@@ -69,9 +79,8 @@ def chat_loop() -> None:
             continue
 
         history.append(HumanMessage(content=user_input))
-        response: AIMessage = llm.invoke(history)
-        history.append(response)
-        print(f"AI: {response.content}\n")
+        history, answer = run_chat_with_tools_sync(llm, history)
+        print(f"AI: {answer}\n")
 
 
 if __name__ == "__main__":
