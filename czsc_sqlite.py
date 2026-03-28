@@ -243,8 +243,8 @@ def main():
     # 连接数据库
     sqlite3_connect()
 
-    fetch_all_symbols_kline()
-    return
+    # fetch_all_symbols_kline()
+    # return
 
     # 查询已有数据，避免重复添加
     sql_connect_cursor.execute("SELECT dt,code FROM ETF_DAILY")
