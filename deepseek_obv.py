@@ -794,15 +794,14 @@ if __name__ == '__main__':
     START_DATE = "2020-01-01"
     HOLD_DAYS = 5
     OUTPUT_DIR = "./obv_backtest_reports"
-    OPTIMIZE_PARAMS = False  # 是否进行参数优化
+    OPTIMIZE_PARAMS = True  # 是否进行参数优化
     
     # 获取股票列表
     try:
         from czsc_daily_util import get_daily_symbols
         all_symbols = get_daily_symbols()
-        test_symbols = ['sz.000001']
         # 可以限制数量进行测试
-        # test_symbols = all_symbols[:50]  # 测试50只股票
+        test_symbols = all_symbols[:50]  # 测试50只股票
         print(f"获取到 {len(all_symbols)} 只股票，本次测试前50只")
     except:
         # 测试用股票列表

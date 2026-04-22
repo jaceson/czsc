@@ -30,8 +30,17 @@ date_format = "%Y-%m-%d %H:%M:%S"  # 自定义日期格式，去掉微秒部分
 # 创建 Formatter 并设置日期格式
 formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
 
+# 获取项目根目录（czsc_daily_util.py 所在目录的父目录）
+project_root = os.path.dirname(os.path.abspath(__file__))
+data_dir = os.path.join(project_root, 'data')
+
+# 确保 data 目录存在
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+
 # 创建文件处理器，将日志写入文件
-file_handler = logging.FileHandler("./data/log.json", mode="a")  # 追加模式
+log_file = os.path.join(data_dir, 'log.json')
+file_handler = logging.FileHandler(log_file, mode="a")  # 追加模式
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
@@ -1608,7 +1617,7 @@ def is_stock_and_oneYear(code):
         time_diff = current_date - ipo_date
     
         # 判断是否超过1年
-        if time_diff.days > 365:
+        if time_diff.days > 365*2:
             return True,stock_name
         else:
             return False,None
