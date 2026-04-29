@@ -42,16 +42,18 @@ def print_console(title, arr):
 '''
     黄金分割买点
 '''
-def get_buy_point(df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=20):
+def get_buy_point(symbol, df,fx_a,fx_b,next_up_bi,threshold=1.7,klines=10,min_angle=12):
     sdt = fx_a.dt.strftime("%Y-%m-%d")
     edt = fx_b.dt.strftime("%Y-%m-%d")
     if fx_a.fx*threshold < fx_b.fx:
         # 上一波涨幅必须超过10个交易
-        up_kline_num = days_trade_delta(df,fx_a.dt.strftime("%Y-%m-%d"),fx_b.dt.strftime("%Y-%m-%d"))
+        up_kline_num = days_trade_delta(df,sdt,edt)
         if up_kline_num<klines:
+            print('{}上涨一笔[{}, {}]K线不足！！'.format(symbol, sdt, edt))
             return False
         # 笔的角度
         if bi_angle(df,fx_a,fx_b)<min_angle:
+            print('{}上涨一笔[{}, {}]角度{}'.format(symbol, sdt, edt, bi_angle(df,fx_a,fx_b)))
             return False
         # 是否在抄底区间内
         sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
@@ -461,26 +463,79 @@ def print_statistics(type_goldenline, symbol_count=None):
         if len(ratio_map[x])>0:
             print_console("第 {} 天：".format(x), ratio_map[x])
 
-# 初始黄金分割点策略
-def normal_goldenline(df,c):
-    idx = 0
-    for last_bi in c.bi_list:
-        fx_a = last_bi.fx_a
-        fx_b = last_bi.fx_b
-        if fx_a.fx > fx_b.fx:
-            idx += 1
+def find_zs_dd_fx(symbol, zs_list, bi):
+    for zs in zs_list:
+        if not zs.is_valid:
             continue
+        # 中枢的开始时间小于笔的开始时间
+        if zs.edt < bi.fx_a.dt:
+            continue
+        # 中枢的结束时间小于笔的结束时间
+        if zs.sdt > bi.fx_b.dt:
+            return None
+        # 笔的起点位置在中枢内
+        last_bi = bi
+        last_fx = bi.fx_a
+        if zs.sdt<=bi.fx_a.dt and zs.edt>=bi.fx_a.dt:
+            for z_bi in zs.bis:
+                for fx in z_bi.fxs:
+                    if fx.fx < last_fx.fx:
+                        last_fx = fx
+                        last_bi = z_bi
+        if last_bi and last_fx and last_fx.dt < bi.fx_a.dt:
+            print('{}的笔[{}, {}]: 中枢最低点{}'.format(symbol, bi.fx_a.dt, bi.fx_b.dt, last_fx.dt))
+            return last_fx
+    return None
 
-        if fx_a.fx*threshold > fx_b.fx:
-            if idx>1:
-                pre_up_bi = c.bi_list[idx-2]
-                if pre_up_bi.fx_a.fx < fx_a.fx and pre_up_bi.fx_b.fx < fx_b.fx:
-                    fx_a = pre_up_bi.fx_a
-        next_up_bi = None
-        if (idx+2)<len(c.bi_list):
-            next_up_bi = c.bi_list[idx+2]
-        get_buy_point(df,fx_a,fx_b,next_up_bi,threshold)
-        idx += 1
+# 初始黄金分割点策略
+def normal_goldenline(symbol, df, c):
+    bi_list = c.bi_list
+    zs_list = get_zs_seq(bi_list)
+    i = 0
+    total_bis = len(bi_list)
+    
+    while i < total_bis:
+        current_bi = bi_list[i]
+        
+        # 只处理上涨笔
+        if current_bi.fx_a.fx > current_bi.fx_b.fx:
+            i += 1
+            continue
+        
+        fx_a, fx_b = current_bi.fx_a, current_bi.fx_b
+        
+        # 获取下一笔作为参考
+        next_up_bi = bi_list[i+2] if i+2 < total_bis else None
+        
+        # 向前寻找可能合并的笔
+        j = i
+        is_skip = False
+        while j >= 2:
+            prev_bi = bi_list[j-2]
+            
+            # 条件1：前一笔的终点高于当前笔终点，跳过当前笔
+            if prev_bi.fx_b.fx > fx_b.fx:
+                is_skip = True
+                break
+            
+            # 条件2：前一笔起点高于当前笔起点，尝试中枢合并
+            if prev_bi.fx_a.fx > fx_a.fx:
+                last_fx = find_zs_dd_fx(symbol, zs_list, prev_bi)
+                if last_fx:
+                    fx_a = last_fx
+                    break
+                else:
+                    # 无法合并，回退
+                    break
+            else:
+                # 扩展起点，继续向前
+                fx_a = prev_bi.fx_a
+                j -= 2
+        
+        # 执行买入点判断
+        if not is_skip:
+            get_buy_point(symbol, df, fx_a, fx_b, next_up_bi, threshold)
+        i += 1
 
 if __name__ == '__main__':
     type_goldenline = 0
@@ -494,18 +549,21 @@ if __name__ == '__main__':
     for symbol in all_symbols:
         symbol_count += 1
         print("[{}] 进度：{} / {}".format(pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), all_symbols.index(symbol), len(all_symbols)))
-        df = get_local_stock_data(symbol,start_date)
-        bars = get_stock_bars(symbol=symbol,df=df)
-        c = CZSC(bars, get_signals=None)
-        if type_goldenline == 0:
-            # 初始黄金分割点策略
-            normal_goldenline(df,c)
-        elif type_goldenline == 1:
-            # 进化版黄金分割点策略
-            evolution_goldenline(df,c)
-        elif type_goldenline == 2:
-            # 进一步进化版黄金分割点策略
-            more_evolution_goldenline(df,c)
+        try:
+            df = get_local_stock_data(symbol,start_date)
+            bars = get_stock_bars(symbol=symbol,df=df)
+            c = CZSC(bars, get_signals=None)
+            if type_goldenline == 0:
+                # 初始黄金分割点策略
+                normal_goldenline(symbol,df,c)
+            elif type_goldenline == 1:
+                # 进化版黄金分割点策略
+                evolution_goldenline(df,c)
+            elif type_goldenline == 2:
+                # 进一步进化版黄金分割点策略
+                more_evolution_goldenline(df,c)
+        except Exception as e:
+            print(e)
         
         # 每100个symbol打印一次统计数据
         if symbol_count % 100 == 0:

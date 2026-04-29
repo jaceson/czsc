@@ -119,11 +119,20 @@ def sync_db(file_path):
         sql_connect.commit()
 
 # 获取本地股票数据；时间范围2001-01-02~2024-12-31
-def get_local_stock_data(symbol,start_date='2001-01-01',frequency='d'):
+def get_local_stock_data(symbol,start_date='2001-01-01',end_date=None, frequency='d'):
     # 连接数据库
     sqlite3_connect()
     # stock data
-    sql_connect_cursor.execute("SELECT DISTINCT date,open,high,low,close,volume,amount,turn FROM STOCK_DAILY WHERE code = ? AND frequency = ? AND date >= ? ORDER BY date ASC",(symbol,frequency,start_date))
+    if end_date is not None:
+        sql_connect_cursor.execute(
+            "SELECT DISTINCT date,open,high,low,close,volume,amount,turn FROM STOCK_DAILY WHERE code = ? AND frequency = ? AND date >= ? AND date <= ? ORDER BY date ASC",
+            (symbol, frequency, start_date, end_date)
+        )
+    else:
+        sql_connect_cursor.execute(
+            "SELECT DISTINCT date,open,high,low,close,volume,amount,turn FROM STOCK_DAILY WHERE code = ? AND frequency = ? AND date >= ? ORDER BY date ASC",
+            (symbol, frequency, start_date)
+        )
     res_list = []
     rows = sql_connect_cursor.fetchall()
     # 转换成pandas
