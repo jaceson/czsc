@@ -1054,10 +1054,10 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
             else:
                 prev_zs = zs
                 break
-    # if last_zs is None or prev_zs is None:
-    #     czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-    #     czsc_logger().info("策略结算结果：只有一个中枢！！！")
-    #     return 0
+    if last_zs is None:
+        czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
+        czsc_logger().info("策略结算结果：只有一个中枢！！！")
+        return 0
 
     # 收盘价在中枢内
     stock_close = df['close'].iloc[-1]
@@ -1094,7 +1094,7 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or (macd[-1]<macd[-2] and abs(macd[-1])<macd_ratio):
                     czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+", 高高 "+str(zs_gg))
                     return 3
-                czsc_logger().info("❎不满足MACD中枢三买：当前股价 "+str(stock_close)+" 离高高有点远, 高高 "+str(zs_gg))
+                czsc_logger().info("❌不满足MACD中枢三买：当前股价 "+str(stock_close)+" 离高高有点远, 高高 "+str(zs_gg))
                 return 0
             if abs(stock_close-last_zs.zg)/last_zs.zg<max_ratio:
                 # macd靠近0轴
@@ -1102,9 +1102,9 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or (macd[-1]>macd[-2] and abs(macd[-1])<macd_ratio):
                     czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+", 中高 "+str(last_zs.zg))
                     return 3
-                czsc_logger().info("❎不满足MACD中枢三买：当前股价 "+str(stock_close)+" 离中高有点远, 中高 "+str(last_zs.zg))
+                czsc_logger().info("❌不满足MACD中枢三买：当前股价 "+str(stock_close)+" 离中高有点远, 中高 "+str(last_zs.zg))
                 return 0
-            czsc_logger().info("❎不满足中枢三买：当前股价 "+str(stock_close)+" 离中高和高高有点远, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
+            czsc_logger().info("❌不满足中枢三买：当前股价 "+str(stock_close)+" 离中高和高高有点远, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
             return 0
         # 中枢离开的向上一笔完成后向下一笔
         if last_bi.direction == Direction.Down and last_bi.fx_a.dt == zs.edt:
@@ -1119,11 +1119,11 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or (macd[-1]>macd[-2] and abs(macd[-1])<macd_ratio):
                     czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束, 一买点 "+str(last_bi.fx_b.fx))
                     return 3
-                czsc_logger().info("❎不满足MACD中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束, 一买点 "+str(last_bi.fx_b.fx)+" , 高高 "+str(zs_gg))
+                czsc_logger().info("❌不满足MACD中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束, 一买点 "+str(last_bi.fx_b.fx)+" , 高高 "+str(zs_gg))
                 return 0
-            czsc_logger().info("❎不满足中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束后上涨有点高, 一买点 "+str(last_bi.fx_b.fx)+" , 高高 "+str(zs_gg))
+            czsc_logger().info("❌不满足中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束后上涨有点高, 一买点 "+str(last_bi.fx_b.fx)+" , 高高 "+str(zs_gg))
             return 0
-        czsc_logger().info("❎不满足中枢三买：当前股价 "+str(stock_close)+" 不适合三买策略, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
+        czsc_logger().info("❌不满足中枢三买：当前股价 "+str(stock_close)+" 不适合三买策略, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
         return 0
     # 二买点
     elif stock_close<last_zs.zd:
@@ -1144,7 +1144,7 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or abs(macd[-1])<macd_ratio:
                     czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 反弹到低低和中低之间, 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
                     return 2
-                czsc_logger().info("❎不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹到低低和中低之间, 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
+                czsc_logger().info("❌不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹到低低和中低之间, 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
                 return 0
             if abs(stock_close-last_bi.fx_a.fx)/last_bi.fx_a.fx<max_ratio:
                 idif,dea,macd = MACD(df['close'])
@@ -1152,9 +1152,9 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or abs(macd[-1])<macd_ratio:
                     czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 反弹回踩到一买点, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
                     return 2
-                czsc_logger().info("❎不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹回踩到一买点, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
+                czsc_logger().info("❌不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹回踩到一买点, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
                 return 0
-            czsc_logger().info("❎不满足中枢二买：当前股价 "+str(stock_close)+" 离一买有点远, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
+            czsc_logger().info("❌不满足中枢二买：当前股价 "+str(stock_close)+" 离一买有点远, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
             return 0
         # 中枢向下一笔、向上一笔、向下一笔
         prev_last_bi = bi_list[-2]
@@ -1171,9 +1171,9 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or abs(macd[-1])<macd_ratio:
                     czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 反弹回踩完成, 二买点 "+str(last_bi.fx_b.fx))
                     return 2
-                czsc_logger().info("❎不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹回踩完成, 二买点 "+str(last_bi.fx_b.fx))
+                czsc_logger().info("❌不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹回踩完成, 二买点 "+str(last_bi.fx_b.fx))
                 return 0
-            czsc_logger().info("❎不满足中枢二买：当前股价 "+str(stock_close)+" 离二买点有点远, 二买点 "+str(last_bi.fx_b.fx))
+            czsc_logger().info("❌不满足中枢二买：当前股价 "+str(stock_close)+" 离二买点有点远, 二买点 "+str(last_bi.fx_b.fx))
             return 0
 
         # 一买点
@@ -1183,11 +1183,11 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
                 if (not by_macd) or macd[-1]>macd[-2]:
                     czsc_logger().info("✅满足中枢一买：当前股价 "+str(stock_close)+" 向下一笔结束, 一买点 "+str(last_bi.fx_b.fx))
                     return 1
-                czsc_logger().info("❎不满足MACD中枢一买：当前股价 "+str(stock_close)+" 向下一笔结束, 一买点 "+str(last_bi.fx_b.fx))
+                czsc_logger().info("❌不满足MACD中枢一买：当前股价 "+str(stock_close)+" 向下一笔结束, 一买点 "+str(last_bi.fx_b.fx))
                 return 0
-            czsc_logger().info("❎不满足中枢一买：当前股价 "+str(stock_close)+" 离一买点有点远, 一买点 "+str(last_bi.fx_b.fx))
+            czsc_logger().info("❌不满足中枢一买：当前股价 "+str(stock_close)+" 离一买点有点远, 一买点 "+str(last_bi.fx_b.fx))
             return 0
-    czsc_logger().info("❎中枢内运行：当前股价 "+str(stock_close)+" , 中高 "+str(last_zs.zg)+" , 中低 "+str(last_zs.zd))
+    czsc_logger().info("❌中枢内运行：当前股价 "+str(stock_close)+" , 中高 "+str(last_zs.zg)+" , 中低 "+str(last_zs.zd))
     return 0
 
 """
@@ -1288,10 +1288,10 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
             # 正收益率不超过90%
             plus_ratio = round(100*plus_cnt/(plus_cnt+minus_cnt),2)
             if plus_ratio<90:
-                czsc_logger().info(f'❎满足chan 买点，但是正收益率不高：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                czsc_logger().info(f'❌满足chan 买点，但是正收益率不高：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return None
             if (plus_cnt+minus_cnt)<3:
-                czsc_logger().info(f'❎满足chan 买点，但是可回测次数不多：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {(plus_cnt+minus_cnt)}')
+                czsc_logger().info(f'❌满足chan 买点，但是可回测次数不多：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {(plus_cnt+minus_cnt)}')
                 return None
             # 打印购买后第N填收益情况
             for x in range(1,hold_days+1):
@@ -1321,7 +1321,7 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
                 czsc_logger().info(f'✅满足chan T1买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 return BSP_TYPE.T1.value.lower()
             else:
-                czsc_logger().info(f'❎没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
+                czsc_logger().info(f'❌没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 continue
     return None
         
