@@ -1042,152 +1042,51 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return 0
-    last_zs = None
-    prev_zs = None
+
+    # 没有构成中枢
     last_bi = bi_list[-1]
     zs_list = get_zs_seq(bi_list)
+    last_zs = None
     for zs in reversed(zs_list):
-        # 最后一个中枢
         if zs.is_valid:
-            if last_zs is None:
-                last_zs = zs
-            else:
-                prev_zs = zs
-                break
-    if last_zs is None:
-        czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-        czsc_logger().info("策略结算结果：只有一个中枢！！！")
+            last_zs = zs
+            break
+    if last_zs is None or len(last_zs.bis) == 0:
         return 0
 
-    # 收盘价在中枢内
-    stock_close = df['close'].iloc[-1]
-    if stock_close>last_zs.zd and stock_close < last_zs.zg:
-        czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-        czsc_logger().info("策略结算结果：当前收盘价在中枢内"+str(stock_close))
+    # 上涨一笔过滤，一、二、三买都在下降一笔结束
+    if last_bi.direction == Direction.Up:
+        return 0  
+
+    # 超过3天不构成买点
+    last_date = df['date'].iloc[-1].strftime("%Y-%m-%d")
+    last_fx_date = last_bi.fx_b.dt.strftime("%Y-%m-%d")
+    if days_trade_delta(df, last_fx_date, last_date) > 3:
         return 0
 
-    # 最后一笔向上
-    # if last_bi in last_zs.bis:
-    #     czsc_logger().info("【"+symbol+"】"+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-    #     czsc_logger().info("策略结算结果：最后一笔还在中枢内"+str(stock_close))
-    #     return False
+    # 中枢离开一笔
+    zs_last_bi = last_zs.bis[-1]
+        
+    # 中枢下降一笔，中低以下为一买
+    if last_bi.fx_b.fx < last_zs.zd:
+        if zs_last_bi.fx_b.dt <= last_bi.fx_b.dt:
+            # 中枢一买
+            if zs_last_bi.fx_b.fx >= last_bi.fx_b.fx and zs_last_bi.fx_a.fx >= last_bi.fx_a.fx:
+                return 1
 
-    # 判断两个中枢方法
-    czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+"最后一个中枢区间："+zs.sdt.strftime("%Y-%m-%d")+"到"+zs.edt.strftime("%Y-%m-%d"))
-    # 三买点
-    if stock_close>last_zs.zg:
-        # 中枢离开的向上最后一笔
-        zs_gg = max([x.high for x in last_zs.bis[:-1]])
-        if zs_gg<=last_zs.zg:
-            zs_gg = last_zs.gg
+            # 中枢二买
+            if zs_last_bi.fx_b.dt < last_bi.fx_b.dt:
+                last_up_bi = bi_list[-2]
+                if last_up_bi.fx_b.fx > last_zs.zd and last_up_bi.fx_b.fx < last_zs.zg:
+                    if last_up_bi.fx_a.fx < last_bi.fx_b.fx:
+                        return 2
 
-        if last_bi.direction == Direction.Up and last_bi.fx_b.dt == zs.edt:
-            # 是否限制中枢高低点
-            if not by_range:
-                czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+" 不限制距离, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
+    # 中枢三买
+    if last_bi.fx_b.fx > last_zs.zg:
+        if zs_last_bi.fx_b.dt <= last_bi.fx_b.dt:
+            last_up_bi = bi_list[-2]
+            if last_up_bi.fx_a.fx < last_zs.zg:
                 return 3
-
-            # 回到中枢高高点或者中枢高
-            if abs(stock_close-zs_gg)/zs_gg<max_ratio:
-                # macd靠近0轴
-                dif,dea,macd = MACD(df['close'])
-                if (not by_macd) or (macd[-1]<macd[-2] and abs(macd[-1])<macd_ratio):
-                    czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+", 高高 "+str(zs_gg))
-                    return 3
-                czsc_logger().info("❌不满足MACD中枢三买：当前股价 "+str(stock_close)+" 离高高有点远, 高高 "+str(zs_gg))
-                return 0
-            if abs(stock_close-last_zs.zg)/last_zs.zg<max_ratio:
-                # macd靠近0轴
-                dif,dea,macd = MACD(df['close'])
-                if (not by_macd) or (macd[-1]>macd[-2] and abs(macd[-1])<macd_ratio):
-                    czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+", 中高 "+str(last_zs.zg))
-                    return 3
-                czsc_logger().info("❌不满足MACD中枢三买：当前股价 "+str(stock_close)+" 离中高有点远, 中高 "+str(last_zs.zg))
-                return 0
-            czsc_logger().info("❌不满足中枢三买：当前股价 "+str(stock_close)+" 离中高和高高有点远, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
-            return 0
-        # 中枢离开的向上一笔完成后向下一笔
-        if last_bi.direction == Direction.Down and last_bi.fx_a.dt == zs.edt:
-            # 是否限制中枢高低点
-            if not by_range:
-                czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+" 不限制距离, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
-                return 3
-
-            # 向下一笔开始向上，没有超过中枢高高或者向下一笔的最高点时
-            if stock_close<max(last_bi.fx_a.fx,zs_gg):
-                dif,dea,macd = MACD(df['close'])
-                if (not by_macd) or (macd[-1]>macd[-2] and abs(macd[-1])<macd_ratio):
-                    czsc_logger().info("✅满足中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束, 一买点 "+str(last_bi.fx_b.fx))
-                    return 3
-                czsc_logger().info("❌不满足MACD中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束, 一买点 "+str(last_bi.fx_b.fx)+" , 高高 "+str(zs_gg))
-                return 0
-            czsc_logger().info("❌不满足中枢三买：当前股价 "+str(stock_close)+" 向下回踩一笔结束后上涨有点高, 一买点 "+str(last_bi.fx_b.fx)+" , 高高 "+str(zs_gg))
-            return 0
-        czsc_logger().info("❌不满足中枢三买：当前股价 "+str(stock_close)+" 不适合三买策略, 中高 "+str(last_zs.zg)+", 高高 "+str(zs_gg))
-        return 0
-    # 二买点
-    elif stock_close<last_zs.zd:
-        # 中枢向下最后一笔，向上一笔反弹结束
-        zs_dd = min([x.low for x in last_zs.bis[:-1]])
-        if zs_dd>last_zs.zd:
-            zs_dd = last_zs.dd
-            
-        if last_bi.direction == Direction.Up and last_bi.fx_a.dt == zs.edt:
-            # 是否限制中枢高低点
-            if not by_range:
-                czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 不限制距离, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
-                return 2
-
-            if last_bi.fx_b.fx>zs_dd and last_bi.fx_b.fx<zs.zd:
-                dif,dea,macd = MACD(df['close'])
-                # 靠近0轴
-                if (not by_macd) or abs(macd[-1])<macd_ratio:
-                    czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 反弹到低低和中低之间, 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
-                    return 2
-                czsc_logger().info("❌不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹到低低和中低之间, 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
-                return 0
-            if abs(stock_close-last_bi.fx_a.fx)/last_bi.fx_a.fx<max_ratio:
-                idif,dea,macd = MACD(df['close'])
-                # 靠近0轴
-                if (not by_macd) or abs(macd[-1])<macd_ratio:
-                    czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 反弹回踩到一买点, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
-                    return 2
-                czsc_logger().info("❌不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹回踩到一买点, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
-                return 0
-            czsc_logger().info("❌不满足中枢二买：当前股价 "+str(stock_close)+" 离一买有点远, 一买点 "+str(last_bi.fx_a.fx)+", 低低 "+str(zs_dd)+", 中低 "+str(zs.zd))
-            return 0
-        # 中枢向下一笔、向上一笔、向下一笔
-        prev_last_bi = bi_list[-2]
-        if last_bi.direction == Direction.Down and prev_last_bi.fx_a.dt == zs.edt:
-            # 是否限制中枢高低点
-            if not by_range:
-                czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 不限制距离, 二买点 "+str(last_bi.fx_b.fx))
-                return 2
-
-            # 刚形成二买点
-            if abs(stock_close-last_bi.fx_b.fx)/last_bi.fx_b.fx<max_ratio:
-                dif,dea,macd = MACD(df['close'])
-                # 靠近0轴
-                if (not by_macd) or abs(macd[-1])<macd_ratio:
-                    czsc_logger().info("✅满足中枢二买：当前股价 "+str(stock_close)+" 反弹回踩完成, 二买点 "+str(last_bi.fx_b.fx))
-                    return 2
-                czsc_logger().info("❌不满足MACD中枢二买：当前股价 "+str(stock_close)+" 反弹回踩完成, 二买点 "+str(last_bi.fx_b.fx))
-                return 0
-            czsc_logger().info("❌不满足中枢二买：当前股价 "+str(stock_close)+" 离二买点有点远, 二买点 "+str(last_bi.fx_b.fx))
-            return 0
-
-        # 一买点
-        if last_bi.direction == Direction.Down and last_bi.fx_b.dt == last_zs.edt: 
-            if abs(stock_close-last_bi.fx_b.fx)/last_bi.fx_b.fx<max_ratio:
-                dif,dea,macd = MACD(df['close'])
-                if (not by_macd) or macd[-1]>macd[-2]:
-                    czsc_logger().info("✅满足中枢一买：当前股价 "+str(stock_close)+" 向下一笔结束, 一买点 "+str(last_bi.fx_b.fx))
-                    return 1
-                czsc_logger().info("❌不满足MACD中枢一买：当前股价 "+str(stock_close)+" 向下一笔结束, 一买点 "+str(last_bi.fx_b.fx))
-                return 0
-            czsc_logger().info("❌不满足中枢一买：当前股价 "+str(stock_close)+" 离一买点有点远, 一买点 "+str(last_bi.fx_b.fx))
-            return 0
-    czsc_logger().info("❌中枢内运行：当前股价 "+str(stock_close)+" , 中高 "+str(last_zs.zg)+" , 中低 "+str(last_zs.zd))
     return 0
 
 """

@@ -19,6 +19,7 @@ import sys
 import pandas as pd
 import numpy as np
 import backtrader as bt
+import baostock as bs
 from datetime import datetime
 from czsc_daily_util import *
 from czsc_sqlite import get_local_stock_data
@@ -286,16 +287,7 @@ class GoldenLineStrategy(bt.Strategy):
                 if self.params.printlog:
                     print(f'检测到上涨一笔形成: {bi.fx_a.dt} -> {bi.fx_b.dt}, '
                           f'价格: {bi.fx_a.fx:.2f} -> {bi.fx_b.fx:.2f}')
-
-                # 如果macd刚变红，需要持续三个红柱
-                current_hist = self.macd.macd[0] - self.macd.signal[0]
-                prev_hist1 = self.macd.macd[-1] - self.macd.signal[-1]
-                prev_hist2 = self.macd.macd[-2] - self.macd.signal[-2]
-                if current_hist > 0:
-                    if prev_hist1 > 0 and prev_hist2 > 0:
-                        return True
-                else:
-                    return True
+                return True
         return False
 
     def _check_macd_green_bar_decreasing(self):
@@ -890,8 +882,8 @@ def main():
         print("使用测试列表...")
         all_symbols = ['000001', '000002', '600000']
     
-    start_date = "2020-01-01"
-    end_date = "2021-01-01"
+    start_date = "2022-01-01"
+    end_date = "2023-01-01"
     results = []
     symbol_count = 0
     
@@ -902,8 +894,8 @@ def main():
     
     for idx, symbol in enumerate(all_symbols):
         symbol_count += 1
-        if symbol_count != 845:
-            continue
+        # if symbol_count != 845:
+        #     continue
         print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
               f"进度: {symbol_count} / {len(all_symbols)}")
         
@@ -917,10 +909,10 @@ def main():
                 symbol=symbol,
                 df=df,
                 start_date=start_date,
-                end_date='2025-12-31',
+                end_date=end_date,
                 initial_cash=1000000,
                 stake=40000,
-                printlog=True,
+                printlog=False,
                 max_hold_days=MAX_HOLD_DAYS,
                 take_profit_pct=TAKE_PROFIT_PCT,
                 stop_loss_pct=STOP_LOSS_PCT,

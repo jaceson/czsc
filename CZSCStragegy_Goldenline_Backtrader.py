@@ -259,7 +259,7 @@ class GoldenLineStrategy(bt.Strategy):
                 if self.params.printlog:
                     print(f'检测到上涨一笔形成: {bi.fx_a.dt} -> {bi.fx_b.dt}, '
                           f'价格: {bi.fx_a.fx:.2f} -> {bi.fx_b.fx:.2f}')
-                    
+
                 # 如果macd刚变红，需要持续三个红柱
                 current_hist = self.macd.macd[0] - self.macd.signal[0]
                 prev_hist1 = self.macd.macd[-1] - self.macd.signal[-1]
@@ -875,8 +875,8 @@ def main():
     
     for idx, symbol in enumerate(all_symbols):
         symbol_count += 1
-        if symbol_count != 845:
-            continue
+        # if symbol_count != 845:
+        #     continue
         print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
               f"进度: {symbol_count} / {len(all_symbols)}")
         
@@ -895,7 +895,7 @@ def main():
                 end_date=end_date,
                 initial_cash=1000000,
                 stake=40000,
-                printlog=True,  # 批量运行时关闭详细日志
+                printlog=False,  # 批量运行时关闭详细日志
                 max_hold_days=MAX_HOLD_DAYS,
                 take_profit_pct=TAKE_PROFIT_PCT,
                 stop_loss_pct=STOP_LOSS_PCT,
