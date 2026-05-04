@@ -21,6 +21,7 @@ from collections import defaultdict
 from czsc_daily_util import *
 from czsc_sqlite import get_local_stock_data
 
+g_output_picker_res = []
 class ZhongshuBuyStrategy(bt.Strategy):
     """
     中枢一二三买点策略
@@ -44,6 +45,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         ('max_add_count', 2),
         ('use_macd_filter', True),
         ('printlog', True),
+        ('output_picker', False),
         ('macd_fast', 12),
         ('macd_slow', 26),
         ('macd_signal', 9),
@@ -145,9 +147,16 @@ class ZhongshuBuyStrategy(bt.Strategy):
         }
         self.bars.append(bar)
         
+        # 优化性能
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days>100:
+                return
+
         # 限制bars内存使用
-        if len(self.bars) > 500:
-            self.bars = self.bars[-500:]
+        # if len(self.bars) > 500:
+        #     self.bars = self.bars[-500:]
         
         # 更新缠论笔划分
         if len(self.bars) >= 5:
@@ -228,11 +237,10 @@ class ZhongshuBuyStrategy(bt.Strategy):
             df = pd.DataFrame(self.bars)
             df['date'] = pd.to_datetime(df['date'])
             
-            if len(df) < 5:
-                return
-                
-            # 获取缠论结构
-            c = get_stock_czsc(self.params.symbol, df)
+            bars = [RawBar(symbol=self.params.symbol, id=i, freq=Freq.D, open=row['open'], dt=row['date'],
+                    close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=1)
+                for i, row in df.iterrows()]
+            c = CZSC(bars, get_signals=None)
             if c and c.bi_list:
                 self.ubi_fxs = c.ubi_fxs
                 self.bi_list = c.bi_list
@@ -258,10 +266,10 @@ class ZhongshuBuyStrategy(bt.Strategy):
             
             # 调用原有买点检测函数
             buy_type = get_buy_point_type(
-                self.params.symbol, 
-                df,
-                by_macd=self.params.use_macd_filter,
-                by_range=False
+                symbol=self.params.symbol, 
+                df=df,
+                c_bi_list=self.bi_list,
+                c_zs_list=self.zs_list
             )
             
             if buy_type and buy_type in [1, 2, 3]:
@@ -400,6 +408,19 @@ class ZhongshuBuyStrategy(bt.Strategy):
         return self._calculate_size_by_amount(target_amount, current_price)
     
     def _buy_order(self, buy_type):
+        buy_type_name = {1: '一买', 2: '二买', 3: '三买'}.get(buy_type, f'{buy_type}买')
+
+        """选股"""
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days < 1:
+                g_output_picker_res.append({
+                    'symbol':self.params.symbol,
+                    'action':buy_type_name,
+                    'date':buy_date.strftime("%Y-%m-%d")
+                })
+        
         """执行买入"""
         size = self._calculate_initial_size()
         
@@ -421,11 +442,33 @@ class ZhongshuBuyStrategy(bt.Strategy):
                   f'价格: {price:.2f}, 数量: {size}')
     
     def _add_order(self, size):
+        """选股"""
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days < 1:
+                g_output_picker_res.append({
+                    'symbol':self.params.symbol,
+                    'action':'补仓',
+                    'date':buy_date.strftime("%Y-%m-%d")
+                })
+        
         """执行补仓"""
         price = self.data.close[0]
         self.order = self.buy(size=size)
         
     def _sell_order(self, reason=""):
+        """选股"""
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days < 1:
+                g_output_picker_res.append({
+                    'symbol':self.params.symbol,
+                    'action':reason,
+                    'date':buy_date.strftime("%Y-%m-%d")
+                })
+        
         """执行卖出"""
         if self.position:
             self._last_sell_reason = reason
@@ -641,7 +684,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
 def run_backtest(symbol, df, start_date='2020-01-01', end_date='2025-12-31',
                  initial_cash=1000000, stake=40000, printlog=True,
                  max_hold_days=60, take_profit_pct=3.0, stop_loss_pct=8.0,
-                 max_add_count=2, use_macd_filter=True):
+                 max_add_count=2, use_macd_filter=True, output_picker=False):
     """运行Backtrader回测"""
     
     if df is None or len(df) < 70:
@@ -687,7 +730,8 @@ def run_backtest(symbol, df, start_date='2020-01-01', end_date='2025-12-31',
         stop_loss_pct=stop_loss_pct,
         max_add_count=max_add_count,
         use_macd_filter=use_macd_filter,
-        printlog=printlog
+        printlog=printlog,
+        output_picker=output_picker
     )
     
     # 设置初始资金和佣金
@@ -723,7 +767,7 @@ def run_backtest(symbol, df, start_date='2020-01-01', end_date='2025-12-31',
 def batch_backtest(all_symbols, start_date='2022-01-01', end_date='2023-01-01',
                    initial_cash=1000000, stake=40000, max_hold_days=60,
                    take_profit_pct=3.0, stop_loss_pct=8.0, max_add_count=2,
-                   use_macd_filter=True):
+                   use_macd_filter=True, output_picker=False):
     """批量回测"""
     
     results = []
@@ -734,7 +778,10 @@ def batch_backtest(all_symbols, start_date='2022-01-01', end_date='2023-01-01',
         
         try:
             # 获取本地数据
-            df = get_local_stock_data(symbol, start_date, end_date)
+            if output_picker:
+                df = get_stock_pd(symbol, start_date, end_date, 'd')
+            else:
+                df = get_local_stock_data(symbol, start_date, end_date)
             
             if df is None or len(df) < 70:
                 print(f"{symbol} 数据不足，跳过")
@@ -752,14 +799,15 @@ def batch_backtest(all_symbols, start_date='2022-01-01', end_date='2023-01-01',
                 take_profit_pct=take_profit_pct,
                 stop_loss_pct=stop_loss_pct,
                 max_add_count=max_add_count,
-                use_macd_filter=use_macd_filter
+                use_macd_filter=use_macd_filter,
+                output_picker=output_picker
             )
             
             if result:
                 results.append(result)
                 
             # 每100只打印一次汇总
-            if (idx + 1) % 100 == 0:
+            if (idx + 1) % 10 == 0:
                 _print_batch_summary(results)
                 
         except Exception as e:
@@ -825,17 +873,28 @@ def main():
     print("="*80)
     print("中枢一二三买点策略 - Backtrader 批量回测")
     print("="*80)
-    
+
     # 配置参数
     START_DATE = "2020-01-01"
     END_DATE = "2023-01-01"
     INITIAL_CASH = 1000000
     STAKE = 40000
     MAX_HOLD_DAYS = 60
-    TAKE_PROFIT_PCT = 3.0
+    TAKE_PROFIT_PCT = 5.0
     STOP_LOSS_PCT = 8.0
     MAX_ADD_COUNT = 2
     USE_MACD_FILTER = True
+    OUTPUT_PICKER = False
+    if len(sys.argv) > 1:
+        OUTPUT_PICKER = True
+        lg = bs.login()
+        # 登录baostock
+        czsc_logger().info('login respond error_code:' + lg.error_code)
+        czsc_logger().info('login respond  error_msg:' + lg.error_msg)
+        INITIAL_CASH = 100000000
+        START_DATE = "2024-01-01"
+        END_DATE = get_latest_trade_date()
+        write_json(g_output_picker_res, os.path.join(get_data_dir(), 'czsc_zs_buy_stock.json'))
     
     try:
         # 获取股票列表
@@ -847,13 +906,9 @@ def main():
         # 使用测试列表
         all_symbols = ['sh.600000', 'sh.600036', 'sz.000001', 'sz.000002']
     
-    # 限制测试数量（可根据需要调整）
-    test_symbols = all_symbols[:100] if len(all_symbols) > 100 else all_symbols
-    print(f"本次回测股票数量: {len(test_symbols)}")
-    
     # 运行批量回测
     results = batch_backtest(
-        all_symbols=test_symbols,
+        all_symbols=all_symbols,
         start_date=START_DATE,
         end_date=END_DATE,
         initial_cash=INITIAL_CASH,
@@ -862,23 +917,15 @@ def main():
         take_profit_pct=TAKE_PROFIT_PCT,
         stop_loss_pct=STOP_LOSS_PCT,
         max_add_count=MAX_ADD_COUNT,
-        use_macd_filter=USE_MACD_FILTER
+        use_macd_filter=USE_MACD_FILTER,
+        output_picker=OUTPUT_PICKER
     )
     
-    # 可选：保存结果到文件
-    if results:
-        import json
-        summary = {
-            'total_symbols': len(results),
-            'avg_return': np.mean([r['total_return'] for r in results]),
-            'median_return': np.median([r['total_return'] for r in results]),
-            'total_trades': sum(r['trade_count'] for r in results),
-            'total_wins': sum(r['win_count'] for r in results),
-        }
-        with open('zhongshu_strategy_results.json', 'w', encoding='utf-8') as f:
-            json.dump(summary, f, ensure_ascii=False, indent=2)
-        print("\n结果已保存到 zhongshu_strategy_results.json")
-
+    # 登出系统
+    if OUTPUT_PICKER:
+        print(g_output_picker_res)
+        write_json(g_output_picker_res, os.path.join(get_data_dir(), 'czsc_zs_buy_stock.json'))
+        bs.logout()
 
 if __name__ == '__main__':
     main()

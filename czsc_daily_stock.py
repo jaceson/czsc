@@ -432,14 +432,11 @@ def test_case(option):
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
         last_trade_date = get_latest_trade_date()
     
-        # df = get_stock_pd("sh.600000", START_TRADE_DATE, last_trade_date, 'd')
-        # buypoint_type = get_buy_point_type("sh.600000",df,True)
-        # output_chart("sh.600000",df,cachedir)
         res_list = []
         symbols = read_json(os.path.join(get_data_dir(),"中枢二买点.json"))
         for symbol in symbols:
             df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
-            buypoint_type = get_buy_point_type(symbol,df,True,True)
+            buypoint_type = get_buy_point_type(symbol,df)
             if buypoint_type>0:
                 output_chart(symbol,df,cachedir)
                 res_list.append(symbol)
@@ -661,7 +658,7 @@ def main():
 
             # 是否是买卖点
             buypoint_type = 0
-            buypoint_type = get_buy_point_type(symbol,df,by_macd,by_range) if daily_config['buypoint'] else 0
+            buypoint_type = get_buy_point_type(symbol,df) if daily_config['buypoint'] else 0
             if buypoint_type>0:
                 is_can_add = (not by_reach)
                 # if by_reach:

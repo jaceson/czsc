@@ -14,9 +14,11 @@ def read_file_line_by_line(file_path):
                 if '收益率: ' in line_content and '回测完成' in line_content and '初始资金:' in line_content:
                     arr_contnent = line_content.split('|')
                     if len(arr_contnent) == 4:
+                        init_value = arr_contnent[1]
                         final_value = arr_contnent[2]
+                        init_value = init_value.replace('初始资金: ', '').replace(' ','').replace(',','')
                         final_value = final_value.replace('最终资金: ', '').replace(' ','').replace(',','')
-                        final_value = float(final_value)-1000000
+                        final_value = float(final_value)-float(init_value)
                         if final_value == 0:
                             continue
                         if final_value>0:

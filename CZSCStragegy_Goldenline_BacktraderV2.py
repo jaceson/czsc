@@ -24,8 +24,7 @@ from datetime import datetime
 from czsc_daily_util import *
 from czsc_sqlite import get_local_stock_data
 
-symbols_signals = {}
-
+g_output_picker_res = []
 class GoldenLineStrategy(bt.Strategy):
     """
     黄金分割线策略 - 支持多次补仓+止盈卖出+止损
@@ -155,9 +154,16 @@ class GoldenLineStrategy(bt.Strategy):
         }
         self.bars.append(bar)
         
+        # 优化性能
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days>100:
+                return
+
         # 限制 bars 内存使用
-        if len(self.bars) > 500:
-            self.bars = self.bars[-500:]
+        # if len(self.bars) > 500:
+        #     self.bars = self.bars[-500:]
         
         # 更新缠论笔划分
         if len(self.bars) >= 5:
@@ -487,6 +493,17 @@ class GoldenLineStrategy(bt.Strategy):
         return self._calculate_size_by_amount(target_amount, current_price)
     
     def _buy_order(self):
+        """选股"""
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days < 1:
+                g_output_picker_res.append({
+                    'symbol':self.params.symbol,
+                    'action':'建仓',
+                    'date':buy_date.strftime("%Y-%m-%d")
+                })
+        
         """执行第一次买入"""
         size = self._calculate_initial_size()
         
@@ -515,6 +532,17 @@ class GoldenLineStrategy(bt.Strategy):
                   f'价格: {price:.2f}, 数量: {size}, 上涨一段：[{self.start_fx_a.dt},{self.end_fx_b.dt}]')
     
     def _add_order(self):
+        """选股"""
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days < 1:
+                g_output_picker_res.append({
+                    'symbol':self.params.symbol,
+                    'action':'补仓',
+                    'date':buy_date.strftime("%Y-%m-%d")
+                })
+        
         """执行补仓"""
         size = self._calculate_add_size()
         
@@ -547,6 +575,17 @@ class GoldenLineStrategy(bt.Strategy):
         self._last_sell_reason = reason
     
     def _sell_order(self, reason=""):
+        """选股"""
+        if self.params.output_picker:
+            buy_date = self.data.datetime.date(0)
+            last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if (last_trade_date-buy_date).days < 1:
+                g_output_picker_res.append({
+                    'symbol':self.params.symbol,
+                    'action':reason,
+                    'date':buy_date.strftime("%Y-%m-%d")
+                })
+        
         """执行卖出"""
         if self.position:
             self._set_last_sell_reason(reason)
@@ -882,8 +921,8 @@ def main():
         print("使用测试列表...")
         all_symbols = ['000001', '000002', '600000']
     
-    start_date = "2022-01-01"
-    end_date = "2023-01-01"
+    start_date = "2023-01-01"
+    end_date = "2024-01-01"
     results = []
     symbol_count = 0
     
@@ -891,6 +930,17 @@ def main():
     TAKE_PROFIT_PCT = 3.0   # 止盈百分比
     STOP_LOSS_PCT = 8.0     # 止损百分比
     MAX_ADD_COUNT = 2       # 补仓次数
+    OUTPUT_PICKER = False
+    if len(sys.argv) > 1:
+        OUTPUT_PICKER = True
+        lg = bs.login()
+        # 登录baostock
+        czsc_logger().info('login respond error_code:' + lg.error_code)
+        czsc_logger().info('login respond  error_msg:' + lg.error_msg)
+        INITIAL_CASH = 100000000
+        start_date = "2024-01-01"
+        end_date = get_latest_trade_date()
+        write_json(g_output_picker_res, os.path.join(get_data_dir(), 'goldenline_backtrade_stock.json'))
     
     for idx, symbol in enumerate(all_symbols):
         symbol_count += 1
@@ -900,7 +950,11 @@ def main():
               f"进度: {symbol_count} / {len(all_symbols)}")
         
         try:
-            df = get_local_stock_data(symbol, start_date, end_date)
+            # 获取本地数据
+            if OUTPUT_PICKER:
+                df = get_stock_pd(symbol, start_date, end_date, 'd')
+            else:
+                df = get_local_stock_data(symbol, start_date, end_date)
             if df is None or len(df) < 70:
                 print(f"{symbol} 数据不足，跳过")
                 continue
@@ -917,7 +971,7 @@ def main():
                 take_profit_pct=TAKE_PROFIT_PCT,
                 stop_loss_pct=STOP_LOSS_PCT,
                 max_add_count=MAX_ADD_COUNT,
-                output_picker=False
+                output_picker=OUTPUT_PICKER
             )
             
             if result:
@@ -935,6 +989,12 @@ def main():
             print(f"处理 {symbol} 时出错: {e}")
             continue
 
+    # 登出系统
+    if OUTPUT_PICKER:
+        print(g_output_picker_res)
+        write_json(g_output_picker_res, os.path.join(get_data_dir(), 'goldenline_backtrade_stock.json'))
+        bs.logout()
+
 if __name__ == '__main__':
     main()
 
@@ -945,4 +1005,21 @@ if __name__ == '__main__':
 负收益：-208504.03000000026
 净收益：76120.00999999966
 正收益占比：62.82
+
+2022-01-01到2023-01-01
+股票统计:
+  成功回测股票数: 3994
+  平均收益率: 0.00%
+  中位数收益率: 0.00%
+  最大收益率: 5.50%
+  最小收益率: -1.64%
+  标准差: 0.13%
+  正收益股票占比: 1.53%
+
+交易统计:
+  总交易次数: 170
+  总胜率: 58.82%
+  总盈利金额: 321,160.27 元
+  总亏损金额: 220,186.73 元
+  净收益: 100,973.54 元
 """

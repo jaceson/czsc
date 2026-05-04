@@ -1036,22 +1036,29 @@ def has_close_ma(df,N=5,diff=0.02):
         2，表示二买点
         3，表示三买点
 """
-def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,macd_ratio=0.05):
+def get_buy_point_type(symbol,df,c_bi_list=None,c_zs_list=None):
     # 股票czsc结构
-    c = get_stock_czsc(symbol,df)
-    bi_list = c.bi_list
-    if len(bi_list) <= 0:
-        return 0
+    if c_bi_list is None:
+        c = get_stock_czsc(symbol,df)
+        bi_list = c.bi_list
+        if len(bi_list) <= 0:
+            return 0
+    else:
+        bi_list = c_bi_list
 
     # 没有构成中枢
     last_bi = bi_list[-1]
-    zs_list = get_zs_seq(bi_list)
+    if c_zs_list is None:
+        zs_list = get_zs_seq(bi_list)
+    else:
+        zs_list = c_zs_list
+
     last_zs = None
     for zs in reversed(zs_list):
         if zs.is_valid:
             last_zs = zs
             break
-    if last_zs is None or len(last_zs.bis) == 0:
+    if last_zs is None or len(last_zs.bis) <= 4:
         return 0
 
     # 上涨一笔过滤，一、二、三买都在下降一笔结束
@@ -1059,33 +1066,39 @@ def get_buy_point_type(symbol,df,by_macd=False,by_range=False,max_ratio=0.05,mac
         return 0  
 
     # 超过3天不构成买点
-    last_date = df['date'].iloc[-1].strftime("%Y-%m-%d")
+    if 'datetime' in df.columns:
+        last_date = df['datetime'].iloc[-1].strftime("%Y-%m-%d")
+    else:
+        last_date = df['date'].iloc[-1].strftime("%Y-%m-%d")
     last_fx_date = last_bi.fx_b.dt.strftime("%Y-%m-%d")
-    if days_trade_delta(df, last_fx_date, last_date) > 3:
+    if days_trade_delta(df, last_fx_date, last_date) > 1:
         return 0
-
+            
     # 中枢离开一笔
     zs_last_bi = last_zs.bis[-1]
-        
+    last_up_bi = bi_list[-2]
+
     # 中枢下降一笔，中低以下为一买
     if last_bi.fx_b.fx < last_zs.zd:
         if zs_last_bi.fx_b.dt <= last_bi.fx_b.dt:
             # 中枢一买
             if zs_last_bi.fx_b.fx >= last_bi.fx_b.fx and zs_last_bi.fx_a.fx >= last_bi.fx_a.fx:
+                # 中枢的离开一笔
+                print(f'{symbol} 中枢1买：{last_zs.sdt}-{last_zs.edt}, 下跌一笔：{last_bi.fx_a.dt}-{last_bi.fx_b.dt}')
                 return 1
 
             # 中枢二买
             if zs_last_bi.fx_b.dt < last_bi.fx_b.dt:
-                last_up_bi = bi_list[-2]
                 if last_up_bi.fx_b.fx > last_zs.zd and last_up_bi.fx_b.fx < last_zs.zg:
                     if last_up_bi.fx_a.fx < last_bi.fx_b.fx:
+                        print(f'{symbol} 中枢2买：{last_zs.sdt}-{last_zs.edt}, 下跌一笔：{last_bi.fx_a.dt}-{last_bi.fx_b.dt}')
                         return 2
 
     # 中枢三买
     if last_bi.fx_b.fx > last_zs.zg:
         if zs_last_bi.fx_b.dt <= last_bi.fx_b.dt:
-            last_up_bi = bi_list[-2]
             if last_up_bi.fx_a.fx < last_zs.zg:
+                print(f'{symbol} 中枢3买：{last_zs.sdt}-{last_zs.edt}, 下跌一笔：{last_bi.fx_a.dt}-{last_bi.fx_b.dt}')
                 return 3
     return 0
 
@@ -1223,7 +1236,27 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
                 czsc_logger().info(f'❌没有满足chan 买点：{symbol} {last_bsp.klu.time} {last_bsp.type[0]} {plus_ratio}')
                 continue
     return None
-        
+
+def cumulative_macd_analysis(df, start_date=None, end_date=None):
+    """
+    计算指定日期范围内的累积MACD能量
+    """
+    # 计算MACD
+    exp1 = df['close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['close'].ewm(span=26, adjust=False).mean()
+    df['DIF'] = exp1 - exp2
+    df['DEA'] = df['DIF'].ewm(span=9, adjust=False).mean()
+    df['MACD_Hist'] = df['DIF'] - df['DEA']
+    
+    # 按日期筛选
+    if start_date:
+        df = df[df.index >= start_date]
+    if end_date:
+        df = df[df.index <= end_date]
+    
+    # 最终结果
+    return df['MACD_Hist'].sum()
+
 
 """
     生成扩展数据extrs和rps数据
@@ -1356,14 +1389,27 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     return data_list,columns
 
 def get_stock_pd(symbol, start_date, end_date, frequency):
-    data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
-    df = pd.DataFrame(data_list, columns=fields)
-    df['low'] = df['low'].astype(float)
-    df['high'] = df['high'].astype(float)
-    df['open'] = df['open'].astype(float)
-    df['close'] = df['close'].astype(float)
-    df['volume'] = df['volume'].astype(float)
-    df['amount'] = df['amount'].astype(float)
+    filepath = os.path.join(os.path.get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
+    if os.path.isfile(filepath):
+        df = pd.read_csv(filepath)
+        df = df.dropna()
+    else:
+        data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
+        df = pd.DataFrame(data_list, columns=fields)
+        df['low'] = df['low'].astype(float)
+        df['high'] = df['high'].astype(float)
+        df['open'] = df['open'].astype(float)
+        df['close'] = df['close'].astype(float)
+        df['volume'] = df['volume'].astype(float)
+        df['amount'] = df['amount'].astype(float)
+        # 保存时处理常见问题
+        df.to_csv(filepath, 
+                index=False,           # 不保存索引
+                encoding='utf-8-sig',  # 防止Excel打开中文乱码
+                na_rep='0',            # 缺失值填充为0
+                float_format='%.2f'    # 浮点数保留2位小数
+            )
+
     df['datetime'] = pd.to_datetime(df['date'])
     # df.set_index('date', inplace=True)
     return df
