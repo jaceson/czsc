@@ -8,6 +8,7 @@ import time
 import requests
 import akshare as ak
 import baostock as bs
+from pytdx.hq import TdxHq_API
 from lib.MyTT import *
 from Chan import CChan
 from ChanConfig import CChanConfig
@@ -18,6 +19,9 @@ from czsc.utils.sig import get_zs_seq
 from czsc.analyze import *
 from czsc.enum import *
 from collections import *
+
+# 全局配置
+USE_TDX = False
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -1307,8 +1311,122 @@ def get_kl_data(df):
         end_date：结束日期
         
 """
+tdx_api = None
+def get_stock_data_tdx(symbol, start_date, end_date, frequency):
+    """
+        使用通达信API获取股票数据
+        code：股票代码，sh或sz.+6位数字代码
+        fields：指示简称，支持多指标输入
+        start：开始日期（包含），格式"YYYY-MM-DD"
+        end：结束日期（包含），格式"YYYY-MM-DD"
+        frequency：数据类型，默认为d，日k线；d=日k线、w=周、m=月等
+    """
+    try:
+        # 转换股票代码格式：sh.600501 -> (市场代码, 股票代码)
+        market = symbol.split('.')[0]
+        market_code = 1 if market.lower() == 'sh' else 0
+        code = symbol.split('.')[-1]
+
+        # 初始化通达信API
+        global tdx_api
+        if not tdx_api:
+            tdx_api = TdxHq_API()
+            if not tdx_api.connect('114.28.173.137', 7709):
+                tdx_api = None
+                czsc_logger().error(f'通达信API连接失败')
+                return [],[]
+
+        # 根据frequency确定K线类型
+        # 4: 日线, 5: 周线, 6: 月线
+        if frequency.lower() == 'd':
+            ktype = 9
+        elif frequency.lower() == 'w':
+            ktype = 5
+        elif frequency.lower() == 'm':
+            ktype = 6
+        else:
+            ktype = 4  # 默认日线
+
+        # 获取K线数据 (pos=0, count=800 表示从当前位置获取800条数据)
+        data = tdx_api.get_security_bars(ktype, market_code, code, 0, 800)
+
+        if not data:
+            czsc_logger().error(f'获取 {symbol} 数据失败')
+            return [],[]
+
+        # 转换为DataFrame
+        df = pd.DataFrame(data)
+        
+        # 检查必要的列是否存在
+        required_columns = ['datetime', 'open', 'high', 'low', 'close', 'vol', 'amount']
+        if not all(col in df.columns for col in required_columns):
+            czsc_logger().error(f'{symbol} 数据格式不正确')
+            return [],[]
+
+        # 过滤日期范围
+        df['date'] = df['datetime'].apply(lambda x: x.strftime('%Y-%m-%d') if hasattr(x, 'strftime') else str(x)[:10])
+        
+        # 转换日期字符串为可比较格式
+        start_date_str = start_date.replace('-', '')
+        end_date_str = end_date.replace('-', '')
+        
+        # 过滤日期范围
+        mask = (df['date'].str.replace('-', '') >= start_date_str) & \
+               (df['date'].str.replace('-', '') <= end_date_str)
+        df_filtered = df[mask]
+
+        if df_filtered.empty:
+            czsc_logger().warning(f'{symbol} 在 {start_date} 到 {end_date} 期间无数据')
+            return [],[]
+
+        # 按日期排序
+        df_filtered = df_filtered.sort_values('date')
+
+        # 构建返回数据
+        data_list = []
+        fields = ['date', 'open', 'high', 'low', 'close', 'volume', 'amount']
+        
+        for _, row in df_filtered.iterrows():
+            try:
+                stock_date = row['date']
+                stock_open = float(row['open'])
+                stock_high = float(row['high'])
+                stock_low = float(row['low'])
+                stock_close = float(row['close'])
+                stock_volume = float(row['vol'])
+                stock_amount = float(row['amount'])
+                
+                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
+                    continue
+                    
+                data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
+            except Exception as e:
+                czsc_logger().debug(f'处理 {symbol} 数据行时出错: {e}')
+                continue
+
+        return data_list, fields
+
+    except Exception as e:
+        czsc_logger().error(f'获取 {symbol} 数据时出错: {e}')
+        import traceback
+        czsc_logger().error(traceback.format_exc())
+        return [],[]
+        
+"""
+    获取股票数据
+    参数：
+        symbol：股票代码
+        start_date：开始日期
+        end_date：结束日期
+        
+"""
 ak_request_count = 0
 def get_stock_data(symbol, start_date, end_date, frequency):
+    if USE_TDX:
+        data_list,fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
+        if len(data_list)>0 and len(fields) > 0:
+            return data_list,fields
+
     """
         code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
         fields：指示简称，支持多指标输入，以半角逗号分隔，填写内容作为返回类型的列。详细指标列表见历史行情指标参数章节，日线与分钟线参数不同。此参数不可为空；
