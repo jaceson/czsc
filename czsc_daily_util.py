@@ -1071,7 +1071,7 @@ def get_buy_point_type(symbol,df,c_bi_list=None,c_zs_list=None):
     else:
         last_date = df['date'].iloc[-1].strftime("%Y-%m-%d")
     last_fx_date = last_bi.fx_b.dt.strftime("%Y-%m-%d")
-    if days_trade_delta(df, last_fx_date, last_date) > 1:
+    if days_trade_delta(df, last_fx_date, last_date) > 2:
         return 0
             
     # 中枢离开一笔
@@ -1389,7 +1389,7 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     return data_list,columns
 
 def get_stock_pd(symbol, start_date, end_date, frequency):
-    filepath = os.path.join(os.path.get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
+    filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
     if os.path.isfile(filepath):
         df = pd.read_csv(filepath)
         df = df.dropna()

@@ -22,6 +22,8 @@ from czsc_daily_util import *
 from czsc_sqlite import get_local_stock_data
 
 g_output_picker_res = []
+max_days_diff = 2
+output_filename = 'czsc_zs_buy_stock.json'
 class ZhongshuBuyStrategy(bt.Strategy):
     """
     中枢一二三买点策略
@@ -414,7 +416,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         if self.params.output_picker:
             buy_date = self.data.datetime.date(0)
             last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
-            if (last_trade_date-buy_date).days < 1:
+            if (last_trade_date-buy_date).days < max_days_diff:
                 g_output_picker_res.append({
                     'symbol':self.params.symbol,
                     'action':buy_type_name,
@@ -446,7 +448,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         if self.params.output_picker:
             buy_date = self.data.datetime.date(0)
             last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
-            if (last_trade_date-buy_date).days < 1:
+            if (last_trade_date-buy_date).days < max_days_diff:
                 g_output_picker_res.append({
                     'symbol':self.params.symbol,
                     'action':'补仓',
@@ -462,7 +464,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         if self.params.output_picker:
             buy_date = self.data.datetime.date(0)
             last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
-            if (last_trade_date-buy_date).days < 1:
+            if (last_trade_date-buy_date).days < max_days_diff:
                 g_output_picker_res.append({
                     'symbol':self.params.symbol,
                     'action':reason,
@@ -894,7 +896,7 @@ def main():
         INITIAL_CASH = 100000000
         START_DATE = "2024-01-01"
         END_DATE = get_latest_trade_date()
-        write_json(g_output_picker_res, os.path.join(get_data_dir(), 'czsc_zs_buy_stock.json'))
+        write_json(g_output_picker_res, os.path.join(get_data_dir(), output_filename))
     
     try:
         # 获取股票列表
@@ -924,7 +926,7 @@ def main():
     # 登出系统
     if OUTPUT_PICKER:
         print(g_output_picker_res)
-        write_json(g_output_picker_res, os.path.join(get_data_dir(), 'czsc_zs_buy_stock.json'))
+        write_json(g_output_picker_res, os.path.join(get_data_dir(), output_filename))
         bs.logout()
 
 if __name__ == '__main__':
