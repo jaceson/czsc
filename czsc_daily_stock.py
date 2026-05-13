@@ -575,6 +575,12 @@ def main():
             clear_cache(buypoint_chan_chart_dir('3a'))
             clear_cache(buypoint_chan_chart_dir('3b'))
             
+        # 预加载股票数据
+        for symbol in all_symbols:
+            filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,START_TRADE_DATE,last_trade_date))
+            if not os.path.isfile(filepath):
+                get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+
         # 选择月线反转股票
         for symbol in all_symbols:
             # 从from_index开始
@@ -587,12 +593,13 @@ def main():
             # 股票数据
             df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
             while len(df) <= 0:
+                bs.logout()
                 lg = bs.login()
                 # 登录baostock
                 czsc_logger().info('login respond error_code:' + lg.error_code)
                 czsc_logger().info('login respond  error_msg:' + lg.error_msg)
                 # 重新获取
-                df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
+                df = get_stock_pd_tdx(symbol, START_TRADE_DATE, last_trade_date, 'd')
             # 当前股票最后一个交易日
             symbol_last_trade_date = df['date'].iloc[-1]
             # 获取满足月线反转日期
