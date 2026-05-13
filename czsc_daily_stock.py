@@ -577,6 +577,8 @@ def main():
             
         # 预加载股票数据
         for symbol in all_symbols:
+            # 打印进度
+            print("预加载 {} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),all_symbols.index(symbol),len(all_symbols)))
             filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,START_TRADE_DATE,last_trade_date))
             if not os.path.isfile(filepath):
                 get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
