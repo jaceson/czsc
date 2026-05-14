@@ -831,6 +831,8 @@ def _print_batch_summary(results, final=False):
     all_returns = [r['total_return'] for r in results]
     total_trades = sum(r.get('trade_count', 0) for r in results)
     total_wins = sum(r.get('win_count', 0) for r in results)
+    total_profit = sum(r.get('total_profit', 0) for r in results)
+    total_loss = sum(r.get('total_loss', 0) for r in results)
     
     print("\n" + "="*80)
     if final:
@@ -851,6 +853,9 @@ def _print_batch_summary(results, final=False):
     print(f"  总交易次数: {total_trades}")
     if total_trades > 0:
         print(f"  总胜率: {total_wins / total_trades * 100:.2f}%")
+    print(f"  总盈利金额: {total_profit:,.2f} 元")
+    print(f"  总亏损金额: {total_loss:,.2f} 元")
+    print(f"  净收益: {total_profit - total_loss:,.2f} 元")
     
     # 买点类型统计
     buy_type_stats = {1: {'total': 0, 'win': 0}, 2: {'total': 0, 'win': 0}, 3: {'total': 0, 'win': 0}}

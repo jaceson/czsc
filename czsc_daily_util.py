@@ -294,7 +294,8 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
         last_seg_sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
         last_seg_gold_val = gold_val_low(fx_a.fx, fx_b.fx)
         new_min_angle = max(10, min_angle-(end_index-start_index))
-        if bi_angle(df,fx_a,fx_b)<new_min_angle: # 时间跨度太长导致角度太小取
+        angle_value = bi_angle(df,fx_a,fx_b)
+        if angle_value<new_min_angle: # 时间跨度太长导致角度太小取
             fx_a = last_bi.fx_a
             fx_b = last_bi.fx_b
             new_min_angle = min_angle
@@ -302,6 +303,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 pre_up_bi = bi_list[start_index-2]
                 if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx:
                     fx_a = pre_up_bi.fx_a
+                    angle_value = bi_angle(df,fx_a,fx_b)
         # 当前一笔从最低点到最高点，涨幅已经超过50%
         # if fx_a.fx*threshold < fx_b.fx and fx_equal(last_fx, fx_b):
         if fx_a.fx*threshold <= fx_b.fx:
@@ -326,8 +328,8 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
             #     czsc_logger().info("【"+symbol+"】"+" 下跌K线数量 "+str(down_kline_num)+"大于上涨K线数量 "+str(up_kline_num))
             #     return False
             # 笔的角度
-            if bi_angle(df,fx_a,fx_b)<new_min_angle:
-                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 最后一笔角度是 "+str(round(bi_angle(df,fx_a,fx_b),2)))
+            if angle_value<new_min_angle:
+                czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 最后一笔角度是 "+str(round(angle_value,2)))
                 return False
             # 距离黄金分割点还差5%以下
             if max_val*max_ratio<min_price:
@@ -344,7 +346,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                     czsc_logger().info("     3）可以考虑直接买入！！！")
                 else:
                     czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
-                czsc_logger().info("     4）笔的角度："+str(round(bi_angle(df,fx_a,fx_b),2)))
+                czsc_logger().info("     4）笔的角度："+str(round(angle_value,2)))
                 czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(fx_a,fx_b)*100,2))+"%")
                 czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
                 czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
@@ -373,7 +375,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                         czsc_logger().info("     3）可以考虑直接买入！！！")
                     else:
                         czsc_logger().info("     3）最少还需跌："+str(round(100*(stock_close-max_val)/stock_close,2))+"%")
-                    czsc_logger().info("     4）笔的角度："+str(round(bi_angle(df,fx_a,fx_b),2)))
+                    czsc_logger().info("     4）笔的角度："+str(round(angle_value,2)))
                     czsc_logger().info("     5）总的涨幅："+str(round(bi_ratio(fx_a,fx_b)*100,2))+"%")
                     czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
                     czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
