@@ -809,7 +809,7 @@ def batch_backtest(all_symbols, start_date='2022-01-01', end_date='2023-01-01',
                 results.append(result)
                 
             # 每100只打印一次汇总
-            if (idx + 1) % 10 == 0:
+            if (idx + 1) % 100 == 0:
                 _print_batch_summary(results)
                 
         except Exception as e:
