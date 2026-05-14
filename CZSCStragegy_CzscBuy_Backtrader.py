@@ -114,7 +114,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         self.current_trade = None
         
         # 买点统计
-        self.buy_type_stats = defaultdict(lambda: {'total': 0, 'win': 0, 'returns': []})
+        self.buy_type_stats = defaultdict(lambda: {'total': 0, 'win': 0, 'returns': [], 'profit': 0, 'loss': 0})
         
         # 补仓统计
         self.add_trade_count = 0
@@ -560,15 +560,20 @@ class ZhongshuBuyStrategy(bt.Strategy):
                     self.win_count += 1
                     self.total_profit += profit_amount
                     self.plus_list.append(profit_pct)
-                    
+
                     # 买点类型胜率统计
                     if self.buy_type:
                         self.buy_type_stats[self.buy_type]['win'] += 1
                         self.buy_type_stats[self.buy_type]['returns'].append(profit_pct)
+                        self.buy_type_stats[self.buy_type]['profit'] += profit_amount
                 else:
                     self.loss_count += 1
                     self.total_loss += abs(profit_amount)
                     self.minus_list.append(profit_pct)
+
+                    # 买点类型亏损统计
+                    if self.buy_type:
+                        self.buy_type_stats[self.buy_type]['loss'] += abs(profit_amount)
                 
                 # 补仓交易胜率
                 if self.add_count > 0 and profit_amount > 0:
@@ -629,12 +634,15 @@ class ZhongshuBuyStrategy(bt.Strategy):
         
         print(f'\n【买点类型统计】')
         for buy_type in [1, 2, 3]:
-            stats = self.buy_type_stats.get(buy_type, {'total': 0, 'win': 0, 'returns': []})
+            stats = self.buy_type_stats.get(buy_type, {'total': 0, 'win': 0, 'returns': [], 'profit': 0, 'loss': 0})
             if stats['total'] > 0:
                 type_name = {1: '一买', 2: '二买', 3: '三买'}[buy_type]
                 win_rate = stats['win'] / stats['total'] * 100
                 avg_return = np.mean(stats['returns']) if stats['returns'] else 0
-                print(f'  {type_name}: 次数={stats["total"]}, 胜率={win_rate:.2f}%, 平均收益={avg_return:.2f}%')
+                net_profit = stats['profit'] - stats['loss']
+                print(f'  {type_name}: 次数={stats["total"]}, 胜率={win_rate:.2f}%, '
+                      f'平均收益={avg_return:.2f}%, 盈利={stats["profit"]:.2f}, '
+                      f'亏损={stats["loss"]:.2f}, 净收益={net_profit:.2f}')
         
         if self.add_trade_count > 0:
             add_win_rate = self.add_win_count / self.add_trade_count * 100
@@ -858,19 +866,23 @@ def _print_batch_summary(results, final=False):
     print(f"  净收益: {total_profit - total_loss:,.2f} 元")
     
     # 买点类型统计
-    buy_type_stats = {1: {'total': 0, 'win': 0}, 2: {'total': 0, 'win': 0}, 3: {'total': 0, 'win': 0}}
+    buy_type_stats = {1: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0}, 2: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0}, 3: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0}}
     for r in results:
         for bt_type, stats in r.get('buy_type_stats', {}).items():
             if bt_type in buy_type_stats:
                 buy_type_stats[bt_type]['total'] += stats.get('total', 0)
                 buy_type_stats[bt_type]['win'] += stats.get('win', 0)
+                buy_type_stats[bt_type]['profit'] += stats.get('profit', 0)
+                buy_type_stats[bt_type]['loss'] += stats.get('loss', 0)
     
     print(f"\n买点类型统计:")
     for bt_type, stats in buy_type_stats.items():
         if stats['total'] > 0:
             type_name = {1: '一买', 2: '二买', 3: '三买'}[bt_type]
             win_rate = stats['win'] / stats['total'] * 100
-            print(f"  {type_name}: 次数={stats['total']}, 胜率={win_rate:.2f}%")
+            net_profit = stats['profit'] - stats['loss']
+            print(f"  {type_name}: 次数={stats['total']}, 胜率={win_rate:.2f}%, "
+                  f"盈利={stats['profit']:,.2f}, 亏损={stats['loss']:,.2f}, 净收益={net_profit:,.2f}")
     
     print("="*80 + "\n")
 
@@ -887,7 +899,7 @@ def main():
     INITIAL_CASH = 1000000
     STAKE = 40000
     MAX_HOLD_DAYS = 60
-    TAKE_PROFIT_PCT = 5.0
+    TAKE_PROFIT_PCT = 7.0
     STOP_LOSS_PCT = 8.0
     MAX_ADD_COUNT = 2
     USE_MACD_FILTER = True
