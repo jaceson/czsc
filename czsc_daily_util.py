@@ -772,7 +772,9 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
 '''
 stock_czsc_cache = {}
 def get_stock_czsc(symbol,df,frequency='d'):
-    cache_key = symbol+'_'+frequency
+    start_date = str(df['date'].iloc[0])
+    end_date = str(df['date'].iloc[-1])
+    cache_key = symbol+start_date+'_'+end_date+'_'+frequency
     if cache_key in stock_czsc_cache:
         return stock_czsc_cache[cache_key]
 
@@ -1539,7 +1541,7 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
 """
 stock_bars_cache = {}
 def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=None):
-    cache_key = symbol+'_'+frequency
+    cache_key = symbol+str(start_date)+'_'+str(end_date)+'_'+frequency
     if cache_key in stock_bars_cache:
         return stock_bars_cache[cache_key]
 
