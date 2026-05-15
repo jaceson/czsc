@@ -158,6 +158,8 @@ class GoldenLineStrategy(bt.Strategy):
         if self.params.output_picker:
             buy_date = self.data.datetime.date(0)
             last_trade_date = datetime.strptime(get_latest_trade_date(), "%Y-%m-%d").date()
+            if buy_date.year != last_trade_date.year:
+                return
             if (last_trade_date-buy_date).days>100:
                 return
 

@@ -1069,6 +1069,10 @@ def get_buy_point_type(symbol,df,c_bi_list=None,c_zs_list=None):
     if last_zs is None or len(last_zs.bis) <= 4:
         return 0
 
+    # 弱分型过滤掉
+    if last_bi.fx_b.power_str == '弱':
+        return 0
+
     # 上涨一笔过滤，一、二、三买都在下降一笔结束
     if last_bi.direction == Direction.Up:
         return 0  
