@@ -24,6 +24,7 @@ from czsc_sqlite import get_local_stock_data
 g_output_picker_res = []
 max_days_diff = 2
 output_filename = 'czsc_zs_buy_stock.json'
+buy_type_config = {1: '一买', 2: '二买', 3: '三买',10: '一强买', 20: '二强买', 30: '三强买',11: '一中买', 21: '二中买', 31: '三中买',12: '一弱买', 22: '二弱买', 32: '三弱买'}
 class ZhongshuBuyStrategy(bt.Strategy):
     """
     中枢一二三买点策略
@@ -276,7 +277,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
                 c_zs_list=self.zs_list
             )
             
-            if buy_type and buy_type in [1, 2, 3]:
+            if buy_type and buy_type in list(buy_type_config.keys()):
                 self.last_buy_signal_date = current_date
                 self._log(f'检测到{buy_type}买点信号')
                 return buy_type
@@ -412,7 +413,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         return self._calculate_size_by_amount(target_amount, current_price)
     
     def _buy_order(self, buy_type):
-        buy_type_name = {1: '一买', 2: '二买', 3: '三买'}.get(buy_type, f'{buy_type}买')
+        buy_type_name = buy_type_config.get(buy_type, f'{buy_type}买')
 
         """选股"""
         if self.params.output_picker:
@@ -441,7 +442,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
         self.order = self.buy(size=size)
         self.buy_type = buy_type
         
-        buy_type_name = {1: '一买', 2: '二买', 3: '三买'}.get(buy_type, f'{buy_type}买')
+        buy_type_name = buy_type_config.get(buy_type, f'{buy_type}买')
         self._log(f'【买入信号-{buy_type_name}】日期: {self.data.datetime.date(0)}, '
                   f'价格: {price:.2f}, 数量: {size}')
     
@@ -635,10 +636,10 @@ class ZhongshuBuyStrategy(bt.Strategy):
                 print(f'  平均每笔收益: {net_profit/self.trade_count:.2f}')
         
         print(f'\n【买点类型统计】')
-        for buy_type in [1, 2, 3]:
+        for buy_type in list(buy_type_config.keys()):
             stats = self.buy_type_stats.get(buy_type, {'total': 0, 'win': 0, 'returns': [], 'profit': 0, 'loss': 0})
             if stats['total'] > 0:
-                type_name = {1: '一买', 2: '二买', 3: '三买'}[buy_type]
+                type_name = buy_type_config[buy_type]
                 win_rate = stats['win'] / stats['total'] * 100
                 avg_return = np.mean(stats['returns']) if stats['returns'] else 0
                 net_profit = stats['profit'] - stats['loss']
@@ -679,7 +680,8 @@ class ZhongshuBuyStrategy(bt.Strategy):
         for idx, trade in enumerate(self.trade_records, 1):
             buy_date = trade.get('buy_date', '')
             buy_price = f"{trade.get('buy_price', 0):.2f}"
-            buy_type = {1: '一买', 2: '二买', 3: '三买'}.get(trade.get('buy_type'), '')
+            buy_type_name = buy_type_config.get(trade.get('buy_type'), '')
+        
             add_count = trade.get('add_count', 0)
             sell_date = trade.get('sell_date', '')
             sell_price = f"{trade.get('sell_price', 0):.2f}"
@@ -687,7 +689,7 @@ class ZhongshuBuyStrategy(bt.Strategy):
             profit_amount = f"{trade.get('profit_amount', 0):+.2f}"
             sell_reason = trade.get('sell_reason', '')[:18]
             
-            row = f"{idx:<4} {str(buy_date):<12} {buy_price:<8} {buy_type:<6} {add_count:<6} {str(sell_date):<12} {sell_price:<8} {profit_pct:<10} {profit_amount:<14} {sell_reason:<20}"
+            row = f"{idx:<4} {str(buy_date):<12} {buy_price:<8} {buy_type_name:<6} {add_count:<6} {str(sell_date):<12} {sell_price:<8} {profit_pct:<10} {profit_amount:<14} {sell_reason:<20}"
             print(row)
         
         print('='*120)
@@ -868,7 +870,7 @@ def _print_batch_summary(results, final=False):
     print(f"  净收益: {total_profit - total_loss:,.2f} 元")
     
     # 买点类型统计
-    buy_type_stats = {1: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0}, 2: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0}, 3: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0}}
+    buy_type_stats = {k: {'total': 0, 'win': 0, 'profit': 0, 'loss': 0} for k in buy_type_config}
     for r in results:
         for bt_type, stats in r.get('buy_type_stats', {}).items():
             if bt_type in buy_type_stats:
@@ -880,7 +882,7 @@ def _print_batch_summary(results, final=False):
     print(f"\n买点类型统计:")
     for bt_type, stats in buy_type_stats.items():
         if stats['total'] > 0:
-            type_name = {1: '一买', 2: '二买', 3: '三买'}[bt_type]
+            type_name = buy_type_config[bt_type]
             win_rate = stats['win'] / stats['total'] * 100
             net_profit = stats['profit'] - stats['loss']
             print(f"  {type_name}: 次数={stats['total']}, 胜率={win_rate:.2f}%, "
@@ -950,3 +952,63 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+'''
+MAX_HOLD_DAYS = 60
+TAKE_PROFIT_PCT = 7.0
+STOP_LOSS_PCT = 8.0
+MAX_ADD_COUNT = 2
+USE_MACD_FILTER = True
+股票统计:
+  成功回测股票数: 1455
+  平均收益率: 0.00%
+  中位数收益率: 0.00%
+  最大收益率: 0.02%
+  最小收益率: -0.01%
+  正收益股票占比: 33.20%
+
+交易统计:
+  总交易次数: 1394
+  总胜率: 49.78%
+  总盈利金额: 1,516,379.00 元
+  总亏损金额: 991,950.00 元
+  净收益: 524,429.00 元
+
+买点类型统计:
+  一强买: 次数=340, 胜率=52.94%, 盈利=371,648.00, 亏损=188,527.00, 净收益=183,121.00
+  二强买: 次数=3, 胜率=0.00%, 盈利=0.00, 亏损=2,660.00, 净收益=-2,660.00
+  三强买: 次数=102, 胜率=45.10%, 盈利=161,182.00, 亏损=138,843.00, 净收益=22,339.00
+  一中买: 次数=528, 胜率=49.43%, 盈利=533,072.00, 亏损=327,173.00, 净收益=205,899.00
+  二中买: 次数=3, 胜率=33.33%, 盈利=67.00, 亏损=1,984.00, 净收益=-1,917.00
+  三中买: 次数=98, 胜率=59.18%, 盈利=133,695.00, 亏损=88,873.00, 净收益=44,822.00
+  一弱买: 次数=256, 胜率=47.66%, 盈利=242,118.00, 亏损=160,647.00, 净收益=81,471.00
+  二弱买: 次数=4, 胜率=50.00%, 盈利=3,837.00, 亏损=0.00, 净收益=3,837.00
+  三弱买: 次数=60, 胜率=40.00%, 盈利=70,760.00, 亏损=83,243.00, 净收益=-12,483.00
+
+
+股票统计:
+  成功回测股票数: 4207
+  平均收益率: 0.00%
+  中位数收益率: 0.00%
+  最大收益率: 0.02%
+  最小收益率: -0.02%
+  正收益股票占比: 36.94%
+
+交易统计:
+  总交易次数: 4058
+  总胜率: 54.53%
+  总盈利金额: 4,956,627.00 元
+  总亏损金额: 2,875,464.00 元
+  净收益: 2,081,163.00 元
+
+买点类型统计:
+  一强买: 次数=1030, 胜率=57.77%, 盈利=1,319,555.00, 亏损=570,884.00, 净收益=748,671.00
+  二强买: 次数=11, 胜率=45.45%, 盈利=7,842.00, 亏损=4,580.00, 净收益=3,262.00
+  三强买: 次数=304, 胜率=48.36%, 盈利=490,646.00, 亏损=386,720.00, 净收益=103,926.00
+  一中买: 次数=1486, 胜率=54.37%, 盈利=1,627,093.00, 亏损=920,272.00, 净收益=706,821.00
+  二中买: 次数=16, 胜率=43.75%, 盈利=9,547.00, 亏损=9,771.00, 净收益=-224.00
+  三中买: 次数=296, 胜率=51.69%, 盈利=400,934.00, 亏损=324,193.00, 净收益=76,741.00
+  一弱买: 次数=721, 胜率=55.06%, 盈利=798,754.00, 亏损=456,255.00, 净收益=342,499.00
+  二弱买: 次数=7, 胜率=71.43%, 盈利=23,408.00, 亏损=0.00, 净收益=23,408.00
+  三弱买: 次数=187, 胜率=51.34%, 盈利=278,848.00, 亏损=202,789.00, 净收益=76,059.00
+'''
