@@ -21,7 +21,7 @@ from czsc.enum import *
 from collections import *
 
 # 全局配置
-USE_TDX = True
+USE_TDX = False
 
 # 配置日志
 logger = logging.getLogger(__name__)
