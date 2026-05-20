@@ -1392,7 +1392,7 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
 
         # 构建返回数据
         data_list = []
-        fields = ['date', 'open', 'high', 'low', 'close', 'volume', 'amount']
+        fields = ['date', 'open', 'high', 'low', 'close', 'volume', 'amount', 'turn']
         
         for _, row in df_filtered.iterrows():
             try:
@@ -1403,11 +1403,12 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
                 stock_close = float(row['close'])
                 stock_volume = float(row['vol'])
                 stock_amount = float(row['amount'])
+                stock_turn = float(row['turn'])
                 
-                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
+                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
                     continue
                     
-                data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
+                data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount, stock_turn])
             except Exception as e:
                 czsc_logger().debug(f'处理 {symbol} 数据行时出错: {e}')
                 continue
@@ -1445,7 +1446,7 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     """
     rs = bs.query_history_k_data_plus(
             code=symbol,
-            fields="date,open,high,low,close,volume,amount",
+            fields="date,open,high,low,close,volume,amount,turn",
             start_date=start_date,
             end_date=end_date,
             frequency=frequency,
@@ -1466,7 +1467,8 @@ def get_stock_data(symbol, start_date, end_date, frequency):
             stock_close = float(row_data[4])
             stock_volume = float(row_data[5])
             stock_amount = float(row_data[6])
-            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
+            stock_turn = float(row_data[7])
+            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
                 continue
             data_list.append(row_data)
             # data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
@@ -1528,6 +1530,7 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
         df['close'] = df['close'].astype(float)
         df['volume'] = df['volume'].astype(float)
         df['amount'] = df['amount'].astype(float)
+        df['turn'] = df['turn'].astype(float)
         # 保存时处理常见问题
         df.to_csv(filepath, 
                 index=False,           # 不保存索引
@@ -1932,6 +1935,23 @@ def is_recent_min_close(df, start_date, end_date):
     
     # 判断end_date收盘价是否等于最低价
     return end_close == min_close
+
+"""
+    超跌反弹CTD6买入条件选股
+"""
+def is_ctd6_buy_point(symbol, df):
+    if df is None or len(df) < 120:
+        return False
+
+    from CZSCStragegy_OversoldRebound import calculate_oversold_indicators
+    ndf = calculate_oversold_indicators(df)
+    if ndf is None:
+        return False
+
+    if ndf['CTD6'].iloc[-1]:
+        czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 超跌反弹CTD6买入信号")
+        return True
+    return False
 
 # baostock查询结果转换成数组
 def query_trade_data_to_pd(rs):
