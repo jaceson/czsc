@@ -637,7 +637,7 @@ def main():
 
             # 黄金分割抄底位置
             # symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1
-            if daily_config['golden'] and is_golden_point(symbol=symbol,df=df,min_angle=12):
+            if daily_config['golden'] and is_golden_point(symbol=symbol,df=df,min_angle=8):
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
