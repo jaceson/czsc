@@ -107,7 +107,8 @@ def calculate_oversold_indicators(df):
 
     # BCD1 := (BCD-REF(BCD,1))/REF(BCD,1)*15
     BCD_REF1 = REF(BCD, 1)
-    BCD1 = np.where(np.abs(BCD_REF1) > 1e-10, (BCD - BCD_REF1) / BCD_REF1 * 15, 0)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        BCD1 = np.where(np.abs(BCD_REF1) > 1e-10, (BCD - BCD_REF1) / BCD_REF1 * 15, 0)
     ndf["BCD1"] = BCD1
 
     # Y1 := AMOUNT/V/100
@@ -347,10 +348,9 @@ def get_oversold_buy_point(symbol, df):
                 [s for s, v in [("XL3", is_xl3), ("CTD6", is_ctd6)] if v]
             )
             max_val = _record_trade(signal_stats[sig_label], symbol, buy_idx, df, sig_label)
-            print("{} 买信号日期: {} 买入日期: {} 买入价: {:.2f} 信号: {} 持有{}日内最大收益: {:.2f}%".format(
+            print("{} 买信号日期: {} 买入日期: {} 买入价: {:.2f} 信号: {}  BCD1值: {} 持有{}日内最大收益: {:.2f}%".format(
                 symbol, df["date"].iloc[idx], df["date"].iloc[buy_idx],
-                float(df["open"].iloc[buy_idx]), sig_label, hold_days, max_val))
-
+                float(df["open"].iloc[buy_idx]), sig_label, 50*float(df['BCD1']).iloc[idx], hold_days, max_val))
     # --- 辅助信号: 启动点 ---
     launch = ndf["启动点"].fillna(0).values
     if launch.any():
