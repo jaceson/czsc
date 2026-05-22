@@ -1948,7 +1948,9 @@ def is_ctd6_buy_point(symbol, df):
     if ndf is None:
         return False
 
-    if ndf['CTD6'].iloc[-1]:
+    ctd6 = ndf["CTD6"].fillna(False).values
+    is_ctd6 = bool(ctd6[-1])
+    if is_ctd6:
         czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 超跌反弹CTD6买入信号")
         return True
     return False
