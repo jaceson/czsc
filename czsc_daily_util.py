@@ -8,6 +8,7 @@ import time
 import requests
 import akshare as ak
 import baostock as bs
+import concurrent.futures
 from pytdx.hq import TdxHq_API
 from lib.MyTT import *
 from Chan import CChan
@@ -1430,6 +1431,48 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
         
 """
 ak_request_count = 0
+def _baostock_query(symbol, start_date, end_date, frequency, timeout=60):
+    """在子线程中执行 BaoStock 查询，带超时保护"""
+    def _do_query():
+        rs = bs.query_history_k_data_plus(
+            code=symbol,
+            fields="date,open,high,low,close,volume,amount,turn",
+            start_date=start_date,
+            end_date=end_date,
+            frequency=frequency,
+            adjustflag="2",
+        )
+        if int(rs.error_code) > 0:
+            return rs, []
+        data_list = []
+        while (rs.error_code == '0') & rs.next():
+            row_data = rs.get_row_data()
+            try:
+                stock_date = row_data[0]
+                stock_open = float(row_data[1])
+                stock_high = float(row_data[2])
+                stock_low = float(row_data[3])
+                stock_close = float(row_data[4])
+                stock_volume = float(row_data[5])
+                stock_amount = float(row_data[6])
+                stock_turn = float(row_data[7])
+                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+                    continue
+                data_list.append(row_data)
+            except Exception:
+                continue
+        return rs, data_list
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_do_query)
+        try:
+            rs, data_list = future.result(timeout=timeout)
+            return rs, data_list
+        except concurrent.futures.TimeoutError:
+            czsc_logger().info("BaoStock 查询超时: {} {}~{}".format(symbol, start_date, end_date))
+            return None, []
+
+
 def get_stock_data(symbol, start_date, end_date, frequency):
     if USE_TDX:
         data_list,fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
@@ -1444,39 +1487,24 @@ def get_stock_data(symbol, start_date, end_date, frequency):
         frequency：数据类型，默认为d，日k线；d=日k线、w=周、m=月、5=5分钟、15=15分钟、30=30分钟、60=60分钟k线数据，不区分大小写；指数没有分钟线数据；周线每周最后一个交易日才可以获取，月线每月最后一个交易日才可以获取。
         adjustflag：复权类型，默认不复权：3；1：后复权；2：前复权。已支持分钟线、日线、周线、月线前后复权。 BaoStock提供的是涨跌幅复权算法复权因子，具体介绍见：复权因子简介或者BaoStock复权因子简介。
     """
-    rs = bs.query_history_k_data_plus(
-            code=symbol,
-            fields="date,open,high,low,close,volume,amount,turn",
-            start_date=start_date,
-            end_date=end_date,
-            frequency=frequency,
-            adjustflag="2",
-        )
-    if int(rs.error_code) > 0:
-        czsc_logger().info('query_history_k_data_plus respond error_code:' + rs.error_code)
-        czsc_logger().info('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
-        return [],[]
-    data_list = []
-    while (rs.error_code == '0') & rs.next():
-        row_data = rs.get_row_data()
-        try:
-            stock_date = row_data[0]
-            stock_open = float(row_data[1])
-            stock_high = float(row_data[2])
-            stock_low = float(row_data[3])
-            stock_close = float(row_data[4])
-            stock_volume = float(row_data[5])
-            stock_amount = float(row_data[6])
-            stock_turn = float(row_data[7])
-            if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
-                continue
-            data_list.append(row_data)
-            # data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount])
-        except Exception as e:
-            # czsc_logger().info(e)
+    for retry in range(3):
+        rs, data_list = _baostock_query(symbol, start_date, end_date, frequency, timeout=60)
+        if rs is None:
+            czsc_logger().info("BaoStock 查询超时，重试 {}: {} {}~{}".format(retry + 1, symbol, start_date, end_date))
+            bs.logout()
+            bs.login()
             continue
-    # if data_list[-1][0] == end_date:
-    return data_list,rs.fields
+        if int(rs.error_code) > 0:
+            czsc_logger().info('query_history_k_data_plus respond error_code:' + rs.error_code)
+            czsc_logger().info('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
+            if retry < 2:
+                bs.logout()
+                time.sleep(1)
+                bs.login()
+                continue
+            return [], []
+        return data_list, rs.fields
+    return [], []
 
     # 控制ak请求频次
     global ak_request_count
@@ -1652,6 +1680,45 @@ def update_daily_symbols():
         before1Year,stock_name = is_stock_and_oneYear(code)
         if before1Year:
             stock_codes.append({code:stock_name})
+
+    # 获取股东人数数据，将不达标的股票单独写入文件（含户均持股金额和单季度股东人数增减比例）
+    try:
+        holder_df = ak.stock_zh_a_gdhs(symbol="最新")
+        holder_map = {}
+        for _, row in holder_df.iterrows():
+            code = row['代码']
+            holder_map[code] = {
+                'avg_holding': float(row['户均持股市值']),
+                'holder_count': float(row['股东户数-本次']),
+                'holder_change_pct': float(row['股东户数-增减比例']),
+            }
+        holder_file = os.path.join(get_data_dir(), 'holder_all_stocks.json')
+        write_json(holder_map, holder_file)
+            
+        disabled_stocks = []
+        for item in stock_codes:
+            code = list(item.keys())[0]
+            name = list(item.values())[0]
+            raw_code = code.split('.')[-1]
+            info = holder_map.get(raw_code)
+            if info is None:
+                continue
+            avg_holding = info['avg_holding']
+            holder_change_pct = info['holder_change_pct']
+            if avg_holding < 100000 or holder_change_pct > 20:
+                disabled_stocks.append({
+                    "code": code,
+                    "name": name,
+                    "avg_holding": round(avg_holding, 2),
+                    "holder_change_pct": round(holder_change_pct, 2),
+                })
+
+        if disabled_stocks:
+            disabled_file = os.path.join(get_data_dir(), 'holder_disabled_stocks.json')
+            write_json(disabled_stocks, disabled_file)
+            czsc_logger().info(f"户均持股金额低于10万或股东人数增加超过20%的股票共{len(disabled_stocks)}只，已写入{disabled_file}")
+    except Exception as e:
+        czsc_logger().error(f"获取股东人数数据失败，跳过股东数据采集: {e}")
 
     # 保存到缓存文件中 
     write_json(stock_codes, symbol_file)

@@ -236,15 +236,15 @@ def send_notification_email(stocks_to_notify):
         send_html_email_163("13311566853", "13311566853@163.com", subject, html_content)
         
         # 获取邮件密码
-        response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
-        if response.status_code == 200:
-            result = json.loads(response.content)
-            password = result["password"]
-            create_mail_conf("autobuild4ios", password)
-            send_html_email("autobuild4ios", "vickywang@qiyi.com", subject, html_content)
-        else:
-            logger.error("无法获取邮件密码")
-            return False
+        # response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
+        # if response.status_code == 200:
+        #     result = json.loads(response.content)
+        #     password = result["password"]
+        #     create_mail_conf("autobuild4ios", password)
+        #     send_html_email("autobuild4ios", "vickywang@qiyi.com", subject, html_content)
+        # else:
+        #     logger.error("无法获取邮件密码")
+        #     return False
         
         logger.info(f"已发送通知邮件，包含 {len(stocks_to_notify)} 只股票")
         return True

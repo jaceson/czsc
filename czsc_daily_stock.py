@@ -165,15 +165,15 @@ def send_summary_email():
     send_html_email_163("13311566853", "13311566853@163.com", "每日精选", html_content)
 
     # 获取autobuild4ios密码
-    try:
-        response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
-        if response.status_code == 200:
-            result = json.loads(response.content)
-            password = result["password"]
-            create_mail_conf("autobuild4ios", password)
-        send_html_email("autobuild4ios", "vickywang@qiyi.com", "每日精选", html_content)
-    except Exception as e:
-        pass
+    # try:
+    #     response = requests.get('http://itpwd.qiyi.domain/api/GetPassword?domainuser=autobuild4ios&token=gbp84d012wsc973y')
+    #     if response.status_code == 200:
+    #         result = json.loads(response.content)
+    #         password = result["password"]
+    #         create_mail_conf("autobuild4ios", password)
+    #     send_html_email("autobuild4ios", "vickywang@qiyi.com", "每日精选", html_content)
+    # except Exception as e:
+    #     pass
 
 def sz_chart_dir():
     return get_data_dir()+"/html/上证指数"
@@ -490,8 +490,8 @@ def main():
     today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
     weekday = today.weekday()
-    if weekday>=4:
-        daily_config = {'mline':True,'minion':True,'chaodi':True,'golden':True,'strong':True,'strategy':True,'buypoint':True,'chan':True,'bigfish':True,'oversold_rebound':True}
+    # if weekday>=4:
+    #     daily_config = {'mline':True,'minion':True,'chaodi':True,'golden':True,'strong':True,'strategy':True,'buypoint':True,'chan':True,'bigfish':True,'oversold_rebound':True}
     # 所有股票
     all_symbols  = get_daily_symbols()
     # 股票池
@@ -585,21 +585,20 @@ def main():
             clear_cache(buypoint_chan_chart_dir('3b'))
             
         # 预加载股票数据
-        for symbol in all_symbols:
-            # 打印进度
-            print("预加载 {} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),all_symbols.index(symbol),len(all_symbols)))
+        for i, symbol in enumerate(all_symbols):
+            print("预加载 {} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), i + 1, len(all_symbols)))
             filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,START_TRADE_DATE,last_trade_date))
             if not os.path.isfile(filepath):
                 get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
 
         # 选择月线反转股票
-        for symbol in all_symbols:
+        for i, symbol in enumerate(all_symbols):
             # 从from_index开始
-            if all_symbols.index(symbol) < from_index:
+            if i < from_index:
                 continue
 
             # 打印进度
-            print("{} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),all_symbols.index(symbol),len(all_symbols)))
+            print("{} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), i + 1, len(all_symbols)))
             
             # 股票数据
             df = get_stock_pd(symbol, START_TRADE_DATE, last_trade_date, 'd')
