@@ -2018,7 +2018,13 @@ def is_ctd6_buy_point(symbol, df):
     ctd6 = ndf["CTD6"].fillna(False).values
     is_ctd6 = bool(ctd6[-1])
     if is_ctd6:
-        czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 超跌反弹CTD6买入信号")
+        xl3 = ndf["XL3"].fillna(False).values
+        is_xl3 = bool(xl3[-1])
+        bcd1 = 50*float(ndf['BCD1'].iloc[-1])
+        if is_xl3:
+            czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 超跌反弹CTD6+XL3买入信号, BCD1: {bcd1}")
+        else:
+            czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 超跌反弹CTD6买入信号, BCD1: {bcd1}")    
         return True
     return False
 

@@ -11,12 +11,13 @@
 """
 import pandas as pd
 import numpy as np
+import baostock as bs
 from numpy.lib.stride_tricks import sliding_window_view
 from lib.MyTT import (
     REF, EMA, SMA, HHV, LLV, MAX, MIN, ABS, MA, SUM, DMA,
     FORCAST, BETWEEN, COUNT, FILTER,
 )
-from czsc_daily_util import get_daily_symbols
+from czsc_daily_util import *
 from czsc_sqlite import get_local_stock_data
 
 hold_days = 5
@@ -339,18 +340,25 @@ def get_oversold_buy_point(symbol, df):
     buy_signal = xl3 | ctd6
     if buy_signal.any():
         for idx in np.where(buy_signal)[0]:
-            buy_idx = idx + 1
-            if buy_idx >= len(df):
-                continue
             is_xl3 = bool(xl3[idx])
             is_ctd6 = bool(ctd6[idx])
             sig_label = "+".join(
                 [s for s, v in [("XL3", is_xl3), ("CTD6", is_ctd6)] if v]
             )
+            if not is_ctd6:
+                continue
+                
+            buy_idx = idx + 1
+            if buy_idx >= len(df):
+                print("{} 买信号日期: {} 信号: {}  BCD1值: {:.2f} ".format(
+                symbol, df["date"].iloc[idx], 
+                sig_label, 50*float(ndf['BCD1'].iloc[idx])))
+                continue
             max_val = _record_trade(signal_stats[sig_label], symbol, buy_idx, df, sig_label)
             print("{} 买信号日期: {} 买入日期: {} 买入价: {:.2f} 信号: {}  BCD1值: {:.2f} 持有{}日内最大收益: {:.2f}%".format(
                 symbol, df["date"].iloc[idx], df["date"].iloc[buy_idx],
                 float(df["open"].iloc[buy_idx]), sig_label, 50*float(ndf['BCD1'].iloc[idx]), hold_days, max_val))
+    return
     # --- 辅助信号: 启动点 ---
     launch = ndf["启动点"].fillna(0).values
     if launch.any():
@@ -438,20 +446,38 @@ def print_statistics():
 
 
 if __name__ == "__main__":
+    test_symbols = ['sz.300290']
+    # test_symbols = []
     start_date = "2020-01-01"
+    end_date = "2026-05-27"
     all_symbols = get_daily_symbols()
     total = len(all_symbols)
+    if len(test_symbols)>0:
+        bs.login()
+
     for i, symbol in enumerate(all_symbols):
+        # 测试个别股票
+        if len(test_symbols)>0:
+            if symbol not in test_symbols:
+                continue
+
         print("[{}] 进度：{} / {}".format(
                 pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i + 1, total))
         try:
-            df = get_local_stock_data(symbol, start_date)
+            # 测试个别股票，获取最新k线
+            if len(test_symbols)>0:
+                df = get_stock_pd(symbol, start_date, end_date, 'd')
             get_oversold_buy_point(symbol, df)
         except Exception as e:
             continue
         if (i + 1) % 100 == 0:
             print_statistics()
     print_statistics()
+
+    if len(test_symbols)>0:
+        # 登出系统
+        bs.logout()
+
 '''
 RS:=SMA(MAX(C-REF(C,1),0),14,1)/SMA(ABS(C-REF(C,1)),14,1)*100;
 BCD:= EMA(EMA(EMA(RS,7),3),3);
