@@ -518,10 +518,11 @@ def main():
     last_trade_date = get_latest_trade_date()
     while True:
         df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
-        is_stock_updated = (df['date'].iloc[-1] == last_trade_date)
-        if is_stock_updated:
+        if len(df) > 0 and df['date'].iloc[-1] == last_trade_date:
+            is_stock_updated = True
             break
-        print('最新数据日期：'+df['date'].iloc[-1])
+        print('最新数据日期：'+ (df['date'].iloc[-1] if len(df) > 0 else '无数据'))
+        is_stock_updated = False
         time.sleep(30)
     by_reach = False
     # by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))

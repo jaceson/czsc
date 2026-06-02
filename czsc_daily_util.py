@@ -1321,22 +1321,67 @@ def get_kl_data(df):
         
 """
 tdx_api = None
+def _calc_qfq_factors(bars, xdxr_events):
+    sort_key = lambda x: (x['year'], x['month'], x['day'])
+    bars_sorted = sorted(bars, key=sort_key)
+
+    all_dates = {}
+    for b in bars_sorted:
+        all_dates[(b['year'], b['month'], b['day'])] = b['close']
+
+    events = [x for x in xdxr_events if x.get('category') == 1]
+    events.sort(key=sort_key)
+
+    if not events:
+        return {}
+
+    for event in events:
+        ey, em, ed = event['year'], event['month'], event['day']
+        prev_close = None
+        for dy, dm, dd in reversed(list(all_dates.keys())):
+            if (dy, dm, dd) < (ey, em, ed):
+                prev_close = all_dates[(dy, dm, dd)]
+                break
+        if prev_close is None or prev_close <= 0:
+            prev_close = all_dates.get((ey, em, ed), 0)
+        event['_prev_close'] = prev_close
+
+    cum_factor = 1.0
+    date_factors = {}
+
+    for event in reversed(events):
+        ey, em, ed = event['year'], event['month'], event['day']
+        prev_close = event['_prev_close']
+
+        bonus = float(event.get('songzhuangu', 0) or 0) / 10.0
+        rights = float(event.get('peigu', 0) or 0) / 10.0
+        cash = float(event.get('fenhong', 0) or 0) / 10.0
+        rights_price = float(event.get('peigujia', 0) or 0) / 10.0
+
+        if prev_close > 0:
+            factor = (prev_close * (1 + bonus + rights) - cash) / (prev_close + rights * rights_price)
+            if 0.1 < factor < 10:
+                cum_factor *= factor
+        date_factors[(ey, em, ed)] = cum_factor
+
+    result = {}
+    for d in all_dates:
+        f = 1.0
+        for (ey, em, ed), cf in sorted(date_factors.items()):
+            if d < (ey, em, ed):
+                f = cf
+                break
+        result[d] = f
+
+    return result
+
+
 def get_stock_data_tdx(symbol, start_date, end_date, frequency):
-    """
-        使用通达信API获取股票数据
-        code：股票代码，sh或sz.+6位数字代码
-        fields：指示简称，支持多指标输入
-        start：开始日期（包含），格式"YYYY-MM-DD"
-        end：结束日期（包含），格式"YYYY-MM-DD"
-        frequency：数据类型，默认为d，日k线；d=日k线、w=周、m=月等
-    """
     try:
-        # 转换股票代码格式：sh.600501 -> (市场代码, 股票代码)
         market = symbol.split('.')[0]
         market_code = 1 if market.lower() == 'sh' else 0
         code = symbol.split('.')[-1]
 
-        # 初始化通达信API
         global tdx_api
         if not tdx_api:
             tdx_api = TdxHq_API()
@@ -1345,8 +1390,6 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
                 czsc_logger().error(f'通达信API连接失败')
                 return [],[]
 
-        # 根据frequency确定K线类型
-        # 4: 日线, 5: 周线, 6: 月线
         if frequency.lower() == 'd':
             ktype = 9
         elif frequency.lower() == 'w':
@@ -1354,47 +1397,56 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
         elif frequency.lower() == 'm':
             ktype = 6
         else:
-            ktype = 4  # 默认日线
+            ktype = 4
 
-        # 获取K线数据 (pos=0, count=800 表示从当前位置获取800条数据)
         data = tdx_api.get_security_bars(ktype, market_code, code, 0, 800)
 
         if not data:
             czsc_logger().error(f'获取 {symbol} 数据失败')
             return [],[]
 
-        # 转换为DataFrame
+        xdxr = tdx_api.get_xdxr_info(market_code, code) or []
+        qfq_factors = _calc_qfq_factors(data, xdxr)
+
         df = pd.DataFrame(data)
-        
-        # 检查必要的列是否存在
+
         required_columns = ['datetime', 'open', 'high', 'low', 'close', 'vol', 'amount']
         if not all(col in df.columns for col in required_columns):
             czsc_logger().error(f'{symbol} 数据格式不正确')
             return [],[]
 
-        # 过滤日期范围
         df['date'] = df['datetime'].apply(lambda x: x.strftime('%Y-%m-%d') if hasattr(x, 'strftime') else str(x)[:10])
-        
-        # 转换日期字符串为可比较格式
-        start_date_str = start_date.replace('-', '')
-        end_date_str = end_date.replace('-', '')
-        
-        # 过滤日期范围
-        mask = (df['date'].str.replace('-', '') >= start_date_str) & \
-               (df['date'].str.replace('-', '') <= end_date_str)
-        df_filtered = df[mask]
+
+        def _get_factor(row):
+            k = (int(row['year']), int(row['month']), int(row['day']))
+            return qfq_factors.get(k, 1.0)
+
+        if qfq_factors:
+            df['_factor'] = df.apply(_get_factor, axis=1)
+            for col in ['open', 'high', 'low', 'close']:
+                df[col] = df[col] / df['_factor']
+
+        start_str = start_date.replace('-', '')
+        end_str = end_date.replace('-', '')
+        mask = (df['date'].str.replace('-', '') >= start_str) & \
+               (df['date'].str.replace('-', '') <= end_str)
+        df_filtered = df[mask].sort_values('date')
 
         if df_filtered.empty:
             czsc_logger().warning(f'{symbol} 在 {start_date} 到 {end_date} 期间无数据')
             return [],[]
 
-        # 按日期排序
-        df_filtered = df_filtered.sort_values('date')
+        liutong = 0
+        try:
+            fin = tdx_api.get_finance_info(market_code, code)
+            if fin and 'liutongguben' in fin:
+                liutong = float(fin['liutongguben'])
+        except Exception:
+            pass
 
-        # 构建返回数据
         data_list = []
         fields = ['date', 'open', 'high', 'low', 'close', 'volume', 'amount', 'turn']
-        
+
         for _, row in df_filtered.iterrows():
             try:
                 stock_date = row['date']
@@ -1402,13 +1454,13 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
                 stock_high = float(row['high'])
                 stock_low = float(row['low'])
                 stock_close = float(row['close'])
-                stock_volume = float(row['vol'])
+                stock_volume = float(row['vol']) * 100
                 stock_amount = float(row['amount'])
-                stock_turn = float(row['turn'])
-                
-                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0 or stock_turn<=0:
+                stock_turn = (stock_volume / liutong * 100) if liutong > 0 else 0
+
+                if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
                     continue
-                    
+
                 data_list.append([stock_date, stock_open, stock_high, stock_low, stock_close, stock_volume, stock_amount, stock_turn])
             except Exception as e:
                 czsc_logger().debug(f'处理 {symbol} 数据行时出错: {e}')
@@ -1463,14 +1515,23 @@ def _baostock_query(symbol, start_date, end_date, frequency, timeout=60):
                 continue
         return rs, data_list
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_do_query)
+    for attempt in range(1):
         try:
-            rs, data_list = future.result(timeout=timeout)
-            return rs, data_list
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_do_query)
+                rs, data_list = future.result(timeout=timeout)
+                return rs, data_list
         except concurrent.futures.TimeoutError:
             czsc_logger().info("BaoStock 查询超时: {} {}~{}".format(symbol, start_date, end_date))
-            return None, []
+            try:
+                bs.logout()
+            except Exception:
+                pass
+            try:
+                bs.login()
+            except Exception:
+                pass
+    return None, []
 
 
 def get_stock_data(symbol, start_date, end_date, frequency):
@@ -1482,28 +1543,25 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     """
         code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
         fields：指示简称，支持多指标输入，以半角逗号分隔，填写内容作为返回类型的列。详细指标列表见历史行情指标参数章节，日线与分钟线参数不同。此参数不可为空；
-        start：开始日期（包含），格式“YYYY-MM-DD”，为空时取2015-01-01；
-        end：结束日期（包含），格式“YYYY-MM-DD”，为空时取最近一个交易日；
+        start：开始日期（包含），格式"YYYY-MM-DD"，为空时取2015-01-01；
+        end：结束日期（包含），格式"YYYY-MM-DD"，为空时取最近一个交易日；
         frequency：数据类型，默认为d，日k线；d=日k线、w=周、m=月、5=5分钟、15=15分钟、30=30分钟、60=60分钟k线数据，不区分大小写；指数没有分钟线数据；周线每周最后一个交易日才可以获取，月线每月最后一个交易日才可以获取。
         adjustflag：复权类型，默认不复权：3；1：后复权；2：前复权。已支持分钟线、日线、周线、月线前后复权。 BaoStock提供的是涨跌幅复权算法复权因子，具体介绍见：复权因子简介或者BaoStock复权因子简介。
     """
-    for retry in range(3):
-        rs, data_list = _baostock_query(symbol, start_date, end_date, frequency, timeout=60)
+    for retry in range(1):
+        rs, data_list = _baostock_query(symbol, start_date, end_date, frequency, timeout=15)
         if rs is None:
             czsc_logger().info("BaoStock 查询超时，重试 {}: {} {}~{}".format(retry + 1, symbol, start_date, end_date))
-            bs.logout()
-            bs.login()
             continue
         if int(rs.error_code) > 0:
             czsc_logger().info('query_history_k_data_plus respond error_code:' + rs.error_code)
             czsc_logger().info('query_history_k_data_plus respond  error_msg:' + rs.error_msg)
-            if retry < 2:
-                bs.logout()
-                time.sleep(1)
-                bs.login()
-                continue
-            return [], []
+            break
         return data_list, rs.fields
+    czsc_logger().info("BaoStock 失败，切换到 TDX: {} {}~{}".format(symbol, start_date, end_date))
+    # data_list, fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
+    # if data_list:
+    #     return data_list, fields
     return [], []
 
     # 控制ak请求频次
@@ -1569,6 +1627,24 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
 
     df['datetime'] = pd.to_datetime(df['date'])
     # df.set_index('date', inplace=True)
+    return df
+
+def get_stock_pd_tdx(symbol, start_date, end_date, frequency):
+    filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
+    data_list, fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
+    if data_list:
+        df = pd.DataFrame(data_list, columns=fields)
+        df['low'] = df['low'].astype(float)
+        df['high'] = df['high'].astype(float)
+        df['open'] = df['open'].astype(float)
+        df['close'] = df['close'].astype(float)
+        df['volume'] = df['volume'].astype(float)
+        df['amount'] = df['amount'].astype(float)
+        df['turn'] = df['turn'].astype(float)
+        df.to_csv(filepath, index=False, encoding='utf-8-sig', na_rep='0', float_format='%.2f')
+    else:
+        df = pd.DataFrame(columns=['date','open','high','low','close','volume','amount','turn'])
+    df['datetime'] = pd.to_datetime(df['date'])
     return df
 
 """

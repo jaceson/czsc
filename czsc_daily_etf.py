@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import shutil
+import argparse
 import numpy as np
 from czsc_sqlite import *
 import akshare as ak
@@ -307,7 +308,7 @@ def output_national_team_etf_charts():
     print("中小盘 ETF 图表保存至：{}".format(small_mid_cap_dir))
     print("=" * 80)
 
-def main():
+def main(code=None):
     # 清除 etf 缓存
     cachedir = get_data_dir()+'/etf/png/'
     clear_cache(cachedir)
@@ -317,7 +318,16 @@ def main():
     
     # etf 场内份额
     etf_share_list = get_etf_share(dt=START_DATE)
-    for code in etf_share_list.keys():
+
+    if code:
+        if code not in etf_share_list:
+            print("未找到 ETF 代码 {} 的数据".format(code))
+            return
+        codes = [code]
+    else:
+        codes = list(etf_share_list.keys())
+
+    for code in codes:
         etf_share_dict = etf_share_list[code]
         is_valid,close_list = is_asc_share(code,etf_share_dict)
         try:
@@ -327,7 +337,11 @@ def main():
                 output_png(code,etf_share_dict,close_list,cachedir)
         except Exception as e:
             print(e)
-    
+
+    if code:
+        print("\nETF {} 走势图生成完成！".format(code))
+        return
+
     # 输出 ETF 份额变化 Excel 文件
     output_etf_share_change_excel()
     
@@ -339,4 +353,7 @@ def main():
     cd /Users/wj/czsc
 """
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='CZSC ETF 日线分析工具')
+    parser.add_argument('--code', type=str, help='指定单个 ETF 代码（如 510300），不指定则处理全部')
+    args = parser.parse_args()
+    main(code=args.code)
