@@ -328,6 +328,7 @@ def _record_position(symbol, entries, df):
         max_val = max(max_val, ratio)
 
     exit_idx = last_entry_idx + hold_days
+    exit_date = df["date"].iloc[exit_idx] if exit_idx < len(df) else None
     exit_price = float(df["close"].iloc[exit_idx]) if exit_idx < len(df) else None
 
     exit_ret = None
@@ -343,7 +344,7 @@ def _record_position(symbol, entries, df):
     stats["pyramid_counts"].append(len(entries))
     stats["hold_days_list"].append(actual_hold_days)
 
-    return max_val, exit_ret
+    return max_val, exit_ret, exit_date
 
 
 def get_oversold_buy_point(symbol, df):
@@ -369,7 +370,7 @@ def get_oversold_buy_point(symbol, df):
         sl = "+".join([s for s, v in [("XL3", is_xl3), ("CTD6", is_ctd6)] if v])
         print("{} 日期：{} 信号：{} BCD1:{:.2f}".format(symbol, ndf["date"].iloc[idx], sl, 50 * float(ndf["BCD1"].iloc[idx])))
         
-        if idx + 1 > len(df):
+        if idx + 1 >= len(df):
             continue
         sig_idxs.append(idx)
 
@@ -381,7 +382,7 @@ def get_oversold_buy_point(symbol, df):
     all_close = ndf["close"].values.astype(float)
 
     # 持仓模拟: 依次处理每个信号
-    position = None  # None or {"entries": [...], "last_entry_idx": int}
+    position = None  # None or {"entries": [...], "last_entry_idx": int, "close_idx": int}
 
     def _make_entry(sig_idx):
         buy_idx = sig_idx + 1
@@ -394,8 +395,19 @@ def get_oversold_buy_point(symbol, df):
     for sig_idx in sig_idxs:
         entry = _make_entry(sig_idx)
 
+        # 持仓到期自动平仓（无论是否有新信号）
+        if position is not None and sig_idx >= position["close_idx"]:
+            max_ret, exit_ret, exit_date = _record_position(symbol, position["entries"], ndf)
+            exit_str = "{:.2f}%".format(exit_ret) if exit_ret is not None else "N/A"
+            print("{} 平仓 买入:{} 卖出:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
+                symbol, position["entries"][0]["date"], exit_date,
+                sum(e["price"] for e in position["entries"]) / len(position["entries"]),
+                hold_days, exit_str, max_ret))
+            position = None
+
         if position is None:
-            position = {"entries": [entry], "last_entry_idx": entry["idx"]}
+            position = {"entries": [entry], "last_entry_idx": entry["idx"],
+                        "close_idx": entry["idx"] + hold_days}
             print("{} 开仓 信号:{} 买入:{} 价:{:.2f}  BCD1:{:.2f}".format(
                 symbol, all_dates[sig_idx], entry["date"], entry["price"],
                 50 * float(ndf["BCD1"].iloc[sig_idx])))
@@ -404,27 +416,29 @@ def get_oversold_buy_point(symbol, df):
             if days_since <= hold_days:
                 position["entries"].append(entry)
                 position["last_entry_idx"] = entry["idx"]
+                position["close_idx"] = entry["idx"] + hold_days
                 avg = sum(e["price"] for e in position["entries"]) / len(position["entries"])
                 print("{} 加仓 信号:{} 买入:{} 价:{:.2f} 均价:{:.2f} BCD1:{:.2f}".format(
                     symbol, all_dates[sig_idx], entry["date"], entry["price"], avg,
                     50 * float(ndf["BCD1"].iloc[sig_idx])))
             else:
-                max_ret, exit_ret = _record_position(symbol, position["entries"], ndf)
+                max_ret, exit_ret, exit_date = _record_position(symbol, position["entries"], ndf)
                 exit_str = "{:.2f}%".format(exit_ret) if exit_ret is not None else "N/A"
-                print("{} 平仓 买入:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
-                    symbol, position["entries"][0]["date"],
+                print("{} 平仓 买入:{} 卖出:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
+                    symbol, position["entries"][0]["date"], exit_date,
                     sum(e["price"] for e in position["entries"]) / len(position["entries"]),
                     hold_days, exit_str, max_ret))
-                position = {"entries": [entry], "last_entry_idx": entry["idx"]}
+                position = {"entries": [entry], "last_entry_idx": entry["idx"],
+                            "close_idx": entry["idx"] + hold_days}
                 print("{} 开仓 信号:{} 买入:{} 价:{:.2f}  BCD1:{:.2f}".format(
                     symbol, all_dates[sig_idx], entry["date"], entry["price"],
                     50 * float(ndf["BCD1"].iloc[sig_idx])))
 
     if position is not None:
-        max_ret, exit_ret = _record_position(symbol, position["entries"], ndf)
+        max_ret, exit_ret, exit_date = _record_position(symbol, position["entries"], ndf)
         exit_str = "{:.2f}%".format(exit_ret) if exit_ret is not None else "N/A"
-        print("{} 平仓 买入:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
-            symbol, position["entries"][0]["date"],
+        print("{} 平仓 买入:{} 卖出:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
+            symbol, position["entries"][0]["date"], exit_date,
             sum(e["price"] for e in position["entries"]) / len(position["entries"]),
             hold_days, exit_str, max_ret))
 
@@ -504,7 +518,7 @@ def print_statistics():
 if __name__ == "__main__":
     test_symbols = []
     start_date = "2020-01-01"
-    end_date = '2026-06-01'
+    end_date = '2026-06-04'
     all_symbols = get_daily_symbols()
     test_symbols = read_json('./data/超跌反弹.json')
     total = len(all_symbols)

@@ -74,8 +74,11 @@ def main():
         last_change_time = time.time()
 
         def reader():
-            for line in proc.stdout:
-                print(line, end="", flush=True)
+            try:
+                for line in proc.stdout:
+                    print(line, end="", flush=True)
+            except ValueError:
+                pass
 
         t = threading.Thread(target=reader, daemon=True)
         t.start()
@@ -99,9 +102,9 @@ def main():
 
             time.sleep(2)
 
+        t.join(timeout=5)
         if proc.stdout:
             proc.stdout.close()
-        t.join(timeout=5)
         proc.wait()
 
         exit_code = proc.returncode

@@ -1822,7 +1822,7 @@ def is_stock_and_oneYear(code):
     elif result['type'][0] == '1':
         # 股票名称
         stock_name = result['code_name'][0]
-        if "ST" in stock_name or "*ST" in stock_name or "S" in stock_name:
+        if "ST" in stock_name or "*ST" in stock_name or "S" in stock_name or stock_name.startswith('退市'):
             return False,None
 
         # 提取上市日期
