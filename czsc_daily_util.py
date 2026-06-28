@@ -22,7 +22,7 @@ from czsc.enum import *
 from collections import *
 
 # 全局配置
-USE_TDX = False
+USE_TDX = True
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -1602,6 +1602,16 @@ def get_stock_data(symbol, start_date, end_date, frequency):
             continue
     return data_list,columns
 
+def _maybe_save_cache(filepath, df, end_date):
+    if end_date == get_latest_trade_date():
+        if str(df['date'].iloc[-1]) != end_date:
+            return
+    df.to_csv(filepath,
+              index=False,
+              encoding='utf-8-sig',
+              na_rep='0',
+              float_format='%.2f')
+
 def get_stock_pd(symbol, start_date, end_date, frequency):
     filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
     if os.path.isfile(filepath):
@@ -1617,14 +1627,7 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
         df['volume'] = df['volume'].astype(float)
         df['amount'] = df['amount'].astype(float)
         df['turn'] = df['turn'].astype(float)
-        # 保存时处理常见问题
-        df.to_csv(filepath, 
-                index=False,           # 不保存索引
-                encoding='utf-8-sig',  # 防止Excel打开中文乱码
-                na_rep='0',            # 缺失值填充为0
-                float_format='%.2f'    # 浮点数保留2位小数
-            )
-
+        _maybe_save_cache(filepath, df, end_date)
     df['datetime'] = pd.to_datetime(df['date'])
     # df.set_index('date', inplace=True)
     return df
@@ -1641,7 +1644,7 @@ def get_stock_pd_tdx(symbol, start_date, end_date, frequency):
         df['volume'] = df['volume'].astype(float)
         df['amount'] = df['amount'].astype(float)
         df['turn'] = df['turn'].astype(float)
-        df.to_csv(filepath, index=False, encoding='utf-8-sig', na_rep='0', float_format='%.2f')
+        _maybe_save_cache(filepath, df, end_date)
     else:
         df = pd.DataFrame(columns=['date','open','high','low','close','volume','amount','turn'])
     df['datetime'] = pd.to_datetime(df['date'])
@@ -2103,6 +2106,134 @@ def is_ctd6_buy_point(symbol, df):
             czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 超跌反弹CTD6买入信号, BCD1: {bcd1}")    
         return True
     return False
+
+"""
+    30分钟1/2/3类买点检测
+    基于get_buy_point_type逻辑，适配30分钟K线
+"""
+def get_30min_buy_point_type(symbol, df_30min, max_bars=16):
+    """
+    获取30分钟K线的1/2/3类买点
+    
+    参数：
+        symbol: 股票代码
+        df_30min: 30分钟K线DataFrame
+        max_bars: 买点发生后允许的最大30分钟K线数量（默认16根，约1个交易日）
+    
+    返回：
+        0: 无买点
+        1: 一买
+        2: 二买
+        3: 三买
+    """
+    if df_30min is None or len(df_30min) < 60:
+        return 0
+
+    c = get_stock_czsc(symbol, df_30min, frequency='30')
+    bi_list = c.bi_list
+    if len(bi_list) <= 0:
+        return 0
+
+    last_bi = bi_list[-1]
+
+    zs_list = get_zs_seq(bi_list)
+    last_zs = None
+    for zs in reversed(zs_list):
+        if zs.is_valid:
+            last_zs = zs
+            break
+    if last_zs is None or len(last_zs.bis) <= 4:
+        return 0
+
+    if last_bi.fx_b.power_str == '弱':
+        return 0
+
+    if last_bi.direction == Direction.Up:
+        return 0
+
+    # 30分钟时效性判断：最后一笔结束的位置距离当前不超过max_bars根K线
+    last_dt = pd.to_datetime(df_30min['date'].iloc[-1])
+    fx_dt = last_bi.fx_b.dt
+    bar_diff = 0
+    for i in range(len(df_30min) - 1, -1, -1):
+        if pd.to_datetime(df_30min['date'].iloc[i]) <= fx_dt:
+            break
+        bar_diff += 1
+    if bar_diff > max_bars:
+        return 0
+
+    # 中枢离开一笔
+    zs_last_bi = last_zs.bis[-1]
+    last_up_bi = bi_list[-2]
+
+    # 一买：下跌一笔低于中枢中低
+    if last_bi.fx_b.fx < last_zs.zd:
+        if zs_last_bi.fx_b.dt <= last_bi.fx_b.dt:
+            if zs_last_bi.fx_b.fx >= last_bi.fx_b.fx and zs_last_bi.fx_a.fx >= last_bi.fx_a.fx:
+                return 1
+            # 二买：下跌一笔在中枢内
+            if zs_last_bi.fx_b.dt < last_bi.fx_b.dt:
+                if last_up_bi.fx_b.fx > last_zs.zd and last_up_bi.fx_b.fx < last_zs.zg:
+                    if last_up_bi.fx_a.fx < last_bi.fx_b.fx:
+                        return 2
+
+    # 三买：下跌一笔在中枢中高之上
+    if last_bi.fx_b.fx > last_zs.zg:
+        if zs_last_bi.fx_b.dt <= last_bi.fx_b.dt:
+            if last_up_bi.fx_a.fx < last_zs.zg:
+                return 3
+
+    return 0
+
+
+"""
+    股价创一年新高（52周新高）的同时，出现30分钟1/2/3类买点
+"""
+def get_52week_high_30min_buy_point(symbol, df_daily, start_date_30min, end_date_30min, max_30min_bars=16):
+    """
+    股价创一年新高的同时，出现30分钟1/2/3类买点
+    
+    参数：
+        symbol: 股票代码
+        df_daily: 日线DataFrame
+        start_date_30min: 30分钟数据开始日期（建议3-6个月前的日期）
+        end_date_30min: 30分钟数据结束日期
+        max_30min_bars: 30分钟买点允许的最大K线数量
+    
+    返回：
+        (is_new_high, buy_point_type)
+        is_new_high: True/False 是否创一年新高
+        buy_point_type: 0-无买点，1-一买，2-二买，3-三买
+    """
+    if df_daily is None or len(df_daily) < 250:
+        return False, 0
+
+    # 1. 日线是否创一年新高（过去250个交易日，HHV返回numpy数组）
+    hhv_close = HHV(df_daily['close'], 250)
+    hhv_high = HHV(df_daily['high'], 250)
+    current_close = df_daily['close'].iloc[-2]
+    current_high = df_daily['high'].iloc[-2]
+
+    year_high_close = current_close >= hhv_close[-2]
+    year_high_high = current_high >= hhv_high[-2]
+    is_new_high = year_high_close or year_high_high
+
+    if not is_new_high:
+        return False, 0
+
+    # 2. 获取30分钟K线数据做缠论分析
+    df_30min = get_stock_pd(symbol, start_date_30min, end_date_30min, '30')
+    if df_30min is None or len(df_30min) < 60:
+        return True, 0
+
+    buy_point_type = get_30min_buy_point_type(symbol, df_30min, max_bars=max_30min_bars)
+
+    czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 创一年新高 + 30分钟{['无','一','二','三'][buy_point_type]}买点")
+    if buy_point_type > 0:
+        czsc_logger().info(f"    收盘价:{current_close} 是否250日收盘新高:{year_high_close} 是否250日最高新高:{year_high_high} 30分钟买点类型:{buy_point_type}")
+
+    return True, buy_point_type
+
 
 # baostock查询结果转换成数组
 def query_trade_data_to_pd(rs):

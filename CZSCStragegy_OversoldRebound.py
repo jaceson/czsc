@@ -517,10 +517,11 @@ def print_statistics():
 
 if __name__ == "__main__":
     test_symbols = []
-    start_date = "2020-01-01"
-    end_date = '2026-06-04'
+    start_date = "2000-01-01"
+    end_date = '2025-01-01'
     all_symbols = get_daily_symbols()
     test_symbols = read_json('./data/超跌反弹.json')
+    # test_symbols = []
     total = len(all_symbols)
     if len(test_symbols)>0:
         bs.login()
@@ -538,6 +539,8 @@ if __name__ == "__main__":
             # 测试个别股票，获取最新k线
             if len(test_symbols)>0:
                 df = get_stock_pd(symbol, start_date, end_date, 'd')
+            else:
+                df = get_local_stock_data(symbol, start_date)
             get_oversold_buy_point(symbol, df)
         except Exception as e:
             continue

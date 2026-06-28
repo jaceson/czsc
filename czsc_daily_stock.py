@@ -157,7 +157,7 @@ def send_summary_email():
     # 邮件内容
     data_dir = get_data_dir()
     html_content = email_html_header()
-    for filename in ['黄金分割线抄底.json','KD线抄底.json','超跌反弹.json','chan中枢T1买点.json','chan中枢T1P买点.json','chan中枢T2买点.json','chan中枢T2S买点.json','chan中枢T3A买点.json','chan中枢T3B买点.json','最佳策略.json','吃鱼行情.json']:
+    for filename in ['黄金分割线抄底.json','KD线抄底.json','超跌反弹.json','chan中枢T1买点.json','chan中枢T1P买点.json','chan中枢T2买点.json','chan中枢T2S买点.json','chan中枢T3A买点.json','chan中枢T3B买点.json','最佳策略.json','吃鱼行情.json','一年新高30分钟买点.json']:
         html_row = email__html_row_file(os.path.join(data_dir, filename))
         if html_row:
             html_content += html_row
@@ -201,6 +201,9 @@ def oversold_rebound_chart_dir():
 
 def strong_chart_dir():
     return get_data_dir()+"/html/强势上涨"
+
+def new_high_30min_chart_dir():
+    return get_data_dir()+"/html/一年新高30分钟买点"
 
 def buypoint_chart_dir(buypoint_type):
     if buypoint_type == 1:
@@ -265,7 +268,7 @@ def rz_rq_symbols(symbols):
             arr.append(symbol)
     return arr
 
-def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,oversold_rebound_symbols,strong_symbols,big_fish_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols):
+def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,oversold_rebound_symbols,strong_symbols,big_fish_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols,new_high_30min_symbols=[]):
     # 打印股票池数据
     czsc_logger().info("月线反转股票列表：")
     czsc_logger().info('     '+', '.join(mline_symbols))
@@ -306,6 +309,9 @@ def print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,ove
 
     czsc_logger().info("中枢三买点位置：")
     czsc_logger().info('     '+', '.join(third_buypoint_symbols))
+
+    czsc_logger().info("一年新高+30分钟买点列表：")
+    czsc_logger().info('     '+', '.join(new_high_30min_symbols))
 
     # 满足两个条件
     if True:
@@ -485,7 +491,7 @@ def main():
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
 
     # 计算配置
-    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':True,'chan':False,'bigfish':False,'oversold_rebound':True}
+    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':True,'chan':False,'bigfish':False,'oversold_rebound':True,'newhigh30min':False}
     # 获取当前日期
     today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
@@ -513,6 +519,8 @@ def main():
     second_s_chan_buypoint_symbols = []
     third_a_chan_buypoint_symbols = []
     third_b_chan_buypoint_symbols = []
+
+    new_high_30min_symbols = []
     
     # 最后一天交易日
     last_trade_date = get_latest_trade_date()
@@ -563,6 +571,8 @@ def main():
         third_a_chan_buypoint_symbols = read_symbols("chan中枢T3A买点.json")
         third_b_chan_buypoint_symbols = read_symbols("chan中枢T3B买点.json")
 
+        new_high_30min_symbols = read_symbols("一年新高30分钟买点.json")
+
     if is_stock_updated:
         # 清除缓存图标
         if not restart_execute:
@@ -584,6 +594,7 @@ def main():
             clear_cache(buypoint_chan_chart_dir('2s'))
             clear_cache(buypoint_chan_chart_dir('3a'))
             clear_cache(buypoint_chan_chart_dir('3b'))
+            clear_cache(new_high_30min_chart_dir())
             
         # 预加载股票数据
         for i, symbol in enumerate(all_symbols):
@@ -651,7 +662,7 @@ def main():
 
             # 黄金分割抄底位置
             # symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=25,close_ratio=1
-            if daily_config['golden'] and is_golden_point(symbol=symbol,df=df,min_angle=8):
+            if daily_config['golden'] and is_golden_point(symbol=symbol,df=df,min_angle=20):
                 golden_symbols.append(symbol)
                 output_chart(symbol, df, golden_chart_dir())
 
@@ -715,6 +726,14 @@ def main():
                 elif chan_buypoint_type == "3b":
                     third_b_chan_buypoint_symbols.append(symbol)
 
+            # 股价创一年新高 + 30分钟1/2/3类买点
+            if daily_config['newhigh30min']:
+                start_30min = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+                is_new_high, buypoint = get_52week_high_30min_buy_point(symbol, df, start_30min, last_trade_date)
+                if is_new_high and buypoint > 0:
+                    new_high_30min_symbols.append(symbol)
+                    output_chart(symbol, df, new_high_30min_chart_dir())
+
         # 保存缓存缓存数据
         save_symbols(mline_symbols,"月线反转.json")
         save_symbols(minion_symbols,"小黄人三线红.json")
@@ -734,15 +753,16 @@ def main():
         save_symbols(second_s_chan_buypoint_symbols,"chan中枢T2S买点.json")
         save_symbols(third_a_chan_buypoint_symbols,"chan中枢T3A买点.json")
         save_symbols(third_b_chan_buypoint_symbols,"chan中枢T3B买点.json")
+        save_symbols(new_high_30min_symbols,"一年新高30分钟买点.json")
     
     #打印筛选结果
-    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,oversold_rebound_symbols,strong_symbols,big_fish_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols)
+    print_console(mline_symbols,minion_symbols,golden_symbols,chaodi_symbols,oversold_rebound_symbols,strong_symbols,big_fish_symbols,one_buypoint_symbols,second_buypoint_symbols,third_buypoint_symbols,new_high_30min_symbols)
 
     #打印可融资融券筛选结果
     czsc_logger().info("\n\n")
     czsc_logger().info("========================以下是可融资融券的结果========================")
     czsc_logger().info("\n\n")
-    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(oversold_rebound_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(big_fish_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols))
+    print_console(rz_rq_symbols(mline_symbols),rz_rq_symbols(minion_symbols),rz_rq_symbols(golden_symbols),rz_rq_symbols(chaodi_symbols),rz_rq_symbols(oversold_rebound_symbols),rz_rq_symbols(strong_symbols),rz_rq_symbols(big_fish_symbols),rz_rq_symbols(one_buypoint_symbols),rz_rq_symbols(second_buypoint_symbols),rz_rq_symbols(third_buypoint_symbols),rz_rq_symbols(new_high_30min_symbols))
 
     # 登出系统
     bs.logout()

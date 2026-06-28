@@ -175,13 +175,13 @@ def get_local_stock_bars(symbol, start_date=None, frequency='d', df=None):
 def fetch_all_symbols_kline():
     lg = bs.login()
     frequency = 'd'
-    start_date = '2025-01-01'
+    start_date = '2000-01-01'
     end_date = '2025-12-31'
     all_symbols = get_daily_symbols()
     for symbol in all_symbols:
         fields="date,open,high,low,close,volume,amount,time"
         if frequency == 'd':
-            start_date = '2025-01-01'
+            start_date = '2000-01-01'
             fields="date,open,high,low,close,volume,amount,turn"
         # if all_symbols.index(symbol) < 1140:
         #     continue
