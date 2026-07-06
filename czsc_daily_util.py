@@ -5,10 +5,12 @@ import json
 import math
 import logging
 import time
+import tempfile
 import requests
 import akshare as ak
 import baostock as bs
 import concurrent.futures
+import pandas as pd
 from pytdx.hq import TdxHq_API
 from lib.MyTT import *
 from Chan import CChan
@@ -2242,3 +2244,159 @@ def query_trade_data_to_pd(rs):
         data_list.append(rs.get_row_data())
     result = pd.DataFrame(data_list, columns=rs.fields)
     return result
+
+
+# ──────────────────────────────────────────────
+# pytdx 季度财务数据（基于 gpcw 文件）
+# ──────────────────────────────────────────────
+
+_gpcw_cache = {}
+
+def _parse_gpcw_file(report_date):
+    """
+    下载并解析指定季度末的 gpcw 财务数据文件
+
+    参数:
+        report_date: int，格式如 20231231、20240331
+
+    返回:
+        dict: {code: {'revenue': 营业收入(元), 'profit': 净利润(元)}}
+        或 None（下载/解析失败）
+    """
+    if report_date in _gpcw_cache:
+        return _gpcw_cache[report_date]
+
+    from pytdx.crawler.history_financial_crawler import HistoryFinancialCrawler
+
+    tmp_zip_path = None
+
+    try:
+        crawler = HistoryFinancialCrawler()
+        filename = f"gpcw{report_date}.zip"
+        try:
+            download_file = crawler.get_content(filename=filename)
+        except Exception as e:
+            czsc_logger().error(f"gpcw 文件下载失败 gpcw{report_date}.zip: {e}")
+            _gpcw_cache[report_date] = None
+            return None
+
+        # pytdx parse() needs .zip extension detection; save to named temp file
+        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp:
+            tmp.write(download_file.read())
+            tmp_zip_path = tmp.name
+        download_file.close()
+
+        with open(tmp_zip_path, 'rb') as f:
+            records = crawler.parse(f)
+
+        if not records:
+            czsc_logger().warning(f"gpcw{report_date}.zip 无股票数据")
+            _gpcw_cache[report_date] = None
+            return None
+
+        result = {}
+        for rec in records:
+            code = rec[0]
+            cw_info = rec[2:]
+            result[code] = {
+                'revenue': cw_info[501] * 10000 if len(cw_info) >= 503 else None,
+                'profit': cw_info[503] * 10000 if len(cw_info) >= 505 else None,
+            }
+
+        _gpcw_cache[report_date] = result
+        return result
+
+    except Exception as e:
+        czsc_logger().error(f"解析 gpcw{report_date}.zip 失败: {e}")
+        _gpcw_cache[report_date] = None
+        return None
+    finally:
+        if tmp_zip_path and os.path.exists(tmp_zip_path):
+            os.unlink(tmp_zip_path)
+
+
+def get_financial_growth_tdx(symbol):
+    """
+    使用 pytdx 获取股票最新季度营收和利润同比增长率
+
+    通过下载通达信 gpcw 财务数据文件，对比相同季度前后两年的
+    营业收入和净利润来计算同比增长率。
+
+    参数:
+        symbol: 股票代码，格式如 "sh.600519" 或 "600519"
+
+    返回:
+        dict: {'revenue_yoy': %, 'profit_yoy': %, 'year':, 'quarter': }
+        或 None（数据不可用）
+    """
+    code = symbol.split('.')[-1] if '.' in symbol else symbol
+
+    today = datetime.now()
+    cur_year = today.year
+    cur_month = today.month
+
+    # 按优先级排列季度对：(最新季度, 上年同季度, 标签)
+    if cur_month >= 10:
+        quarters = [
+            (f"{cur_year}0930", f"{cur_year-1}0930", (cur_year, 3)),
+            (f"{cur_year}0630", f"{cur_year-1}0630", (cur_year, 2)),
+            (f"{cur_year}0331", f"{cur_year-1}0331", (cur_year, 1)),
+            (f"{cur_year-1}1231", f"{cur_year-2}1231", (cur_year-1, 4)),
+        ]
+    elif cur_month >= 7:
+        quarters = [
+            (f"{cur_year}0630", f"{cur_year-1}0630", (cur_year, 2)),
+            (f"{cur_year}0331", f"{cur_year-1}0331", (cur_year, 1)),
+            (f"{cur_year-1}1231", f"{cur_year-2}1231", (cur_year-1, 4)),
+            (f"{cur_year-1}0930", f"{cur_year-2}0930", (cur_year-1, 3)),
+        ]
+    elif cur_month >= 4:
+        quarters = [
+            (f"{cur_year}0331", f"{cur_year-1}0331", (cur_year, 1)),
+            (f"{cur_year-1}1231", f"{cur_year-2}1231", (cur_year-1, 4)),
+            (f"{cur_year-1}0930", f"{cur_year-2}0930", (cur_year-1, 3)),
+            (f"{cur_year-1}0630", f"{cur_year-2}0630", (cur_year-1, 2)),
+        ]
+    else:
+        quarters = [
+            (f"{cur_year-1}1231", f"{cur_year-2}1231", (cur_year-1, 4)),
+            (f"{cur_year-1}0930", f"{cur_year-2}0930", (cur_year-1, 3)),
+            (f"{cur_year-1}0630", f"{cur_year-2}0630", (cur_year-1, 2)),
+            (f"{cur_year-1}0331", f"{cur_year-2}0331", (cur_year-1, 1)),
+        ]
+
+    for latest_q_end, prev_q_end, q_label in quarters:
+        try:
+            latest_data = _parse_gpcw_file(int(latest_q_end))
+            if not latest_data or code not in latest_data:
+                continue
+            rec = latest_data[code]
+            if rec['revenue'] is None or rec['revenue'] <= 0:
+                continue
+
+            prev_data = _parse_gpcw_file(int(prev_q_end))
+            if not prev_data or code not in prev_data:
+                continue
+            prev_rec = prev_data[code]
+
+            rev_cur = rec['revenue']
+            rev_prev = prev_rec['revenue']
+            profit_cur = rec['profit']
+            profit_prev = prev_rec['profit']
+
+            if not all([rev_cur, rev_prev, profit_cur, profit_prev]):
+                continue
+
+            rev_yoy = (rev_cur - rev_prev) / rev_prev * 100
+            profit_yoy = (profit_cur - profit_prev) / profit_prev * 100
+
+            return {
+                'revenue_yoy': round(rev_yoy, 2),
+                'profit_yoy': round(profit_yoy, 2),
+                'year': q_label[0],
+                'quarter': q_label[1],
+            }
+        except Exception:
+            pass
+
+    return None

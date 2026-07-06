@@ -1,11 +1,13 @@
 # coding: utf-8
 """
-突破上涨通道选股 - 股票筛选器
+突破上涨通道选股 - 股票筛选器（pytdx 季度财务数据版）
 
 核心逻辑（三通道+趋势确认）：
 1. 上涨通道识别：股价在上升回归通道内运行，斜率>0
 2. 通道突破：价格放量突破通道上轨（趋势线阻力）
 3. 趋势确认：中长期均线多头排列，相对强度达标
+
+财务数据基于 pytdx gpcw 季度财报，替代原 baostock 接口
 
 使用方法：
     python CZSCStragegy_ChannelBreakout.py
@@ -26,7 +28,7 @@ from lib.MyTT import *
 from czsc_daily_util import (
     get_stock_pd, get_daily_symbols, get_symbols_name,
     get_data_dir, read_json, write_json, czsc_logger,
-    get_latest_trade_date
+    get_latest_trade_date, get_financial_growth_tdx
 )
 
 
@@ -117,7 +119,7 @@ def detect_volume_surge(volume):
     }
 
 
-def check_market_environment(index_code='sh.000300', lookback=60):
+def check_market_environment(index_code='sh.000300', lookback=5):
     """
     大盘环境判断
     返回: 'uptrend' / 'downtrend' / 'sideways'
@@ -174,14 +176,31 @@ def calc_atr_stop(df, period=14, multiplier=1.5):
 
 
 # ──────────────────────────────────────────────
+# 财务数据查询
+# ──────────────────────────────────────────────
+
+def get_financial_growth(symbol):
+    """
+    获取最新一季度营收和利润同比增长率（基于 pytdx gpcw 财务数据）
+
+    返回: dict {'revenue_yoy': %, 'profit_yoy': %, 'year':, 'quarter': }
+          或 None（数据不可用）
+    """
+    return get_financial_growth_tdx(symbol)
+
+
+# ──────────────────────────────────────────────
 # 综合评分
 # ──────────────────────────────────────────────
 
-def score_channel_breakout(df, lookback=60, market_state='sideways'):
+def score_channel_breakout(df, lookback=60, market_state='sideways', financial=None):
     """
     综合评分：检测个股是否处于上涨通道突破状态
 
-    返回: dict 包含各项评分及明细
+    参数:
+        financial: get_financial_growth 返回值，包含营收和利润增长率
+
+    返回: dict 包含各项评分及明细，或 None（财务数据不合格）
     """
     c = df['close'].values.astype(float)
     h = df['high'].values.astype(float)
@@ -192,11 +211,11 @@ def score_channel_breakout(df, lookback=60, market_state='sideways'):
     if len(c) < max(lookback, 120):
         return None
 
-    # 0. 成交额限制：日均成交额 >= 50亿
+    # 0. 成交额限制：日均成交额 >= 10亿
     if 'amount' in df.columns:
         amount_arr = df['amount'].values.astype(float)
         avg_amount = np.mean(amount_arr[-20:])
-        if avg_amount < 5_000_000_000:
+        if avg_amount < 1_000_000_000:
             return None
 
     # 1. 回归通道（自适应参数：选R²最高的组合）
@@ -319,7 +338,16 @@ def score_channel_breakout(df, lookback=60, market_state='sideways'):
         s += 3
         details.append(f'RPS过去20日涨幅{rps:.1f}%(+3)')
 
-    # ⑩ 大盘环境加权
+    # ⑩ 财务增长检查（前置到信号列表顶部，确保在格式输出中可见）
+    if financial is not None:
+        rev_ok = financial['revenue_yoy'] > 0
+        profit_ok = financial['profit_yoy'] >= 20
+        if rev_ok and profit_ok:
+            s += 15
+            details.insert(0, f"营收增长{financial['revenue_yoy']:.1f}%(+8)")
+            details.insert(1, f"净利增长{financial['profit_yoy']:.1f}%(+7)")
+
+    # ⑪ 大盘环境加权
     if market_state == 'uptrend':
         s += 5
         details.append('大盘处于上升趋势(+5)')
@@ -473,6 +501,10 @@ def save_results(result_list, output_path, market_state='sideways'):
             'take_profit_1': stop.get('take_profit_1'),
             'take_profit_2': stop.get('take_profit_2'),
             'atr': stop.get('atr'),
+            'financial': {
+                'revenue_yoy': r.get('revenue_yoy'),
+                'profit_yoy': r.get('profit_yoy'),
+            } if r.get('revenue_yoy') is not None else None,
             'details': r['details'][:5],
         })
     write_json(data, output_path)
@@ -587,13 +619,22 @@ def scan_stocks(lookback=120, min_score=60, market_state='sideways'):
                 results.append(None)
                 continue
 
-            r = score_channel_breakout(df, lookback=lookback, market_state=market_state)
+            financial = get_financial_growth(symbol)
+
+            # 财务数据存在但不达标（营收增长≤0或净利增长<20%）则直接剔除
+            if financial is not None and (financial['revenue_yoy'] <= 0 or financial['profit_yoy'] < 20):
+                results.append(None)
+                continue
+
+            r = score_channel_breakout(df, lookback=lookback, market_state=market_state, financial=financial)
             if r is None:
                 results.append(None)
                 continue
 
             r['symbol'] = symbol
             r['name'] = get_symbols_name(symbol)
+            r['revenue_yoy'] = financial['revenue_yoy'] if financial else None
+            r['profit_yoy'] = financial['profit_yoy'] if financial else None
             # 5日涨幅
             c_arr = df['close'].values
             if len(c_arr) >= 6:
@@ -625,37 +666,45 @@ def scan_stocks(lookback=120, min_score=60, market_state='sideways'):
 def main():
     """入口"""
     print("=" * 60)
-    print("突破上涨通道选股系统")
+    print("突破上涨通道选股系统（pytdx 财务数据）")
     print("=" * 60)
-    bs.login()
-
+    lg = bs.login()
+    print('login respond error_code:' + lg.error_code)
+    print('login respond  error_msg:' + lg.error_msg)
+        
     # 基于已有 JSON 输出昨日涨跌幅表格
     prev_json = os.path.join(get_data_dir(), '突破上涨通道.json')
     print(format_daily_change_from_json(prev_json))
     
-    try:
-        # 先判断大盘环境
-        market_state = check_market_environment()
-        print(f"大盘环境判断: {market_state}")
+    # 先判断大盘环境
+    market_state = check_market_environment()
+    print(f"大盘环境判断: {market_state}")
 
-        min_score = 60
-        if market_state == 'downtrend':
-            min_score = 75
-            print("⚠️ 大盘处于下降趋势，评分阈值提高至75")
-        elif market_state == 'uptrend':
-            print("✅ 大盘处于上升趋势")
-        else:
-            print("➖ 大盘处于震荡趋势")
+    min_score = 60
+    if market_state == 'downtrend':
+        min_score = 75
+        print("⚠️ 大盘处于下降趋势，评分阈值提高至75")
+    elif market_state == 'uptrend':
+        print("✅ 大盘处于上升趋势")
+    else:
+        print("➖ 大盘处于震荡趋势")
 
-        results = scan_stocks(lookback=120, min_score=min_score, market_state=market_state)
-    finally:
-        bs.logout()
-
+    results = scan_stocks(lookback=120, min_score=min_score, market_state=market_state)
+    
     output_path = os.path.join(get_data_dir(), '突破上涨通道.json')
 
     # 保存JSON
     save_results(results, output_path, market_state=market_state)
     print(f"\n结果已保存至: {output_path}")
+
+    # 输出股票代码txt（纯代码，、分隔）
+    passed = [r for r in results if r and r['score'] >= min_score]
+    passed.sort(key=lambda x: x['score'], reverse=True)
+    codes = [r['symbol'].split('.')[-1] for r in passed]
+    txt_path = os.path.join(get_data_dir(), '突破上涨通道.txt')
+    with open(txt_path, 'w', encoding='utf-8') as f:
+        f.write('、'.join(codes))
+    print(f"股票代码已保存至: {txt_path} ({len(codes)}只)")
 
     # 控制台格式化输出（主表）
     output = format_result(results)
@@ -678,7 +727,7 @@ def main():
     print(f"  ATR止损: 基于波动率的动态止损位")
     print(f"  评分≥{min_score}为入选（根据大盘状态动态调整）")
     print(f"{'=' * 90}")
-
+    bs.logout()
 
 if __name__ == '__main__':
     main()
