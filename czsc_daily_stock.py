@@ -482,7 +482,8 @@ def main():
     if not restart_execute:
         czsc_logger().info('⚠️警告⚠️：每笔交易金额 3W ！！！，备注：想一想万辰集团' )
         czsc_logger().info('⚠️警告⚠️：每股总金额最多不超过 5W ！！！，备注：想一想万辰集团' )
-    
+        czsc_logger().info('⚠️警告⚠️：每天10:00之前只卖不买！！！！' )
+        
     lg = bs.login()
     # 登录baostock
     # 重新执行不打印log
