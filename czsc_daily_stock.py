@@ -501,7 +501,7 @@ def main():
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
 
     # 计算配置
-    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':False,'chan':False,'bigfish':False,'oversold_rebound':False,'newhigh30min':True}
+    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':True,'chan':False,'bigfish':False,'oversold_rebound':False,'newhigh30min':True}
     # 获取当前日期
     today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）

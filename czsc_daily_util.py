@@ -1701,7 +1701,6 @@ def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=Non
 """
 TRADING_DATE = ""
 def get_latest_trade_date():
-    return '2026-07-07'
     global TRADING_DATE
     if len(TRADING_DATE) > 0:
         return TRADING_DATE
