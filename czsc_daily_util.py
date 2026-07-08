@@ -24,7 +24,7 @@ from czsc.enum import *
 from collections import *
 
 # 全局配置
-USE_TDX = True
+USE_TDX = False
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -1534,10 +1534,13 @@ def _baostock_query(symbol, start_date, end_date, frequency, timeout=60):
 
 
 def get_stock_data(symbol, start_date, end_date, frequency):
+    if frequency.lower() != 'd':
+        return get_stock_data_tdx(symbol, start_date, end_date, frequency)
+
     if USE_TDX:
-        data_list,fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
-        if len(data_list)>0 and len(fields) > 0:
-            return data_list,fields
+        data_list, fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
+        if len(data_list) > 0 and len(fields) > 0:
+            return data_list, fields
 
     """
         code：股票代码，sh或sz.+6位数字代码，或者指数代码，如：sh.601398。sh：上海；sz：深圳。此参数不可为空；
@@ -1612,27 +1615,29 @@ def _maybe_save_cache(filepath, df, end_date):
               float_format='%.2f')
 
 def get_stock_pd(symbol, start_date, end_date, frequency):
-    filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
-    if os.path.isfile(filepath):
-        df = pd.read_csv(filepath)
-        df = df.dropna()
-    else:
-        data_list,fields = get_stock_data(symbol, start_date, end_date, frequency)
-        df = pd.DataFrame(data_list, columns=fields)
-        df['low'] = df['low'].astype(float)
-        df['high'] = df['high'].astype(float)
-        df['open'] = df['open'].astype(float)
-        df['close'] = df['close'].astype(float)
-        df['volume'] = df['volume'].astype(float)
-        df['amount'] = df['amount'].astype(float)
-        df['turn'] = df['turn'].astype(float)
+    if frequency.lower() == 'd':
+        filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
+        if os.path.isfile(filepath):
+            df = pd.read_csv(filepath)
+            df = df.dropna()
+            df['datetime'] = pd.to_datetime(df['date'])
+            return df
+
+    data_list, fields = get_stock_data(symbol, start_date, end_date, frequency)
+    df = pd.DataFrame(data_list, columns=fields)
+    df['low'] = df['low'].astype(float)
+    df['high'] = df['high'].astype(float)
+    df['open'] = df['open'].astype(float)
+    df['close'] = df['close'].astype(float)
+    df['volume'] = df['volume'].astype(float)
+    df['amount'] = df['amount'].astype(float)
+    df['turn'] = df['turn'].astype(float)
+    if frequency.lower() == 'd':
         _maybe_save_cache(filepath, df, end_date)
     df['datetime'] = pd.to_datetime(df['date'])
-    # df.set_index('date', inplace=True)
     return df
 
 def get_stock_pd_tdx(symbol, start_date, end_date, frequency):
-    filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
     data_list, fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
     if data_list:
         df = pd.DataFrame(data_list, columns=fields)
@@ -1643,7 +1648,9 @@ def get_stock_pd_tdx(symbol, start_date, end_date, frequency):
         df['volume'] = df['volume'].astype(float)
         df['amount'] = df['amount'].astype(float)
         df['turn'] = df['turn'].astype(float)
-        _maybe_save_cache(filepath, df, end_date)
+        if frequency.lower() == 'd':
+            filepath = os.path.join(get_data_dir(), '.cache/{}_{}_{}.csv'.format(symbol,start_date,end_date))
+            _maybe_save_cache(filepath, df, end_date)
     else:
         df = pd.DataFrame(columns=['date','open','high','low','close','volume','amount','turn'])
     df['datetime'] = pd.to_datetime(df['date'])
@@ -1654,9 +1661,11 @@ def get_stock_pd_tdx(symbol, start_date, end_date, frequency):
 """
 stock_bars_cache = {}
 def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=None):
-    cache_key = symbol+str(start_date)+'_'+str(end_date)+'_'+frequency
-    if cache_key in stock_bars_cache:
-        return stock_bars_cache[cache_key]
+    is_daily = frequency.lower() == 'd'
+    if is_daily:
+        cache_key = symbol+str(start_date)+'_'+str(end_date)+'_'+frequency
+        if cache_key in stock_bars_cache:
+            return stock_bars_cache[cache_key]
 
     if df is None or len(df.columns.tolist()) <= 0:
         if start_date and end_date and frequency:
@@ -1683,7 +1692,8 @@ def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=Non
     bars = [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
                     close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=row['amount'])
                 for i, row in df.iterrows()]
-    stock_bars_cache[cache_key] = bars
+    if is_daily:
+        stock_bars_cache[cache_key] = bars
     return bars
 
 """
@@ -1691,6 +1701,7 @@ def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=Non
 """
 TRADING_DATE = ""
 def get_latest_trade_date():
+    return '2026-07-07'
     global TRADING_DATE
     if len(TRADING_DATE) > 0:
         return TRADING_DATE
@@ -2207,32 +2218,35 @@ def get_52week_high_30min_buy_point(symbol, df_daily, start_date_30min, end_date
     if df_daily is None or len(df_daily) < 250:
         return False, 0
 
-    # 1. 日线是否创一年新高（过去250个交易日，HHV返回numpy数组）
+    # 1. 日线是否最近20天内创一年新高（过去250个交易日）
     hhv_close = HHV(df_daily['close'], 250)
     hhv_high = HHV(df_daily['high'], 250)
-    current_close = df_daily['close'].iloc[-2]
-    current_high = df_daily['high'].iloc[-2]
+    last_20_close_max = HHV(df_daily['close'], 20)[-1]
+    last_20_high_max = HHV(df_daily['high'], 20)[-1]
 
-    year_high_close = current_close >= hhv_close[-2]
-    year_high_high = current_high >= hhv_high[-2]
+    year_high_close = last_20_close_max >= hhv_close[-2]
+    year_high_high = last_20_high_max >= hhv_high[-2]
     is_new_high = year_high_close or year_high_high
 
-    if not is_new_high:
-        return False, 0
+    # if not is_new_high:
+    #     return False, 0
 
     # 2. 获取30分钟K线数据做缠论分析
-    df_30min = get_stock_pd(symbol, start_date_30min, end_date_30min, '30')
+    df_30min = get_stock_pd_tdx(symbol, start_date_30min, '2026-07-08', '30')
     if df_30min is None or len(df_30min) < 60:
         return True, 0
 
-    buy_point_type = get_30min_buy_point_type(symbol, df_30min, max_bars=max_30min_bars)
+    buy_point_type = get_buy_point_type(symbol, df_30min)
 
-    czsc_logger().info(f"【{symbol}】{get_symbols_name(symbol)} 创一年新高 + 30分钟{['无','一','二','三'][buy_point_type]}买点")
+    czsc_logger().info("【{}】{} {} + 30分钟{}买点".format(
+        symbol, get_symbols_name(symbol),
+        "创一年新高" if is_new_high else "未创新高",
+        ['无','一','二','三'][buy_point_type]))
     if buy_point_type > 0:
-        czsc_logger().info(f"    收盘价:{current_close} 是否250日收盘新高:{year_high_close} 是否250日最高新高:{year_high_high} 30分钟买点类型:{buy_point_type}")
-
-    return True, buy_point_type
-
+        czsc_logger().info("    20日最高收盘:{:.2f} 250日最高收盘:{:.2f} 20日最高价:{:.2f} 250日最高价:{:.2f} 30分钟买点类型:{}".format(
+            last_20_close_max, hhv_close[-2], last_20_high_max, hhv_high[-2], buy_point_type))
+        return True, buy_point_type
+    return True, 0
 
 # baostock查询结果转换成数组
 def query_trade_data_to_pd(rs):
