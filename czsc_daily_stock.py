@@ -253,6 +253,27 @@ def clear_cache(cachedir):
 def save_symbols(data, filename):
     data_dir = get_data_dir()
     write_json(data, os.path.join(data_dir, filename))
+    # 同时输出txt文件（仅股票代码，中文逗号分隔）
+    save_symbols_txt(data, filename)
+
+def save_symbols_txt(data, filename):
+    data_dir = get_data_dir()
+    txt_filename = os.path.splitext(filename)[0] + '.txt'
+    codes = []
+    for item in data:
+        if isinstance(item, dict):
+            symbol = item.get('symbol', '')
+        else:
+            symbol = item
+        # 提取6位股票代码，去掉sh./sz.前缀
+        if '.' in symbol:
+            code = symbol.split('.')[1]
+        else:
+            code = symbol
+        if code:
+            codes.append(code)
+    with open(os.path.join(data_dir, txt_filename), 'w', encoding='utf-8') as f:
+        f.write('、'.join(codes))
 
 def read_symbols(filename):
     data_dir = get_data_dir()
@@ -501,7 +522,7 @@ def main():
         czsc_logger().info('login respond  error_msg:' + lg.error_msg)
 
     # 计算配置
-    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':True,'chan':False,'bigfish':False,'oversold_rebound':False,'newhigh30min':True}
+    daily_config = {'mline':False,'minion':False,'chaodi':False,'golden':True,'strong':False,'strategy':False,'buypoint':True,'chan':False,'bigfish':False,'oversold_rebound':False,'newhigh30min':False}
     # 获取当前日期
     today = datetime.today()
     # 获取当前日期是星期几（0 表示星期一，6 表示星期日）
@@ -535,15 +556,16 @@ def main():
     new_high_30min_b3_symbols = []
     
     # 最后一天交易日
+    is_stock_updated = True
     last_trade_date = get_latest_trade_date()
-    while True:
-        df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
-        if len(df) > 0 and df['date'].iloc[-1] == last_trade_date:
-            is_stock_updated = True
-            break
-        print('最新数据日期：'+ (df['date'].iloc[-1] if len(df) > 0 else '无数据'))
-        is_stock_updated = False
-        time.sleep(30)
+    # while True:
+    #     df = get_stock_pd("sh.000001", START_TRADE_DATE, last_trade_date, 'd')
+    #     if len(df) > 0 and df['date'].iloc[-1] == last_trade_date:
+    #         is_stock_updated = True
+    #         break
+    #     print('最新数据日期：'+ (df['date'].iloc[-1] if len(df) > 0 else '无数据'))
+    #     is_stock_updated = False
+    #     time.sleep(30)
     by_reach = False
     # by_reach = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))
     # by_macd = (last_trade_date == datetime.now().strftime('%Y-%m-%d'))

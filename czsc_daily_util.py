@@ -24,7 +24,7 @@ from czsc.enum import *
 from collections import *
 
 # 全局配置
-USE_TDX = False
+USE_TDX = True
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -248,7 +248,7 @@ def get_minion_trend(df):
 symbol_golden_cache = {}
 def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20,close_ratio=1.1):
     # 股票czsc结构
-    c = get_stock_czsc(symbol,df)
+    c = get_stock_czsc(symbol,df,'d')
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return False
@@ -265,7 +265,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
         fx_a = last_bi.fx_a
         fx_b = last_bi.fx_b
 
-        if False: #最早黄金分割算法
+        if True: #最早黄金分割算法
             while fx_a.fx*threshold > fx_b.fx:
                 if len(bi_list)>=(abs(idx)+2):
                     next_up_bi = bi_list[idx]
@@ -296,17 +296,18 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
         last_seg_fx_b = fx_b # 最后一笔上涨线段终点
         last_seg_sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
         last_seg_gold_val = gold_val_low(fx_a.fx, fx_b.fx)
-        new_min_angle = max(10, min_angle-(end_index-start_index))
+        # new_min_angle = max(10, min_angle-(end_index-start_index))
+        new_min_angle = min_angle
         angle_value = bi_angle(df,fx_a,fx_b)
-        if angle_value<new_min_angle: # 时间跨度太长导致角度太小取
-            fx_a = last_bi.fx_a
-            fx_b = last_bi.fx_b
-            new_min_angle = min_angle
-            if fx_a.fx*threshold > fx_b.fx and abs(start_index-2)<=len(bi_list):
-                pre_up_bi = bi_list[start_index-2]
-                if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx:
-                    fx_a = pre_up_bi.fx_a
-                    angle_value = bi_angle(df,fx_a,fx_b)
+        # if angle_value<new_min_angle: # 时间跨度太长导致角度太小取
+        #     fx_a = last_bi.fx_a
+        #     fx_b = last_bi.fx_b
+        #     new_min_angle = min_angle
+        #     if fx_a.fx*threshold > fx_b.fx and abs(start_index-2)<=len(bi_list):
+        #         pre_up_bi = bi_list[start_index-2]
+        #         if pre_up_bi.fx_a.fx < next_up_bi.fx_a.fx:
+        #             fx_a = pre_up_bi.fx_a
+        #             angle_value = bi_angle(df,fx_a,fx_b)
         # 当前一笔从最低点到最高点，涨幅已经超过50%
         # if fx_a.fx*threshold < fx_b.fx and fx_equal(last_fx, fx_b):
         if fx_a.fx*threshold <= fx_b.fx:
@@ -693,7 +694,7 @@ def is_best_strategy_point(symbol,df,max_ratio=0.2):
     last_trading_day = df['date'].iloc[-1]
     close_price = df['close'].iloc[-1]
     high_price = df['high'].iloc[-1]
-    c = get_stock_czsc(symbol,df)
+    c = get_stock_czsc(symbol,df,'d')
     # 最后一笔
     if len(c.bi_list) <= 0:
         return False
@@ -798,7 +799,7 @@ def is_macd_bottom_divergence(symbol,df):
 """
 def get_reach_support_lines(symbol,df,max_ratio=0.01,days_num=365*2):
     # 股票czsc结构
-    c = get_stock_czsc(symbol,df)
+    c = get_stock_czsc(symbol,df,'d')
     bi_list = c.bi_list
     if len(bi_list) <= 0:
         return 0,0
@@ -1047,10 +1048,10 @@ def has_close_ma(df,N=5,diff=0.02):
         2，表示二买点
         3，表示三买点
 """
-def get_buy_point_type(symbol,df,c_bi_list=None,c_zs_list=None):
+def get_buy_point_type(symbol,df,frequency='d',c_bi_list=None,c_zs_list=None):
     # 股票czsc结构
     if c_bi_list is None:
-        c = get_stock_czsc(symbol,df)
+        c = get_stock_czsc(symbol,df,frequency)
         bi_list = c.bi_list
         if len(bi_list) <= 0:
             return 0
@@ -2235,7 +2236,7 @@ def get_52week_high_30min_buy_point(symbol, df_daily, start_date_30min, end_date
     if df_30min is None or len(df_30min) < 60:
         return True, 0
 
-    buy_point_type = get_buy_point_type(symbol, df_30min)
+    buy_point_type = get_30min_buy_point_type(symbol, df_30min, 60)
 
     czsc_logger().info("【{}】{} {} + 30分钟{}买点".format(
         symbol, get_symbols_name(symbol),

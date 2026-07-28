@@ -131,15 +131,15 @@ def check_market_environment(index_code='sh.000300', lookback=5):
         if df is None or len(df) < lookback:
             return 'sideways'
         c = df['close'].values.astype(float)
-        ma20 = MA(c, 20)
-        ma60 = MA(c, 60)
-        if c[-1] > ma20[-1] and ma20[-1] > ma60[-1] and ma20[-1] > ma20[-5]:
+        ma5 = MA(c, 5)
+        ma10 = MA(c, 10)
+        if ma5[-1] > ma10[-1] and ma5[-2] > ma10[-2] and ma5[-3] > ma10[-3]:
             return 'uptrend'
-        elif c[-1] < ma20[-1] and ma20[-1] < ma60[-1] and ma20[-1] < ma20[-5]:
+        elif ma5[-1] < ma10[-1] and ma5[-2] < ma10[-2] and ma5[-3] < ma10[-3]:
             return 'downtrend'
         return 'sideways'
     except Exception:
-        return 'sideways'
+        return 'downtrend'
 
 
 def calc_rps(stock_close, lookback=20):

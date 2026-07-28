@@ -1,113 +1,64 @@
 # coding: utf-8
 """
-黄金分割策略 — Backtrader 回测实现
+缠论三买 — Backtrader 回测实现
 
-公式来源：CZSCStragegy_Goldenline.py (进化版黄金分割点策略)
-  1. CZSC分析得到笔列表 bi_list
-  2. find_up_seg 找上涨线段
-  3. 检查涨幅>70%、K线>10、角度>12
-  4. 计算黄金分割买点：min(sqrt(fx_a*fx_b), 0.382回调位)
-  5. 价格触及买点时买入，持有 hold_days 日后卖出
+公式来源：CZSCStragegy_ThreeBuy.py（手动回测版）
+  1. 逐K线喂入CZSC，用 finished_bis 避免未来函数
+  2. 检查缠论三买：当前下跌笔终点>中枢上高，前上涨笔起点<中枢上高
 
 信号触发后次日开盘买入，持有 hold_days 日后卖出。
 """
 import os
 import sys
-import math
 import sqlite3
 import backtrader as bt
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from collections import OrderedDict
 from czsc_daily_util import get_daily_symbols, get_stock_pd, get_stock_bars
+from czsc.utils.sig import get_zs_seq
+from czsc.objects import RawBar, Freq
 from czsc.analyze import CZSC
-from czsc.enum import Freq, Mark, Direction
-from czsc.objects import RawBar
+from czsc.enum import Direction, Mark
 
 HOLD_DAYS = 5
+DAILY_RETURN = 0
 
 # ============================================================
-#  Golden Line 信号计算（复用原始策略逻辑）
+#  信号计算（复用原始策略逻辑，无未来函数）
 # ============================================================
 
-def days_trade_delta(df, start_date, end_date):
-    start_index = df.index[df['date'] == start_date].tolist()
-    if not start_index:
-        return 0
-    end_index = df.index[df['date'] == end_date].tolist()
-    if not end_index:
-        return 0
-    return int(end_index[0]) - int(start_index[0]) + 1
+def check_three_buy(bi_list, zs_list):
+    if not bi_list:
+        return False, None, None
 
+    last_bi = bi_list[-1]
+    if last_bi.direction != Direction.Down:
+        return False, None, None
 
-def bi_angle(df, fx_a, fx_b):
-    if fx_a.fx == 0:
-        return 0
-    max_ratio = 10 * (fx_b.fx - fx_a.fx) / fx_a.fx
-    days_num = days_trade_delta(df, fx_a.dt.strftime("%Y-%m-%d"), fx_b.dt.strftime("%Y-%m-%d"))
-    if days_num == 0:
-        return 0
-    return 45 * max_ratio / days_num
-
-
-def sqrt_val(a, b):
-    return round(math.sqrt(a * b), 3)
-
-
-def gold_val_low(a, b):
-    val = max(a, b) - min(a, b)
-    return val * 0.382 + min(a, b)
-
-
-def find_up_seg(bi_list, start_index):
-    start_bi = None
-    last_bi = None
-    for index in range(start_index, len(bi_list)):
-        cur_bi = bi_list[index]
-        if cur_bi.fx_a.fx > cur_bi.fx_b.fx:
-            if start_bi and start_bi.fx_a.fx >= cur_bi.fx_b.fx:
-                if start_bi.fx_b.dt == cur_bi.fx_a.dt:
-                    start_bi = None
-                else:
-                    if last_bi:
-                        return start_bi.fx_a, last_bi.fx_b, last_bi
-                    else:
-                        return start_bi.fx_a, start_bi.fx_b, start_bi
-            continue
-        if not start_bi:
-            start_bi = cur_bi
-            continue
-        if last_bi:
-            if cur_bi.fx_a.fx > last_bi.fx_a.fx and cur_bi.fx_b.fx > last_bi.fx_b.fx:
-                last_bi = cur_bi
-            else:
-                break
-        elif cur_bi.fx_a.fx > start_bi.fx_a.fx and cur_bi.fx_b.fx > start_bi.fx_b.fx:
-            last_bi = cur_bi
-            continue
-        else:
+    last_zs = None
+    for zs in reversed(zs_list):
+        if zs.is_valid:
+            last_zs = zs
             break
-    if start_bi:
-        if last_bi:
-            return start_bi.fx_a, last_bi.fx_b, last_bi
-        else:
-            return start_bi.fx_a, start_bi.fx_b, start_bi
-    else:
-        return None, None, None
+    if last_zs is None or len(last_zs.bis) <= 4:
+        return False, None, None
+
+    zs_last_bi = last_zs.bis[-1]
+    last_up_bi = bi_list[-2]
+
+    if last_bi.fx_b.fx <= last_zs.zg:
+        return False, None, None
+    if zs_last_bi.fx_b.dt >= last_bi.fx_b.dt:
+        return False, None, None
+    if last_up_bi.fx_a.fx >= last_zs.zg:
+        return False, None, None
+
+    return True, last_bi, last_zs
 
 
-def calculate_goldenline_signal(df):
-    """
-    计算黄金分割买入信号
-
-    逻辑：
-      1. 用 CZSC 分析得到 bi_list
-      2. find_up_seg 找上涨线段
-      3. 检查涨幅、K线数、角度
-      4. 计算黄金分割买点
-      5. 价格触及买点时产生信号
-    """
-    if df is None or len(df) < 120:
+def calculate_threebuy_signal(df):
+    if df is None or len(df) < 300:
         return None
 
     symbol = df['code'].iloc[0] if 'code' in df.columns else 'unknown'
@@ -123,69 +74,50 @@ def calculate_goldenline_signal(df):
             dt=dt_val,
         ))
 
-    try:
-        c = CZSC(bars, get_signals=None)
-    except Exception:
-        return None
-
-    bi_list = c.bi_list
-    if len(bi_list) < 5:
-        return None
-
-    threshold = 1.7
-    klines = 10
-    min_angle = 12
-
     signal = np.zeros(len(df), dtype=bool)
     date_to_index = {str(d): idx for idx, d in enumerate(df['date'])}
 
-    start_index = 0
-    while start_index < len(bi_list):
-        fx_a, fx_b, last_bi = find_up_seg(bi_list, start_index)
-        end_index = start_index
-        if last_bi:
-            end_index = bi_list.index(last_bi)
+    c = CZSC.__new__(CZSC)
+    c.verbose = False
+    c.max_bi_num = 500
+    c.bars_raw = []
+    c.bars_ubi = []
+    c.bi_list = []
+    c.symbol = symbol
+    c.freq = Freq.D
+    c.get_signals = None
+    c.signals = None
+    c.cache = OrderedDict()
 
-        if fx_a and fx_b:
-            if fx_a.fx * threshold < fx_b.fx:
-                fx_a_date = fx_a.dt.strftime("%Y-%m-%d")
-                fx_b_date = fx_b.dt.strftime("%Y-%m-%d")
-                up_kline_num = days_trade_delta(df, fx_a_date, fx_b_date)
-                if up_kline_num < klines:
-                    start_index = end_index + 1 if last_bi else start_index + 1
-                    continue
+    prev_bi_count = 0
 
-                if bi_angle(df, fx_a, fx_b) < min_angle:
-                    start_index = end_index + 1 if last_bi else start_index + 1
-                    continue
+    for bar in bars:
+        c.update(bar)
 
-                sqr_val = sqrt_val(fx_a.fx, fx_b.fx)
-                gold_low_val = gold_val_low(fx_a.fx, fx_b.fx)
-                min_val = min(sqr_val, gold_low_val)
+        if len(c.bi_list) <= prev_bi_count:
+            continue
+        prev_bi_count = len(c.bi_list)
 
-                next_up_bi = None
-                if (end_index + 2) < len(bi_list):
-                    next_up_bi = bi_list[end_index + 2]
+        finished = c.finished_bis
+        if len(finished) < 6:
+            continue
 
-                start_scan = date_to_index.get(fx_b_date)
-                if start_scan is None:
-                    start_index = end_index + 1 if last_bi else start_index + 1
-                    continue
+        zs_list = get_zs_seq(finished)
 
-                end_scan = len(df)
-                if next_up_bi:
-                    next_up_date = next_up_bi.fx_a.dt.strftime("%Y-%m-%d")
-                    end_scan_idx = date_to_index.get(next_up_date)
-                    if end_scan_idx is not None:
-                        end_scan = end_scan_idx + 1
+        is_buy, last_bi, last_zs = check_three_buy(finished, zs_list)
+        if not is_buy:
+            continue
 
-                for idx in range(start_scan, min(end_scan, len(df))):
-                    stock_low = float(df['low'].iloc[idx])
-                    if stock_low <= min_val and (idx + HOLD_DAYS) < len(df):
-                        signal[idx] = True
-                        break
+        k1, k2, k3 = last_bi.fx_b.new_bars
+        buy_date_str = k3.dt.strftime("%Y-%m-%d")
+        if buy_date_str not in date_to_index:
+            continue
 
-        start_index = end_index + 1 if last_bi else start_index + 1
+        buy_idx = date_to_index[buy_date_str]
+        if buy_idx >= len(df) or (buy_idx + HOLD_DAYS) >= len(df):
+            continue
+
+        signal[buy_idx] = True
 
     return pd.Series(signal, index=df.index)
 
@@ -207,20 +139,20 @@ def _new_bt_stats():
 
 
 class SignalPandasData(bt.feeds.PandasData):
-    lines = ("goldenline",)
+    lines = ("threebuy",)
     params = (
-        ("goldenline", "goldenline"),
+        ("threebuy", "threebuy"),
     )
 
 
-class GoldenlineStrategy(bt.Strategy):
+class ThreeBuyStrategy(bt.Strategy):
     params = (
         ("hold_days", HOLD_DAYS),
         ("printlog", False),
     )
 
     def __init__(self):
-        self.signal_line = self.datas[0].goldenline
+        self.signal_line = self.datas[0].threebuy
 
         self.order = None
         self.entry_price = 0.0
@@ -263,11 +195,7 @@ class GoldenlineStrategy(bt.Strategy):
                 self.log("卖出 价格={:.2f} 收益={:+.2f}%".format(
                     order.executed.price, profit_pct))
 
-        elif order.status == order.Canceled:
-            pass
-        elif order.status == order.Margin:
-            pass
-        elif order.status == order.Rejected:
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             pass
 
         self.order = None
@@ -282,7 +210,7 @@ class GoldenlineStrategy(bt.Strategy):
             daily_ret = round((current_close - self.entry_price) / self.entry_price * 100, 2)
             self._current_daily_rets.append(daily_ret)
 
-            if self.bars_held >= self.params.hold_days:
+            if self.bars_held >= self.params.hold_days or daily_ret>DAILY_RETURN:
                 self.order = self.close()
             return
 
@@ -301,16 +229,16 @@ class GoldenlineStrategy(bt.Strategy):
 
         if signal_on:
             self._pending_buy = True
-            self.log("信号触发 黄金分割")
+            self.log("信号触发 三买")
 
 
 def prepare_dataframe(df):
-    signal = calculate_goldenline_signal(df)
+    signal = calculate_threebuy_signal(df)
     if signal is None:
         return None
 
     out = df[["open", "high", "low", "close", "volume"]].copy()
-    out["goldenline"] = signal.fillna(False).astype(int)
+    out["threebuy"] = signal.fillna(False).astype(int)
 
     out["datetime"] = pd.to_datetime(df["date"])
     out.set_index("datetime", inplace=True)
@@ -322,7 +250,7 @@ def run_single_backtest(df_bt, cash=1000000, commission=0.0003):
     cerebro = bt.Cerebro()
     data = SignalPandasData(dataname=df_bt)
     cerebro.adddata(data)
-    cerebro.addstrategy(GoldenlineStrategy, printlog=False)
+    cerebro.addstrategy(ThreeBuyStrategy, printlog=False)
     cerebro.broker.setcash(cash)
     cerebro.broker.setcommission(commission=commission)
     results = cerebro.run()
@@ -346,7 +274,7 @@ def _merge_stats(stats_dict, strat, symbol):
 def print_statistics(stats_dict):
     print()
     print("=" * 100)
-    print("  黄金分割策略 — Backtrader 回测结果（全市场）")
+    print("  缠论三买策略 — Backtrader 回测结果（全市场）")
     print("=" * 100)
 
     s = stats_dict
@@ -398,7 +326,7 @@ def print_statistics(stats_dict):
 
 
 if __name__ == "__main__":
-    start_date = "2024-01-01"
+    start_date = "2020-01-01"
     end_date = "2025-12-31"
     all_symbols = get_daily_symbols()
     total = len(all_symbols)
@@ -434,18 +362,18 @@ if __name__ == "__main__":
             print_statistics(bt_stats)
 
         try:
-            if len(df) < 120:
+            if len(df) < 300:
                 skipped += 1
                 continue
 
-            signal = calculate_goldenline_signal(df.reset_index(drop=True))
+            signal = calculate_threebuy_signal(df.reset_index(drop=True))
             if signal is None or not signal.any():
                 skipped += 1
                 continue
 
             out = df[["open", "high", "low", "close", "volume"]].copy()
             out = out.reset_index(drop=True)
-            out["goldenline"] = signal.fillna(False).astype(int)
+            out["threebuy"] = signal.fillna(False).astype(int)
             out["datetime"] = pd.to_datetime(df["date"].values)
             out.set_index("datetime", inplace=True)
             out.sort_index(inplace=True)
@@ -457,3 +385,28 @@ if __name__ == "__main__":
             continue
 
     print_statistics(bt_stats)
+'''
+====================================================================================================
+  缠论三买策略 — Backtrader 回测结果（全市场）
+====================================================================================================
+  交易数：19789
+  胜率：82.2%
+  平均收益：+1.89%
+  总收益：+37428.14%
+  最大单笔收益：+44.28%
+  最小单笔收益：-32.31%
+  中位数收益：+1.42%
+  95%分位：+8.23%
+  5%分位：-3.23%
+  涉及股票数：4221
+
+  --- 逐日收益明细 ---
+      天数        均值%       中位数%        胜率%         总正         总负
+  ------------------------------------------------------------
+       1     +1.06%     +0.64%      62.0%   31897.93  -10991.23
+       2     -0.59%     -0.55%      40.0%    7293.35  -11695.24
+       3     -1.28%     -0.93%      33.7%    3393.22   -9185.89
+       4     -2.65%     -2.01%      22.4%    1492.77   -9422.06
+       5     -3.15%     -2.34%      19.7%     871.33   -8171.55
+====================================================================================================
+'''
