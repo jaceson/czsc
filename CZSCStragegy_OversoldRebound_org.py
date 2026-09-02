@@ -8,17 +8,10 @@
   2. XL3: 低位拐头信号 — 短期低点均线在长期支撑下方企稳
 
 策略逻辑：出现 XL3 OR CTD6「买」信号次日开盘买入，持有 hold_days 日后统计收益。
-
-主流程（优化后）：
-  1. 多进程并行扫描全市场，输出最后一个交易日出现信号的股票
-     （含 BCD1 值乘以 50 的通达信柱高值），并保存到 JSON。
-  2. 串行执行完整历史回测并输出分信号类型统计。
 """
-import os
 import pandas as pd
 import numpy as np
 import baostock as bs
-from concurrent.futures import ProcessPoolExecutor
 from numpy.lib.stride_tricks import sliding_window_view
 from lib.MyTT import (
     REF, EMA, SMA, HHV, LLV, MAX, MIN, ABS, MA, SUM, DMA,
@@ -45,9 +38,6 @@ def _new_stats():
 
 
 signal_stats = {k: _new_stats() for k in SIGNAL_KEYS}
-
-# 最后一个交易日出现信号的股票列表（元素为 _extract_last_day_signal 的返回值）
-last_day_signals = []
 
 
 def _ref_frac(S, N):
@@ -317,55 +307,6 @@ def calculate_oversold_indicators(df):
     return ndf
 
 
-def _extract_last_day_signal(symbol, ndf):
-    """提取最后一个交易日出现的所有信号（含 BCD1*50），无信号返回 None"""
-    if ndf is None or len(ndf) < 1:
-        return None
-    last_idx = len(ndf) - 1
-    row = ndf.iloc[last_idx]
-
-    labels = []
-    if not bool(row["CTD6"]):
-        return None
-    if bool(row["XL3"]):
-        labels.append("XL3")
-    if bool(row["CTD6"]):
-        labels.append("CTD6")
-    if float(row["启动点"]) > 0:
-        labels.append("启动点")
-    if bool(row["见底"]):
-        labels.append("见底")
-    if not labels:
-        return None
-
-    bcd1 = float(row["BCD1"])
-    return {
-        "symbol": symbol,
-        "name": get_symbols_name(symbol),
-        "date": str(row["date"]),
-        "signal": "+".join(labels),
-        "open": float(row["open"]),
-        "close": float(row["close"]),
-        "high": float(row["high"]),
-        "low": float(row["low"]),
-        "volume": float(row["volume"]),
-        "amount": float(row["amount"]),
-        "turn": float(row["turn"]),
-        "BCD1": round(bcd1, 2),
-        "BCD1*50": round(50 * bcd1, 2),
-    }
-
-
-def get_last_day_signals(symbol, df):
-    """计算指标并返回最后一个交易日出现的信号，供并行扫描使用"""
-    if df is None or len(df) < 120:
-        return None
-    ndf = calculate_oversold_indicators(df)
-    if ndf is None:
-        return None
-    return _extract_last_day_signal(symbol, ndf)
-
-
 def _record_position(symbol, entries, df):
     """记录一次持仓（可能包含多次加仓）到对应信号类型的统计中"""
     last_entry = entries[-1]
@@ -406,17 +347,12 @@ def _record_position(symbol, entries, df):
     return max_val, exit_ret, exit_date
 
 
-def get_oversold_buy_point(symbol, df, track_last_day=True):
+def get_oversold_buy_point(symbol, df):
     if df is None or len(df) < 120:
         return
     ndf = calculate_oversold_indicators(df)
     if ndf is None:
         return
-
-    if track_last_day:
-        last_sig = _extract_last_day_signal(symbol, ndf)
-        if last_sig is not None:
-            last_day_signals.append(last_sig)
 
     xl3 = ndf["XL3"].fillna(False).values
     ctd6 = ndf["CTD6"].fillna(False).values
@@ -579,105 +515,42 @@ def print_statistics():
         _print_signal_stats(key, signal_stats[key])
 
 
-def print_last_day_signals(signals):
-    """打印最后一个交易日出现信号的股票（含 BCD1*50 柱高值）"""
-    print("\n" + "=" * 90)
-    print("  最后一个交易日出现信号的股票（BCD1*50 为通达信柱高值）")
-    print("=" * 90)
-    if not signals:
-        print("  无\n")
-        return
-
-    signals = sorted(signals, key=lambda r: r["BCD1*50"])
-    print("{:<10}{:<10}{:<12}{:<14}{:>8}{:>8}{:>10}{:>8}".format(
-        "代码", "名称", "日期", "信号", "收盘", "BCD1", "BCD1*50", "涨跌%"))
-    print("-" * 90)
-    for r in signals:
-        pct = (r["close"] - r["open"]) / r["open"] * 100 if r["open"] else 0
-        print("{:<10}{:<10}{:<12}{:<14}{:>8.2f}{:>8.2f}{:>10.2f}{:>8.2f}".format(
-            r["symbol"], r["name"], r["date"], r["signal"],
-            r["close"], r["BCD1"], r["BCD1*50"], pct))
-    print("-" * 90)
-    print("  共 {} 只股票出现信号\n".format(len(signals)))
-
-
-def _bs_login_init():
-    pass
-    # bs.login()
-
-
-def _scan_worker(args):
-    """子进程扫描单个股票，返回最后一个交易日信号"""
-    symbol, start_date, end_date = args
-    try:
-        df = get_stock_pd(symbol, start_date, end_date, 'd')
-        return get_last_day_signals(symbol, df)
-    except Exception:
-        return None
-
-
-def scan_last_day_signals(symbols, start_date, end_date, workers=None):
-    """
-    多进程并行扫描全市场，返回最后一个交易日出现信号的股票列表。
-    baostock/通达信连接不保证线程安全，故使用进程池，每个子进程独立登录。
-    """
-    if workers is None:
-        workers = min(os.cpu_count() or 1, 1)
-
-    print("[{}] 开始并行扫描 {} 只股票（{} 进程）……".format(
-        pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), len(symbols), workers))
-
-    results = []
-    args = [(s, start_date, end_date) for s in symbols]
-    with ProcessPoolExecutor(max_workers=workers, initializer=_bs_login_init) as executor:
-        for i, res in enumerate(executor.map(_scan_worker, args), 1):
-            if res is not None:
-                results.append(res)
-            if i % 100 == 0:
-                print("[{}] 扫描进度：{} / {}".format(
-                    pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i, len(args)))
-
-    print("[{}] 扫描完成，共 {} 只股票出现信号".format(
-        pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), len(results)))
-    return results
-
-
 if __name__ == "__main__":
-    start_date = "2024-01-01"
-    end_date = '2026-08-10'
-
+    test_symbols = []
+    start_date = "2000-01-01"
+    end_date = '2025-01-01'
     all_symbols = get_daily_symbols()
+    test_symbols = read_json('./data/超跌反弹.json')
+    test_symbols = ['sh.603226']
     total = len(all_symbols)
+    if len(test_symbols)>0:
+        bs.login()
+        end_date = get_latest_trade_date()
 
-    lg = bs.login()
-    print('login respond error_code:' + lg.error_code)
-    print('login respond  error_msg:' + lg.error_msg)
-    end_date = get_latest_trade_date()
-
-    if True:
-        # 1) 并行扫描：最后一个交易日出现信号的股票（含 BCD1*50）
-        signals = scan_last_day_signals(all_symbols, start_date, end_date)
-        print_last_day_signals(signals)
-        if signals:
-            write_json(signals, './data/超跌反弹_最新信号.json')
-            print("结果已保存到 ./data/超跌反弹_最新信号.json")
-
-    if False:
-        # 2) 串行完整回测统计
-        print("\n开始串行回测统计……")
-        for i, symbol in enumerate(all_symbols):
-            print("[{}] 回测进度：{} / {}".format(
-                    pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i + 1, total))
-            try:
-                df = get_stock_pd(symbol, start_date, end_date, 'd')
-                get_oversold_buy_point(symbol, df, track_last_day=False)
-            except Exception as e:
+    for i, symbol in enumerate(all_symbols):
+        # 测试个别股票
+        if len(test_symbols)>0:
+            if symbol not in test_symbols:
                 continue
-            if (i + 1) % 100 == 0:
-                print_statistics()
-        print_statistics()
 
-    bs.logout()
+        print("[{}] 进度：{} / {}".format(
+                pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i + 1, total))
+        try:
+            # 测试个别股票，获取最新k线
+            if len(test_symbols)>0:
+                df = get_stock_pd(symbol, start_date, end_date, 'd')
+            else:
+                df = get_local_stock_data(symbol, start_date)
+            get_oversold_buy_point(symbol, df)
+        except Exception as e:
+            continue
+        if (i + 1) % 100 == 0:
+            print_statistics()
+    print_statistics()
+
+    if len(test_symbols)>0:
+        # 登出系统
+        bs.logout()
 
 '''
 RS:=SMA(MAX(C-REF(C,1),0),14,1)/SMA(ABS(C-REF(C,1)),14,1)*100;

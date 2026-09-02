@@ -1,6 +1,7 @@
 #!/bin/bash
 # 监控 .cache 目录文件数量，超过 TIMEOUT 无新文件则重启进程
 # 当 .cache 文件数等于股票总数时，等待进程自然结束并退出
+# 数据缓存完成后继续执行 CZSCStragegy_OversoldRebound.py
 # 用法: ./run_with_watchdog.sh [参数...]
 
 TIMEOUT=60
@@ -31,6 +32,23 @@ load_stock_count() {
 cd "$WORKDIR" || exit 1
 
 > "$LOG_FILE"
+
+# 传参 1 时优先清理缓存数据，确保重新拉取最新行情
+clear_cache() {
+    if [ -d "$CACHE_DIR" ]; then
+        local n
+        n=$(ls "$CACHE_DIR"/*.csv 2>/dev/null | wc -l)
+        # 避免误删．DS_Store 等非缓存文件
+        rm -f "$CACHE_DIR"/*.csv
+        log "已清理 $CACHE_DIR 缓存文件 $n 个"
+    fi
+}
+
+# 消费第一个参数：传入 1 则清理缓存，其余参数继续传给主脚本
+if [ "${1:-}" = "1" ]; then
+    clear_cache
+    shift
+fi
 
 total_stocks=$(load_stock_count)
 log "目标股票总数: $total_stocks"
@@ -88,3 +106,16 @@ while true; do
     log "缓存未完成 ($(count_cache_files)/${total_stocks})，重启中..."
     sleep 3
 done
+
+if [ "$(count_cache_files)" -lt "$total_stocks" ]; then
+    log "缓存未完成 ($(count_cache_files)/${total_stocks})，跳过策略执行"
+    exit 1
+fi
+
+# 数据缓存完成后执行超跌反弹策略
+STRATEGY="CZSCStragegy_OversoldRebound.py"
+log "开始执行 $STRATEGY"
+$PYTHON "$STRATEGY"
+STRATEGY_EXIT=$?
+log "$STRATEGY 执行完成 (exit code: $STRATEGY_EXIT)"
+exit $STRATEGY_EXIT

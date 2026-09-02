@@ -1396,6 +1396,16 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
             ktype = 5
         elif frequency.lower() == 'm':
             ktype = 6
+        elif frequency.lower() == '1':
+            ktype = 7
+        elif frequency.lower() == '5':
+            ktype = 0
+        elif frequency.lower() == '15':
+            ktype = 1
+        elif frequency.lower() == '30':
+            ktype = 2
+        elif frequency.lower() == '60':
+            ktype = 3
         else:
             ktype = 4
 
@@ -1404,6 +1414,14 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
         if not data:
             czsc_logger().error(f'获取 {symbol} 数据失败')
             return [],[]
+
+        # 分钟级数据需要分段获取更多数据（TDX每次最多800条）
+        if frequency.lower() not in ['d', 'w', 'm']:
+            for offset in range(800, 3200, 800):
+                more_data = tdx_api.get_security_bars(ktype, market_code, code, offset, 800)
+                if not more_data:
+                    break
+                data.extend(more_data)
 
         xdxr = tdx_api.get_xdxr_info(market_code, code) or []
         qfq_factors = _calc_qfq_factors(data, xdxr)
@@ -1415,7 +1433,10 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
             czsc_logger().error(f'{symbol} 数据格式不正确')
             return [],[]
 
-        df['date'] = df['datetime'].apply(lambda x: x.strftime('%Y-%m-%d') if hasattr(x, 'strftime') else str(x)[:10])
+        if frequency.lower() in ['d', 'w', 'm']:
+            df['date'] = df['datetime'].apply(lambda x: x.strftime('%Y-%m-%d') if hasattr(x, 'strftime') else str(x)[:10])
+        else:
+            df['date'] = df['datetime'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M') if hasattr(x, 'strftime') else str(x)[:16])
 
         def _get_factor(row):
             k = (int(row['year']), int(row['month']), int(row['day']))
@@ -1690,7 +1711,7 @@ def get_stock_bars(symbol, start_date=None, end_date=None, frequency='d', df=Non
         freq = Freq.F60
     else:
         freq = Freq.D
-    bars = [RawBar(symbol=symbol, id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
+    bars = [RawBar(symbol=symbol, id=i, freq=freq, open=row['open'], dt=row['dt'],
                     close=row['close'], high=row['high'], low=row['low'], vol=row['volume'], amount=row['amount'])
                 for i, row in df.iterrows()]
     if is_daily:
@@ -1706,21 +1727,33 @@ def get_latest_trade_date():
     if len(TRADING_DATE) > 0:
         return TRADING_DATE
 
-    # 获取当前日期
-    current_date = datetime.now()
-    # 计算30天之前的日期
-    date_30_days_ago = current_date - timedelta(days=30)
+    if USE_TDX:
+        global tdx_api
+        if not tdx_api:
+            api = TdxHq_API()
+            if api.connect('114.28.173.137', 7709):
+                tdx_api = api
+            else:
+                czsc_logger().error('通达信API连接失败')
+        if tdx_api:
+            try:
+                data = tdx_api.get_security_bars(9, 1, '000001', 0, 1)
+                if data and len(data) > 0:
+                    last_bar = data[0]
+                    last_trading_day = f"{last_bar['year']:04d}-{last_bar['month']:02d}-{last_bar['day']:02d}"
+                    czsc_logger().info(f"距今最后一个交易日是：{last_trading_day}")
+                    TRADING_DATE = last_trading_day
+                    return last_trading_day
+            except Exception as e:
+                czsc_logger().error(f"通达信获取交易日失败: {e}")
 
-    # 获取当前日期
+    current_date = datetime.now()
+    date_30_days_ago = current_date - timedelta(days=30)
     current_date_str = current_date.strftime('%Y-%m-%d')
     date_30_days_ago_str = date_30_days_ago.strftime('%Y-%m-%d')
-    # 查询交易日历
-    rs = bs.query_trade_dates(start_date=date_30_days_ago_str, end_date=current_date_str) 
+    rs = bs.query_trade_dates(start_date=date_30_days_ago_str, end_date=current_date_str)
     result = query_trade_data_to_pd(rs)
-
-    # 筛选出交易日
     trading_days = result[result["is_trading_day"] == '1']['calendar_date']
-    # 获取最后一个交易日
     last_trading_day = trading_days.iloc[-1]
     czsc_logger().info(f"距今最后一个交易日是：{last_trading_day}")
     TRADING_DATE = last_trading_day
