@@ -521,7 +521,7 @@ if __name__ == "__main__":
     end_date = '2025-01-01'
     all_symbols = get_daily_symbols()
     test_symbols = read_json('./data/超跌反弹.json')
-    test_symbols = ['sh.603226']
+    # test_symbols = ['sh.603226']
     total = len(all_symbols)
     if len(test_symbols)>0:
         bs.login()

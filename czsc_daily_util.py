@@ -1192,12 +1192,11 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
             for x in range(1,hold_days+1):
                 minus_res[buy_type][x] = []
 
-        start_index = df.iloc[df['date'].values == trade_date].index[0]
-        buy_price = df['close'].iloc[start_index]
+        start_index = df.iloc[df['date'].values == trade_date].index[0]+1
         if (start_index+hold_days+1)<len(df['date']):
-            buy_price = df['close'].iloc[start_index]
+            buy_price = df['open'].iloc[start_index]
             for x in range(1,hold_days+1):
-                sell_price = df['close'].iloc[start_index+x]
+                sell_price = df['high'].iloc[start_index+x]
                 ratio = round(100*(sell_price-buy_price)/buy_price,2)
                 if ratio>0:
                     plus_res[buy_type][x].append(ratio)
@@ -1205,8 +1204,11 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
                     minus_res[buy_type][x].append(ratio)
 
         if trade_date == today or trade_date == yestoday:
-            plus_cnt = len(plus_res[buy_type][hold_days])
-            minus_cnt = len(minus_res[buy_type][hold_days])
+            plus_cnt = 0
+            minus_cnt = 0
+            for x in range(1,hold_days+1):
+                plus_cnt += len(plus_res[buy_type][x])
+                minus_cnt += len(minus_res[buy_type][x])
             # 数据样本太少
             if plus_cnt<=0 and minus_cnt<=0:
                 return None    
@@ -1376,7 +1378,7 @@ def _calc_qfq_factors(bars, xdxr_events):
     return result
 
 
-def get_stock_data_tdx(symbol, start_date, end_date, frequency):
+def get_stock_data_tdx(symbol, start_date, end_date, frequency, category=False):
     try:
         market = symbol.split('.')[0]
         market_code = 1 if market.lower() == 'sh' else 0
@@ -1409,7 +1411,10 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency):
         else:
             ktype = 4
 
-        data = tdx_api.get_security_bars(ktype, market_code, code, 0, 800)
+        if category:
+            data = tdx_api.get_index_bars(ktype, market_code, code, 0, 800)
+        else:
+            data = tdx_api.get_security_bars(ktype, market_code, code, 0, 800)
 
         if not data:
             czsc_logger().error(f'获取 {symbol} 数据失败')
@@ -1627,9 +1632,6 @@ def get_stock_data(symbol, start_date, end_date, frequency):
     return data_list,columns
 
 def _maybe_save_cache(filepath, df, end_date):
-    if end_date == get_latest_trade_date():
-        if str(df['date'].iloc[-1]) != end_date:
-            return
     df.to_csv(filepath,
               index=False,
               encoding='utf-8-sig',
@@ -1659,8 +1661,8 @@ def get_stock_pd(symbol, start_date, end_date, frequency):
     df['datetime'] = pd.to_datetime(df['date'])
     return df
 
-def get_stock_pd_tdx(symbol, start_date, end_date, frequency):
-    data_list, fields = get_stock_data_tdx(symbol, start_date, end_date, frequency)
+def get_stock_pd_tdx(symbol, start_date, end_date, frequency, category=False):
+    data_list, fields = get_stock_data_tdx(symbol, start_date, end_date, frequency, category)
     if data_list:
         df = pd.DataFrame(data_list, columns=fields)
         df['low'] = df['low'].astype(float)
