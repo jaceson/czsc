@@ -232,12 +232,14 @@ def fetch_all_symbols_kline():
                     if not row_data[7] or row_data[7] == '':
                         continue
                     stock_turn = float(row_data[7])
-                    sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, turn, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_turn, frequency))
+                    # 用 INSERT OR REPLACE，配合 STOCK_DAILY 上 (code, frequency, date) 的唯一索引实现幂等导入，
+                    # 避免每次全量拉取都往表里 append 一份重复数据
+                    sql_connect_cursor.execute("INSERT OR REPLACE INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, turn, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_turn, frequency))
                 else:
                     stock_time = row_data[7]
                     if not stock_time or len(stock_time)<=0:
                         continue
-                    sql_connect_cursor.execute("INSERT INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, time, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_time, frequency))    
+                    sql_connect_cursor.execute("INSERT OR REPLACE INTO STOCK_DAILY (date, code, open, close, high, low, volume, amount, time, frequency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (stock_date, symbol, stock_open, stock_close, stock_high, stock_low, stock_volume, stock_amount, stock_time, frequency))
             except Exception as e:
                 print("处理数据失败：symbol={}, date={}, row_data={}".format(symbol, row_data[0] if len(row_data)>0 else 'N/A', row_data))
                 print("详细错误：", e)
