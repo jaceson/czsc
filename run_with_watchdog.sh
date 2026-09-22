@@ -118,4 +118,12 @@ log "开始执行 $STRATEGY"
 $PYTHON "$STRATEGY"
 STRATEGY_EXIT=$?
 log "$STRATEGY 执行完成 (exit code: $STRATEGY_EXIT)"
+
+# 执行控盘+抄底策略
+STRATEGY="CZSCStragegy_FormulaSignal_ControlBottom.py"
+log "开始执行 $STRATEGY"
+$PYTHON "$STRATEGY"
+STRATEGY_EXIT=$?
+log "$STRATEGY 执行完成 (exit code: $STRATEGY_EXIT)"
+
 exit $STRATEGY_EXIT
