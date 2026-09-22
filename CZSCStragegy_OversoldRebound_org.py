@@ -517,11 +517,11 @@ def print_statistics():
 
 if __name__ == "__main__":
     test_symbols = []
-    start_date = "2000-01-01"
-    end_date = '2025-01-01'
+    start_date = "2024-01-01"
+    end_date = '2026-09-11'
     all_symbols = get_daily_symbols()
     test_symbols = read_json('./data/超跌反弹.json')
-    # test_symbols = ['sh.603226']
+    test_symbols = ['sz.002855']
     total = len(all_symbols)
     if len(test_symbols)>0:
         bs.login()

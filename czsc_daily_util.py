@@ -365,10 +365,11 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                 symbol_data["gold_val"] = last_seg_gold_val
                 symbol_golden_cache[symbol] = symbol_data
                 write_json(symbol_golden_cache, './data/golden_log.json')
-                if stock_close<max_val:
+                if stock_close<=min(sqr_val,gold_low_val):
                     return True
                 else:
-                    return df['close'].iloc[-1]<df['MA20'].iloc[-1]
+                    return False
+                    # return df['close'].iloc[-1]<df['MA20'].iloc[-1]
             else:
                 _,_,df['MACD'] = MACD(df['close'], 10, 20, 7)
                 if abs(df['MACD'].iloc[-1]) < 0.1 and df['MACD'].iloc[-2] < df['MACD'].iloc[-1]:
@@ -384,7 +385,7 @@ def is_golden_point(symbol,df,threshold=1.7,klines=10,max_ratio=1.1,min_angle=20
                     czsc_logger().info("     6）笔的K线数量："+str(up_kline_num))
                     czsc_logger().info("     7）平均每天涨幅："+str(round(100*bi_day_ratio(df,fx_a,fx_b),2))+"%")
                     czsc_logger().info("     8）MACD线："+str(round(df['MACD'].iloc[-1],2)))
-                    return True
+                    return False
                 czsc_logger().info("【"+symbol+"】"+get_symbols_name(symbol)+" 当前收盘价："+str(stock_close)+", 最小收盘价："+str(min_close))
     return False
 
@@ -1131,6 +1132,41 @@ def get_chan_buy_point_type(symbol, start_date=None, end_date=None, frequency='d
         "divergence_rate": 0.8,
         "min_zs_cnt": 1,
     })
+    '''
+    from Chan import CChan
+  from ChanConfig import CChanConfig
+  from Common.CEnum import DATA_SRC, KL_TYPE, AUTYPE
+  from czsc_daily_util import get_kl_data
+
+
+  def get_chan_elements(symbol, df):
+      config = CChanConfig({
+          "trigger_step": True,
+          "divergence_rate": 0.8,
+          "min_zs_cnt": 1,
+      })
+
+      chan = CChan(
+          code=symbol,
+          data_src=DATA_SRC.BAO_STOCK,
+          lv_list=[KL_TYPE.K_DAY],
+          config=config,
+          autype=AUTYPE.QFQ,
+      )
+
+      for klu in get_kl_data(df):
+          chan.trigger_load({
+              KL_TYPE.K_DAY: [klu],
+          })
+
+      kl_list = chan[KL_TYPE.K_DAY]
+
+      # 转成普通 Python 列表
+      bi_list = list(kl_list.bi_list)
+      zs_list = list(kl_list.zs_list)
+
+      return chan, bi_list, zs_list
+    '''
 
     # 缠论分析
     chan = CChan(
@@ -1324,57 +1360,133 @@ def get_kl_data(df):
 """
 tdx_api = None
 def _calc_qfq_factors(bars, xdxr_events):
+    """
+    计算前复权因子，返回 {(year, month, day): factor}，复权价 = 原始价 * factor。
+
+    除权除息参考价（交易所标准公式）：
+        ref = ((前收盘价 - 每股现金红利) + 配股价 * 每股配股比例)
+              / (1 + 每股送转比例 + 每股配股比例)
+
+    前复权时，除权除息日之前的价格统一乘以 ref / 前收盘价，使序列在除权日连续；
+    除权日及之后的价格保持 factor = 1，即最新价与真实成交价一致。
+
+    通达信 xdxr（category == 1）字段单位：
+        fenhong     每 10 股派现（元）  -> 每股现金红利 = fenhong / 10
+        songzhuangu 每 10 股送转（股）  -> 每股送转比例 = songzhuangu / 10
+        peigu       每 10 股配股（股）  -> 每股配股比例 = peigu / 10
+        peigujia    配股价（元/股）     -> 原值使用
+
+    原实现的两个问题（已修正）：
+      1. 比率公式写成 (prev*(1+b+r) - cash) / (prev + r*rights_price)，
+         它在纯送转时恰好等于标准比率的倒数、在纯现金分红时等于标准比率本身，
+         而调用处统一做除法，于是「每 10 股派现」会把除权跳空放大成两倍；
+      2. peigujia 被误除以 10，导致含配股的事件因子偏大。
+    """
     sort_key = lambda x: (x['year'], x['month'], x['day'])
-    bars_sorted = sorted(bars, key=sort_key)
 
     all_dates = {}
-    for b in bars_sorted:
+    for b in sorted(bars, key=sort_key):
         all_dates[(b['year'], b['month'], b['day'])] = b['close']
+    sorted_dates = sorted(all_dates.keys())
 
     events = [x for x in xdxr_events if x.get('category') == 1]
-    events.sort(key=sort_key)
-
     if not events:
         return {}
+    events = sorted(events, key=sort_key)
 
-    for event in events:
-        ey, em, ed = event['year'], event['month'], event['day']
-        prev_close = None
-        for dy, dm, dd in reversed(list(all_dates.keys())):
-            if (dy, dm, dd) < (ey, em, ed):
-                prev_close = all_dates[(dy, dm, dd)]
-                break
-        if prev_close is None or prev_close <= 0:
-            prev_close = all_dates.get((ey, em, ed), 0)
-        event['_prev_close'] = prev_close
-
-    cum_factor = 1.0
-    date_factors = {}
-
+    # 从最近的事件往前累乘，得到「该事件之前所有复权比率之积」
+    cum_ratio = 1.0
+    date_ratio = {}
     for event in reversed(events):
-        ey, em, ed = event['year'], event['month'], event['day']
-        prev_close = event['_prev_close']
-
-        bonus = float(event.get('songzhuangu', 0) or 0) / 10.0
-        rights = float(event.get('peigu', 0) or 0) / 10.0
-        cash = float(event.get('fenhong', 0) or 0) / 10.0
-        rights_price = float(event.get('peigujia', 0) or 0) / 10.0
+        key = sort_key(event)
+        prev_close = 0.0
+        for d in reversed(sorted_dates):
+            if d < key:
+                prev_close = all_dates[d]
+                break
+        if prev_close <= 0:
+            prev_close = all_dates.get(key, 0) or 0
 
         if prev_close > 0:
-            factor = (prev_close * (1 + bonus + rights) - cash) / (prev_close + rights * rights_price)
-            if 0.1 < factor < 10:
-                cum_factor *= factor
-        date_factors[(ey, em, ed)] = cum_factor
+            bonus = float(event.get('songzhuangu', 0) or 0) / 10.0
+            rights = float(event.get('peigu', 0) or 0) / 10.0
+            cash = float(event.get('fenhong', 0) or 0) / 10.0
+            rights_price = float(event.get('peigujia', 0) or 0)
 
+            ref_price = ((prev_close - cash) + rights_price * rights) / (1.0 + bonus + rights)
+            ratio = ref_price / prev_close
+            if 0.1 < ratio < 10:
+                cum_ratio *= ratio
+        date_ratio[key] = cum_ratio
+
+    # 某日期的因子 = 该日期之后第一个除权事件的累计比率；除权日之后为 1.0
     result = {}
+    ordered = sorted(date_ratio.items())
     for d in all_dates:
         f = 1.0
-        for (ey, em, ed), cf in sorted(date_factors.items()):
-            if d < (ey, em, ed):
-                f = cf
+        for ev_key, r in ordered:
+            if d < ev_key:
+                f = r
                 break
         result[d] = f
 
+    return result
+
+
+def _calc_float_shares(bars, xdxr_events, latest_liutong=0.0):
+    """
+    重建「逐日流通股本」（单位：股），用于让换手率与 baostock 口径一致。
+
+    baostock 的换手率定义是：
+        turn = 成交量(股) / 当日流通股本(股) * 100
+    它用的是「当日」流通股本。而 tdx_api.get_finance_info 只返回最新的流通股本，
+    拿它去算历史换手率会系统性偏低（股本扩张后越早的数据偏低越多）。
+
+    xdxr 中 category 不属于 1/11/12/13/14 的记录携带股本变动信息：
+        panqianliutong / panhouliutong —— 变动前 / 变动后的流通股本，单位「万股」
+    这里据此还原出每个交易日的流通股本。
+
+    返回 {(year, month, day): 流通股本(股)}。
+    无法可靠重建时返回 {}，调用方回退到最新流通股本。
+    """
+    sort_key = lambda x: (x['year'], x['month'], x['day'])
+
+    records = []
+    for e in xdxr_events:
+        if e.get('category') in (1, 11, 12, 13, 14):
+            continue
+        before = float(e.get('panqianliutong') or 0)
+        after = float(e.get('panhouliutong') or 0)
+        if before > 0 or after > 0:
+            records.append((sort_key(e), before, after))
+
+    if not records or not bars:
+        return {}
+    records.sort(key=lambda r: r[0])
+
+    # xdxr 的股本单位是「万股」，与 finance_info 的 liutongguben 同源。
+    # 用最新流通股本交叉校验数量级，避免单位假设不成立时算出离谱的换手率。
+    last_shares = records[-1][2] or records[-1][1]
+    if last_shares <= 0:
+        return {}
+    if latest_liutong > 0:
+        ratio = last_shares * 10000.0 / latest_liutong
+        if not (0.2 < ratio < 5.0):
+            czsc_logger().warning(
+                '重建流通股本与最新流通股本数量级不符（{:.4g} vs {:.4g}），换手率回退为最新股本口径'
+                .format(last_shares * 10000.0, latest_liutong))
+            return {}
+
+    sorted_dates = sorted((b['year'], b['month'], b['day']) for b in bars)
+
+    result = {}
+    current = records[0][1] or records[0][2]     # 第一次变动之前的流通股本
+    idx = 0
+    for d in sorted_dates:
+        while idx < len(records) and records[idx][0] <= d:
+            current = records[idx][2] or current
+            idx += 1
+        result[d] = current * 10000.0            # 万股 -> 股
     return result
 
 
@@ -1430,6 +1542,9 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency, category=False):
 
         xdxr = tdx_api.get_xdxr_info(market_code, code) or []
         qfq_factors = _calc_qfq_factors(data, xdxr)
+        if not xdxr:
+            # 取不到权息资料就无法复权，这里必须显式告警，避免静默返回未复权价
+            czsc_logger().warning(f'{symbol} 未取到除权除息数据，返回的价格未做复权处理')
 
         df = pd.DataFrame(data)
 
@@ -1450,7 +1565,8 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency, category=False):
         if qfq_factors:
             df['_factor'] = df.apply(_get_factor, axis=1)
             for col in ['open', 'high', 'low', 'close']:
-                df[col] = df[col] / df['_factor']
+                # 前复权：历史价格乘以因子（factor <= 1），除权日及之后保持不变
+                df[col] = df[col] * df['_factor']
 
         start_str = start_date.replace('-', '')
         end_str = end_date.replace('-', '')
@@ -1470,6 +1586,10 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency, category=False):
         except Exception:
             pass
 
+        # 用股本变动记录还原逐日流通股本，使换手率与 baostock 口径一致；
+        # 还原失败时回退到最新流通股本
+        float_shares_map = _calc_float_shares(data, xdxr, liutong)
+
         data_list = []
         fields = ['date', 'open', 'high', 'low', 'close', 'volume', 'amount', 'turn']
 
@@ -1480,9 +1600,13 @@ def get_stock_data_tdx(symbol, start_date, end_date, frequency, category=False):
                 stock_high = float(row['high'])
                 stock_low = float(row['low'])
                 stock_close = float(row['close'])
+                # TDX 的成交量单位是「手」，×100 转成「股」，与 baostock 的 volume 口径一致
                 stock_volume = float(row['vol']) * 100
                 stock_amount = float(row['amount'])
-                stock_turn = (stock_volume / liutong * 100) if liutong > 0 else 0
+                # 换手率与 baostock 对齐：成交量(股) / 当日流通股本(股) * 100
+                shares_key = (int(row['year']), int(row['month']), int(row['day']))
+                float_shares = float_shares_map.get(shares_key) or liutong
+                stock_turn = (stock_volume / float_shares * 100) if float_shares > 0 else 0
 
                 if len(stock_date) <= 0 or stock_open<=0 or stock_close<=0 or stock_high<=0 or stock_low<=0 or stock_volume<=0 or stock_amount<=0:
                     continue
