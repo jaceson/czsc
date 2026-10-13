@@ -1983,7 +1983,7 @@ def querydata_to_list(rs):
 
 # 查询股票基本信息
 def is_stock_and_oneYear(code):
-    if not stock_market(code) in ["创业板", "上证", "深证"]:
+    if not stock_market(code) in ["创业板", "上证", "深证", "科创板"]:
         return False,None
 
     rs = bs.query_stock_basic(code=code)

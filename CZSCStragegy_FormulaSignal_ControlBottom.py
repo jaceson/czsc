@@ -413,7 +413,7 @@ def scan_last_day_signals(symbols, start_date, end_date, workers=None):
     symbols = list(symbols or [])
     if workers is None:
         workers = min(os.cpu_count() or 1, 4)
-    workers = max(1, int(workers))
+    workers = max(1, int(1))
     if not symbols:
         return []
 
@@ -422,7 +422,7 @@ def scan_last_day_signals(symbols, start_date, end_date, workers=None):
     results = []
     # 显式传递数据源，兼容 macOS spawn 模式下子进程不继承运行时全局变量。
     args = [(symbol, start_date, end_date, DATA_SOURCE) for symbol in symbols]
-    with ProcessPoolExecutor(max_workers=workers, initializer=_bs_login_init) as executor:
+    with ProcessPoolExecutor(max_workers=1, initializer=_bs_login_init) as executor:
         for index, result in enumerate(executor.map(_scan_worker, args), 1):
             if result is not None:
                 results.append(result)

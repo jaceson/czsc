@@ -113,5 +113,8 @@ lib/chan/Daily
 # Log files and notification logs
 data/golden_notification_log.json
 data/log.json
+data/weibo_wu2198_state.json
+data/weibo_oauth_token.json
+data/.weibo_oauth_token.json.state
 data/etf/png
 .chainlit

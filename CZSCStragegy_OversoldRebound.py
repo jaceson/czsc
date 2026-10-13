@@ -615,6 +615,25 @@ def _scan_worker(args):
     except Exception:
         return None
 
+def save_symbols_txt(data, filename):
+    data_dir = get_data_dir()
+    txt_filename = os.path.splitext(filename)[0] + '.txt'
+    codes = []
+    for item in data:
+        if isinstance(item, dict):
+            symbol = item.get('symbol', '')
+        else:
+            symbol = item
+        # 提取6位股票代码，去掉sh./sz.前缀
+        if '.' in symbol:
+            code = symbol.split('.')[1]
+        else:
+            code = symbol
+        if code:
+            codes.append(code)
+    with open(os.path.join(data_dir, txt_filename), 'w', encoding='utf-8') as f:
+        f.write('、'.join(codes))
+
 
 def scan_last_day_signals(symbols, start_date, end_date, workers=None):
     """
@@ -659,6 +678,7 @@ if __name__ == "__main__":
         signals = scan_last_day_signals(all_symbols, start_date, end_date)
         print_last_day_signals(signals)
         if signals:
+            save_symbols_txt(signals, './data/超跌反弹_最新信号.txt')
             write_json(signals, './data/超跌反弹_最新信号.json')
             print("结果已保存到 ./data/超跌反弹_最新信号.json")
 

@@ -71,6 +71,30 @@ print(f"识别到 {len(czsc_analyzer.bi_list)} 笔")
 print(f"识别到 {len(czsc_analyzer.xd_list)} 线段")
 ```
 
+### 微博更新推送到飞书
+
+`weibo_feishu_monitor.py` 会轮询微博用户 `wu2198`，把新微博通过飞书自建应用私信发送到手机号 `13311566853` 对应的账号。先在飞书开放平台创建企业自建应用，开通机器人发送消息和按手机号查询用户的权限，把应用发布到当前租户后配置凭证：
+
+```bash
+cp weibo_feishu_monitor.env.example .env
+# 编辑 .env，填写 FEISHU_APP_ID 和 FEISHU_APP_SECRET
+set -a; source .env; set +a
+python3 weibo_feishu_monitor.py --once
+```
+
+首次运行只记录当前微博，避免把历史消息全部发送；后台持续监控可直接运行 `python3 weibo_feishu_monitor.py`。状态默认保存到 `data/weibo_wu2198_state.json`，可用 `WEIBO_STATE_FILE` 修改。飞书通讯录权限不足或手机号未绑定时，脚本会在日志中给出 API 错误。
+
+如果使用微博官方 API，可先完成 OAuth 2.0 授权。将微博应用中登记的回调地址设置为 `http://127.0.0.1:8765/callback`，填写 `WEIBO_CLIENT_ID` 和 `WEIBO_CLIENT_SECRET` 后执行：
+
+```bash
+python3 weibo_oauth.py authorize
+# 在浏览器打开输出的地址，登录并授权；然后把浏览器最终跳转的完整 URL 复制回来
+python3 weibo_oauth.py callback 'http://127.0.0.1:8765/callback?code=...&state=...'
+python3 weibo_oauth.py token
+```
+
+授权 token 会保存到 `WEIBO_TOKEN_FILE`，监控脚本检测到有效 token 后会优先调用微博官方 `statuses/user_timeline` 接口。
+
 ## 📁 项目结构
 
 ```
@@ -253,4 +277,3 @@ python run_dummy_backtest.py
 <p align="center">
   ⭐ 如果你觉得这个项目有用，请给它一个Star！⭐
 </p>
-

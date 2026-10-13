@@ -6,8 +6,8 @@ import shutil
 import argparse
 import numpy as np
 from czsc_sqlite import *
-import akshare as ak
 from czsc_daily_util import *
+from pytdx.hq import TdxHq_API
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from scipy.interpolate import make_interp_spline
@@ -15,7 +15,11 @@ plt.rcParams["font.sans-serif"] = ["SimHei"]
 plt.rcParams["axes.unicode_minus"] = False  # 正常显示负号
 import pandas as pd
 
-START_DATE = "2024-06-01"
+START_DATE = "2025-01-01"
+
+TDX_HOST = "114.28.173.137"
+TDX_PORT = 7709
+_tdx_api = None
 def plot_data(ax, x, y, title, xlabel, ylabel, label, rotation=45):
     """
     绘制数据并设置图表属性。
@@ -65,15 +69,122 @@ def clear_cache(cachedir):
         shutil.rmtree(cachedir)
     os.makedirs(cachedir)
 
-def _fetch_fund_info_em(code, start_date, end_date):
-    """获取ETF基金净值信息，无数据或异常时返回 None。"""
-    try:
-        df = ak.fund_etf_fund_info_em(code, start_date, end_date)
-        if df is None or len(df) == 0:
-            return None
-        return df
-    except (ValueError, Exception):
+def _get_tdx_api():
+    """懒连接通达信行情服务，复用同一个连接避免逐只 ETF 重连。"""
+    global _tdx_api
+    if _tdx_api is not None:
+        return _tdx_api
+    api = TdxHq_API()
+    if not api.connect(TDX_HOST, TDX_PORT):
+        czsc_logger().error("通达信连接失败: host=%s, port=%s", TDX_HOST, TDX_PORT)
         return None
+    _tdx_api = api
+    return _tdx_api
+
+
+def _tdx_market_code(code):
+    """返回 pytdx 市场代码：0=深市，1=沪市。"""
+    code = str(code).split(".")[-1].zfill(6)
+    return 1 if code.startswith(("5", "6")) else 0
+
+
+def _normalise_yyyymmdd(value):
+    value = str(value).replace("-", "").replace("/", "")
+    if len(value) < 8 or not value[:8].isdigit():
+        raise ValueError("日期格式错误: {}".format(value))
+    return value[:8]
+
+
+def _fetch_fund_info_tdx(code, start_date, end_date):
+    """使用 pytdx 获取 ETF 日线行情。
+
+    旧接口返回的 ``单位净值`` 字段在这里兼容为 ETF 日线收盘价，因为
+    pytdx 不提供天天基金的基金净值接口。函数返回原有下游代码需要的
+    ``净值日期``、``单位净值`` 等列，调用方无需改动。
+    """
+    start_str = _normalise_yyyymmdd(start_date)
+    end_str = _normalise_yyyymmdd(end_date)
+    if start_str > end_str:
+        raise ValueError("开始日期晚于结束日期: {} > {}".format(start_str, end_str))
+
+    api = _get_tdx_api()
+    if api is None:
+        return None
+
+    try:
+        code_str = str(code).split(".")[-1].zfill(6)
+        market = _tdx_market_code(code_str)
+        rows = []
+        # pytdx 单次最多返回 800 根，按 offset 向更早日期翻页。
+        for offset in range(0, 20000, 800):
+            page = api.get_security_bars(9, market, code_str, offset, 800)
+            if not page:
+                break
+            rows.extend(page)
+            page_dates = [
+                "{:04d}{:02d}{:02d}".format(x["year"], x["month"], x["day"])
+                for x in page
+                if all(k in x for k in ("year", "month", "day"))
+            ]
+            if page_dates and min(page_dates) <= start_str:
+                break
+            if len(page) < 800:
+                break
+
+        records = {}
+        for row in rows:
+            try:
+                date_str = "{:04d}{:02d}{:02d}".format(
+                    int(row["year"]), int(row["month"]), int(row["day"])
+                )
+                close = float(row["close"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if start_str <= date_str <= end_str and np.isfinite(close) and close > 0:
+                records[date_str] = close
+
+        if not records:
+            czsc_logger().warning(
+                "获取 ETF 日线行情为空: code=%s, start_date=%s, end_date=%s",
+                code,
+                start_date,
+                end_date,
+            )
+            return None
+        dates = sorted(records)
+        closes = [records[x] for x in dates]
+        # 用行情收盘价计算日涨跌幅，列名保持原下游接口兼容。
+        daily_change = [np.nan]
+        daily_change.extend(
+            (closes[i] / closes[i - 1] - 1) * 100 if closes[i - 1] else np.nan
+            for i in range(1, len(closes))
+        )
+        return pd.DataFrame(
+            {
+                "净值日期": [pd.Timestamp(x).date() for x in dates],
+                "单位净值": closes,
+                "累计净值": closes,
+                "日增长率": daily_change,
+                "申购状态": "-",
+                "赎回状态": "-",
+            }
+        )
+    except Exception as exc:
+        # 保留完整 traceback，便于定位通达信连接、分页或字段解析错误。
+        czsc_logger().exception(
+            "获取 ETF 日线行情失败: code=%s, start_date=%s, end_date=%s, "
+            "error_type=%s, error=%s",
+            code,
+            start_date,
+            end_date,
+            type(exc).__name__,
+            exc,
+        )
+        return None
+
+
+# 保留旧函数名，兼容外部调用；实现已经完全切换到 pytdx。
+_fetch_fund_info_em = _fetch_fund_info_tdx
 
 
 def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.5):
@@ -87,7 +198,7 @@ def is_asc_share(code,etf_share_dict,days=30,min_ratio=1.5):
 
     start_str = START_DATE.replace('-','')
     end_str = dt_list[-1].replace('-','')
-    data_list = _fetch_fund_info_em(code, start_str, end_str)
+    data_list = _fetch_fund_info_tdx(code, start_str, end_str)
     if data_list is None or len(data_list) < 30:
         return False, None
 
@@ -233,7 +344,7 @@ def output_national_team_etf_charts():
         # 获取净值数据
         start_str = START_DATE.replace('-', '')
         end_str = etf_share_dict['share']['dt'][-1].replace('-', '')
-        data_list = _fetch_fund_info_em(code, start_str, end_str)
+        data_list = _fetch_fund_info_tdx(code, start_str, end_str)
         
         if data_list is None or len(data_list) == 0:
             print("{}({}) 无净值数据".format(name, code))
@@ -241,7 +352,7 @@ def output_national_team_etf_charts():
         
         try:
             close_list = data_list['单位净值'].tolist()
-            # 使用 share 数据的日期，避免 akshare 日期解析问题
+            # 使用 share 数据的日期，保持份额数据和行情数据对齐
             close_data = {'dt': etf_share_dict['share']['dt'], 'close': close_list}
             
             # 确保数据长度一致
@@ -274,7 +385,7 @@ def output_national_team_etf_charts():
         # 获取净值数据
         start_str = START_DATE.replace('-', '')
         end_str = etf_share_dict['share']['dt'][-1].replace('-', '')
-        data_list = _fetch_fund_info_em(code, start_str, end_str)
+        data_list = _fetch_fund_info_tdx(code, start_str, end_str)
         
         if data_list is None or len(data_list) == 0:
             print("{}({}) 无净值数据".format(name, code))
@@ -282,7 +393,7 @@ def output_national_team_etf_charts():
         
         try:
             close_list = data_list['单位净值'].tolist()
-            # 使用 share 数据的日期，避免 akshare 日期解析问题
+            # 使用 share 数据的日期，保持份额数据和行情数据对齐
             close_data = {'dt': etf_share_dict['share']['dt'], 'close': close_list}
             
             # 确保数据长度一致
@@ -327,7 +438,10 @@ def main(code=None):
     else:
         codes = list(etf_share_list.keys())
 
-    for code in codes:
+    for i, code in enumerate(codes):
+        # 打印进度
+        print("{} - 进度：{} / {}".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), i + 1, len(codes)))
+            
         etf_share_dict = etf_share_list[code]
         is_valid,close_list = is_asc_share(code,etf_share_dict)
         try:
