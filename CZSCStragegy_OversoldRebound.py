@@ -616,7 +616,17 @@ def _scan_worker(args):
         return None
 
 def save_symbols_txt(data, filename):
+    """Save stock codes under the project's data directory.
+
+    ``filename`` is relative to that directory.  For compatibility with
+    callers that pass ``./data/<name>`` we remove that leading directory
+    before joining it to the project's data directory.
+    """
     data_dir = get_data_dir()
+    filename = os.path.normpath(os.fspath(filename))
+    data_prefix = os.path.normpath('data') + os.sep
+    if filename.startswith(data_prefix):
+        filename = filename[len(data_prefix):]
     txt_filename = os.path.splitext(filename)[0] + '.txt'
     codes = []
     for item in data:
@@ -631,7 +641,9 @@ def save_symbols_txt(data, filename):
             code = symbol
         if code:
             codes.append(code)
-    with open(os.path.join(data_dir, txt_filename), 'w', encoding='utf-8') as f:
+    output_path = os.path.join(data_dir, txt_filename)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write('、'.join(codes))
 
 
@@ -678,7 +690,7 @@ if __name__ == "__main__":
         signals = scan_last_day_signals(all_symbols, start_date, end_date)
         print_last_day_signals(signals)
         if signals:
-            save_symbols_txt(signals, './data/超跌反弹_最新信号.txt')
+            save_symbols_txt(signals, '超跌反弹_最新信号.txt')
             write_json(signals, './data/超跌反弹_最新信号.json')
             print("结果已保存到 ./data/超跌反弹_最新信号.json")
 
@@ -686,8 +698,8 @@ if __name__ == "__main__":
         # 2) 串行完整回测统计
         print("\n开始串行回测统计……")
         for i, symbol in enumerate(all_symbols):
-            print("[{}] 回测进度：{} / {}".format(
-                    pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i + 1, total))
+            print("[{}] 进度：{} / {}".format(
+-                pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), i + 1, total))
             try:
                 df = get_stock_pd(symbol, start_date, end_date, 'd')
                 get_oversold_buy_point(symbol, df, track_last_day=False)

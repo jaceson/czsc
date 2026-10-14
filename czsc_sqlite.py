@@ -334,13 +334,13 @@ def main():
     args = parser.parse_args()
     # 连接数据库；放在 argparse 后，--help 不会触碰数据库。
     sqlite3_connect()
-    fetch_all_symbols_kline(
-        start_date=args.start_date,
-        end_date=args.end_date,
-        full_sync=args.full_sync,
-        commit_every=args.commit_every,
-    )
-    return
+    # fetch_all_symbols_kline(
+    #     start_date=args.start_date,
+    #     end_date=args.end_date,
+    #     full_sync=args.full_sync,
+    #     commit_every=args.commit_every,
+    # )
+    # return
 
     # 查询已有数据，避免重复添加
     sql_connect_cursor.execute("SELECT dt,code FROM ETF_DAILY")
