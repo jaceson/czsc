@@ -365,11 +365,27 @@ def calculate_oversold_indicators(df):
     return ndf
 
 
+def _position_cost_price(entries):
+    """计算当前持仓的整体成本价。
+
+    每笔交易默认按一份仓位计算；如果以后在 entry 中记录了
+    ``quantity``，则自动按数量加权，避免把整体成本价误当成最后一笔买入价。
+    """
+    total_quantity = sum(float(entry.get("quantity", 1.0)) for entry in entries)
+    if total_quantity <= 0:
+        return float("nan")
+    total_cost = sum(
+        float(entry["price"]) * float(entry.get("quantity", 1.0))
+        for entry in entries
+    )
+    return total_cost / total_quantity
+
+
 def _record_position(symbol, entries, df):
     """记录一次持仓（可能包含多次加仓）到对应信号类型的统计中"""
     last_entry = entries[-1]
     last_entry_idx = last_entry["idx"]
-    avg_cost = sum(e["price"] for e in entries) / len(entries)
+    avg_cost = _position_cost_price(entries)
     sig_label = last_entry["sig_label"]
 
     stats = signal_stats[sig_label]
@@ -459,7 +475,7 @@ def get_oversold_buy_point(symbol, df):
             exit_str = "{:.2f}%".format(exit_ret) if exit_ret is not None else "N/A"
             print("{} 平仓 买入:{} 卖出:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
                 symbol, position["entries"][0]["date"], exit_date,
-                sum(e["price"] for e in position["entries"]) / len(position["entries"]),
+                _position_cost_price(position["entries"]),
                 hold_days, exit_str, max_ret))
             position = None
 
@@ -475,16 +491,16 @@ def get_oversold_buy_point(symbol, df):
                 position["entries"].append(entry)
                 position["last_entry_idx"] = entry["idx"]
                 position["close_idx"] = entry["idx"] + hold_days
-                avg = sum(e["price"] for e in position["entries"]) / len(position["entries"])
-                print("{} 加仓 信号:{} 买入:{} 价:{:.2f} 均价:{:.2f} BCD1:{:.2f}".format(
-                    symbol, all_dates[sig_idx], entry["date"], entry["price"], avg,
+                overall_cost = _position_cost_price(position["entries"])
+                print("{} 加仓 信号:{} 买入:{} 价:{:.2f} 当前成本价:{:.2f} BCD1:{:.2f}".format(
+                    symbol, all_dates[sig_idx], entry["date"], entry["price"], overall_cost,
                     50 * float(ndf["BCD1"].iloc[sig_idx])))
             else:
                 max_ret, exit_ret, exit_date = _record_position(symbol, position["entries"], ndf)
                 exit_str = "{:.2f}%".format(exit_ret) if exit_ret is not None else "N/A"
                 print("{} 平仓 买入:{} 卖出:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
                     symbol, position["entries"][0]["date"], exit_date,
-                    sum(e["price"] for e in position["entries"]) / len(position["entries"]),
+                    _position_cost_price(position["entries"]),
                     hold_days, exit_str, max_ret))
                 position = {"entries": [entry], "last_entry_idx": entry["idx"],
                             "close_idx": entry["idx"] + hold_days}
@@ -497,7 +513,7 @@ def get_oversold_buy_point(symbol, df):
         exit_str = "{:.2f}%".format(exit_ret) if exit_ret is not None else "N/A"
         print("{} 平仓 买入:{} 卖出:{} 均价:{:.2f} 持有{}日收益:{} 最大收益:{:.2f}%".format(
             symbol, position["entries"][0]["date"], exit_date,
-            sum(e["price"] for e in position["entries"]) / len(position["entries"]),
+            _position_cost_price(position["entries"]),
             hold_days, exit_str, max_ret))
 
 
@@ -573,11 +589,11 @@ def print_statistics():
         _print_signal_stats(key, signal_stats[key])
 
 def get_test_symbols():
-    test_symbols = ['sz.301392']
-    # json_data = read_json('./data/超跌反弹_最新信号.json')
-    # if json_data:
-    #     for json_item in json_data:
-    #         test_symbols.append(json_item['symbol'])
+    test_symbols = []
+    json_data = read_json('./data/超跌反弹_最新信号.json')
+    if json_data:
+        for json_item in json_data:
+            test_symbols.append(json_item['symbol'])
     return test_symbols
 
 if __name__ == "__main__":
