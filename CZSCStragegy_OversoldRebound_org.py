@@ -620,7 +620,7 @@ if __name__ == "__main__":
             if len(test_symbols)>0:
                 df = get_stock_pd(symbol, start_date, end_date, 'd')
             else:
-                df = get_local_stock_data(symbol, start_date)
+                df = get_local_stock_data(symbol, start_date, end_date)
             get_oversold_buy_point(symbol, df)
         except Exception as e:
             continue
